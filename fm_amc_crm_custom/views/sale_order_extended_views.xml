@@ -98,7 +98,7 @@
                            required="is_estimation_order"/>
                     <button name="action_load_estimation_lines" string="Load Estimation Lines" 
                             type="object" class="oe_highlight"
-                            invisible="not is_estimation_order or not estimation_id"
+                            invisible="1"
                             help="Copy all lines from the selected estimation"/>
                     <field name="direct_order" string="Direct Order?"/>
                     <field name="revised_quotation" string="Revised Quotation?"/>
