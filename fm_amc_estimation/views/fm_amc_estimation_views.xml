@@ -68,8 +68,8 @@
 
                             <!-- Column 3: Estimation Summary -->
                             <group string="ESTIMATION COST">
-                                <field name="project_amount_total" string="Project Estimations" readonly="1"/>
-                                <field name="consumable_amount_total" string="Consumable Estimations" readonly="1"/>
+                                <field name="project_amount_total" string="Project" readonly="1"/>
+                                <field name="consumable_amount_total" string="Consumable" readonly="1"/>
                                 <field name="expense_amount_total" string="Expense" readonly="1"/>
                                 <field name="amount_untaxed" string="Subtotal" readonly="1"/>
                                 <field name="amount_tax" string="Tax" readonly="1"/>
