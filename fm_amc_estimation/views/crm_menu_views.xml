@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Add Estimations menu under CRM -->
+        <menuitem id="menu_fm_amc_estimation" 
+                  name="Estimations" 
+                  parent="crm.crm_menu_root"
+                  action="action_fm_amc_estimation"
+                  sequence="10"/>
+        
+        <!-- Section: Contracts (Header) - Visible section title -->
+        <menuitem id="menu_amc_settings_section_contracts" 
+                  name="Contracts" 
+                  parent="amc_contracts.menu_amc_settings"
+                  sequence="5"/>
+        
+        <!-- Section: Estimations (Header) - Visible section title -->
+        <menuitem id="menu_amc_settings_section_estimations" 
+                  name="Estimations" 
+                  parent="amc_contracts.menu_amc_settings"
+                  sequence="25"/>
+        
+        <!-- Estimation Configuration menu under AMC Settings -->
+        <menuitem id="menu_fm_amc_estimation_config" 
+                  name="Estimations Format" 
+                  parent="amc_contracts.menu_amc_settings"
+                  action="action_fm_amc_estimation_config"
+                  sequence="30"/>
+        
+        <!-- Estimation Stages menu under AMC Settings -->
+        <menuitem id="menu_fm_amc_estimation_stage" 
+                  name="Estimations Stages" 
+                  parent="amc_contracts.menu_amc_settings"
+                  action="action_fm_amc_estimation_stage"
+                  sequence="40"/>
+        
+        <!-- Product SKU Configuration menu under Inventory Configuration -->
+        <menuitem id="menu_fm_amc_product_sku_config" 
+                  name="Product SKU Configuration" 
+                  parent="stock.menu_product_in_config_stock"
+                  action="action_fm_amc_product_sku_config"
+                  sequence="50"/>
+    </data>
+</odoo>
+
+
+

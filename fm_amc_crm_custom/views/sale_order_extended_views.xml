@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Inherit Sale Order Form View -->
+        <record id="view_order_form_fm_amc_crm_custom" model="ir.ui.view">
+            <field name="name">sale.order.form.inherit.fm.amc.crm.custom</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
+                <!-- Add invisible computed fields for button visibility -->
+                <xpath expr="//sheet" position="attributes">
+                    <attribute name="class">o_sheet_inherit_quotations</attribute>
+                </xpath>
+                
+                <xpath expr="//header" position="inside">
+                    <!-- Draft Stage Buttons -->
+                    <button name="action_send_for_approval" string="Send for Approval" 
+                            type="object" class="oe_highlight"
+                            invisible="not is_draft_stage"/>
+                    <button name="action_mark_printed" string="Print" 
+                            type="object"
+                            invisible="not is_draft_stage"/>
+                    
+                    <!-- Pending Approval Stage Buttons -->
+                    <button name="action_approve" string="Approve for Quotation" 
+                            type="object" class="oe_highlight"
+                            invisible="not is_pending_approval_stage"/>
+                    <button name="action_reject" string="Decline" 
+                            type="object"
+                            invisible="not is_pending_approval_stage"/>
+                    <button name="action_mark_printed" string="Print" 
+                            type="object"
+                            invisible="not is_pending_approval_stage"/>
+                    
+                    <!-- Quotation Stage Buttons -->
+                    <button name="action_mark_quotation_sent" string="Mark as Sent" 
+                            type="object" class="oe_highlight"
+                            invisible="not is_quotation_stage"/>
+                    <button name="action_cancel_quotation" string="Cancel" 
+                            type="object"
+                            invisible="not is_quotation_stage"/>
+                    
+                    <!-- Quotation Sent Stage Buttons -->
+                    <button name="action_confirm" string="Confirm" 
+                            type="object" class="oe_highlight"
+                            invisible="not is_quotation_sent_stage or is_locked"/>
+                    <button name="action_cancel_quotation" string="Cancel" 
+                            type="object"
+                            invisible="not is_quotation_sent_stage or is_locked"/>
+                    
+                    <!-- Sales Order Stage Buttons -->
+                    <button name="action_reset_to_draft" string="Reset to Draft" 
+                            type="object"
+                            invisible="not is_sales_order_stage"/>
+                    <button name="action_cancel_quotation" string="Cancel" 
+                            type="object"
+                            invisible="not is_sales_order_stage"/>
+                    
+                    <!-- Add invisible computed fields for button visibility -->
+                    <field name="is_draft_stage" invisible="1"/>
+                    <field name="is_pending_approval_stage" invisible="1"/>
+                    <field name="is_quotation_stage" invisible="1"/>
+                    <field name="is_quotation_sent_stage" invisible="1"/>
+                    <field name="is_sales_order_stage" invisible="1"/>
+                    <field name="is_locked" invisible="1"/>
+                    <field name="printed_without_approval" invisible="1"/>
+                </xpath>
+                
+                <!-- Add Quotation Stage Statusbar after state -->
+                <xpath expr="//field[@name='state']" position="after">
+                    <field name="quotation_stage_id" widget="statusbar" 
+                           statusbar_visible="draft,pending_approval,quotation,quotation_sent,sales_order"
+                           invisible="not quotation_stage_id"/>
+                </xpath>
+                
+                <!-- Add Estimation Fields -->
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="estimation_id" 
+                           domain="[('partner_id', '=', partner_id), ('is_approved', '=', True)]"
+                           options="{'no_open': True, 'no_create': True}"/>
+                    <field name="estimated_value" invisible="not is_estimation_order" readonly="1"/>
+                    <field name="is_estimation_order" invisible="1"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Inherit Sale Order List View -->
+        <record id="view_order_tree_fm_amc_crm_custom" model="ir.ui.view">
+            <field name="name">sale.order.tree.inherit.fm.amc.crm.custom</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_tree"/>
+            <field name="arch" type="xml">
+                <!-- Add Estimated Value column -->
+                <field name="amount_total" position="after">
+                    <field name="estimated_value" optional="hide"/>
+                </field>
+            </field>
+        </record>
+
+        <!-- Custom Order Line View with Estimated Price -->
+        <record id="view_order_line_tree" model="ir.ui.view">
+            <field name="name">sale.order.line.tree.fm.amc.crm.custom</field>
+            <field name="model">sale.order.line</field>
+            <field name="priority">20</field>
+            <field name="arch" type="xml">
+                <list editable="bottom" create="false">
+                    <field name="sequence" widget="handle"/>
+                    <field name="display_type" invisible="1"/>
+                    <field name="name" readonly="display_type == 'line_section'"/>
+                    <field name="product_id" readonly="display_type == 'line_note'"/>
+                    <field name="product_uom_qty" readonly="display_type in ['line_section', 'line_note']"/>
+                    <field name="price_unit" readonly="display_type in ['line_section', 'line_note']"/>
+                    <field name="estimated_price" readonly="display_type in ['line_section', 'line_note']"/>
+                    <field name="price_subtotal" readonly="display_type in ['line_section', 'line_note']"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Override action_quotations_with_onboarding for "My Quotations" filter -->
+        <record id="action_quotations_with_onboarding" model="ir.actions.act_window">
+            <field name="name">Quotations</field>
+            <field name="res_model">sale.order</field>
+            <field name="view_mode">list,kanban,form,calendar,pivot,graph,activity</field>
+            <field name="context">{'search_default_my_quotation': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first quotation!
+                </p><p>
+                    Send professional quotations to your customers.
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>
+

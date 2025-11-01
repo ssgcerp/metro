@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- FM AMC Estimation Form View -->
+        <record id="view_fm_amc_estimation_form" model="ir.ui.view">
+            <field name="name">fm.amc.estimation.form</field>
+            <field name="model">fm.amc.estimation</field>
+            <field name="arch" type="xml">
+                <form string="Estimation" create="1" edit="1">
+                    <header>
+                        <field name="is_draft" invisible="1"/>
+                        <field name="is_approved" invisible="1"/>
+                        <field name="is_locked" invisible="1"/>
+                        <field name="is_waiting_approval" invisible="1"/>
+                        
+                        <!-- Submit for Approval: Only show in Draft -->
+                        <button name="action_submit_for_approval" string="Submit for Approval" type="object" 
+                                class="btn-primary" invisible="not is_draft or is_locked"/>
+                        
+                        <!-- Approve: Only show in Waiting Approval -->
+                        <button name="action_approve" string="Approve" type="object" 
+                                class="btn-primary" invisible="not is_waiting_approval or is_locked"/>
+                        
+                        <!-- Create Quotation: Only show when Approved and no quotation created yet -->
+                        <button name="action_create_quotation" string="Create Quotation" type="object" 
+                                class="btn-primary" 
+                                invisible="not is_approved or is_locked or sale_order_id"/>
+                        
+                        <!-- View Quotation: Show when quotation is created -->
+                        <button name="action_view_quotation" string="View Quotation" type="object" 
+                                class="btn-secondary"
+                                invisible="not sale_order_id"/>
+                        
+                        <!-- Lock: Only show when Approved -->
+                        <button name="action_lock" string="Lock" type="object" 
+                                class="btn-danger" invisible="not is_approved or is_locked"/>
+                        
+                        <!-- Reset to Draft: Show except in Draft (unless locked) -->
+                        <button name="action_reset_to_draft" string="Reset to Draft" type="object" 
+                                class="btn-secondary" invisible="(is_draft and not is_locked) or is_locked"/>
+                        
+                        <field name="stage_id" widget="statusbar" 
+                               statusbar_visible="draft,waiting approval,approved,locked"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name" readonly="1" invisible="not name"/>
+                                <field name="partner_id" options="{'no_create': False, 'no_create_edit': False}"/>
+                                <field name="contact_id" domain="[('parent_id', '=', partner_id), ('is_company', '=', False)]" 
+                                       options="{'no_create': True}"/>
+                                <field name="amc_contract_id" 
+                                       domain="[('customer_id', '=', partner_id), ('active', '=', True), ('stage_id.name', 'not in', ['Draft', 'Cancelled', 'Blocked'])]" 
+                                       options="{'no_create': True}"/>
+                                <field name="project_id" 
+                                       domain="[('partner_id', '=', partner_id)]" 
+                                       options="{'no_create': True}"/>
+                                <field name="branch_id" options="{'no_create': False}"/>
+                                <field name="sales_contact_id" domain="[('active', '=', True)]" 
+                                       options="{'no_create': True}"/>
+                            </group>
+                            <group>
+                                <field name="estimation_date"/>
+                                <field name="validity_date"/>
+                                <field name="amount_untaxed" readonly="1"/>
+                                <field name="amount_tax" readonly="1"/>
+                                <field name="amount_total" readonly="1"/>
+                                <field name="currency_id"/>
+                                <field name="sale_order_id" readonly="1" invisible="not sale_order_id"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Project Estimations" name="project_estimations">
+                                <field name="project_amount_total" readonly="1"/>
+                                <field name="project_line_ids" nolabel="1" context="{'default_line_type': 'project'}">
+                                    <list string="Project Estimations" editable="bottom" default_order="sequence">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="product_id" options="{'no_create': True}"/>
+                                        <field name="name"/>
+                                        <field name="product_uom_qty"/>
+                                        <field name="product_uom"/>
+                                        <field name="price_unit"/>
+                                        <field name="price_subtotal" readonly="1"/>
+                                        <field name="tax_id" widget="many2many_tags" options="{'no_create': True}"/>
+                                        <field name="price_tax" readonly="1"/>
+                                        <field name="price_total" readonly="1"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Consumable Estimations" name="consumable_estimations">
+                                <field name="consumable_amount_total" readonly="1"/>
+                                <field name="consumable_line_ids" nolabel="1" context="{'default_line_type': 'consumable'}">
+                                    <list string="Consumable Estimations" editable="bottom" default_order="sequence">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="product_id" options="{'no_create': True}"/>
+                                        <field name="name"/>
+                                        <field name="product_uom_qty"/>
+                                        <field name="product_uom"/>
+                                        <field name="price_unit"/>
+                                        <field name="price_subtotal" readonly="1"/>
+                                        <field name="tax_id" widget="many2many_tags" options="{'no_create': True}"/>
+                                        <field name="price_tax" readonly="1"/>
+                                        <field name="price_total" readonly="1"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Expense" name="expense">
+                                <field name="expense_amount_total" readonly="1"/>
+                                <field name="expense_line_ids" nolabel="1" context="{'default_line_type': 'expense'}">
+                                    <list string="Expense" editable="bottom" default_order="sequence">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="product_id" options="{'no_create': True}"/>
+                                        <field name="name"/>
+                                        <field name="product_uom_qty"/>
+                                        <field name="product_uom"/>
+                                        <field name="price_unit"/>
+                                        <field name="price_subtotal" readonly="1"/>
+                                        <field name="tax_id" widget="many2many_tags" options="{'no_create': True}"/>
+                                        <field name="price_tax" readonly="1"/>
+                                        <field name="price_total" readonly="1"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Terms and Conditions" name="terms_conditions">
+                                <field name="note" nolabel="1" placeholder="Enter terms and conditions here..."/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- FM AMC Estimation List View -->
+        <record id="view_fm_amc_estimation_tree" model="ir.ui.view">
+            <field name="name">fm.amc.estimation.list</field>
+            <field name="model">fm.amc.estimation</field>
+            <field name="arch" type="xml">
+                <list string="Estimations">
+                    <field name="name" string="Estimation Number"/>
+                    <field name="estimation_date"/>
+                    <field name="partner_id"/>
+                    <field name="amc_contract_id"/>
+                    <field name="project_id"/>
+                    <field name="amount_total"/>
+                    <field name="stage_color" column_invisible="1"/>
+                    <field name="stage_id" widget="badge" options="{'color_field': 'stage_color'}"/>
+                    <field name="sale_order_id" invisible="not sale_order_id"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- FM AMC Estimation Search View -->
+        <record id="view_fm_amc_estimation_search" model="ir.ui.view">
+            <field name="name">fm.amc.estimation.search</field>
+            <field name="model">fm.amc.estimation</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="name"/>
+                    <field name="partner_id"/>
+                    <field name="amc_contract_id"/>
+                    <field name="project_id"/>
+                    <field name="stage_id"/>
+                    <field name="amount_total"/>
+                    
+                    <filter string="Draft" name="filter_draft" domain="[('stage_id.name', '=', 'Draft')]"/>
+                    <filter string="Waiting Approval" name="filter_waiting_approval" 
+                            domain="[('stage_id.name', '=', 'Waiting Approval')]"/>
+                    <filter string="Approved" name="filter_approved" 
+                            domain="[('stage_id.name', '=', 'Approved')]"/>
+                    <filter string="Locked" name="filter_locked" 
+                            domain="[('is_locked', '=', True)]"/>
+                    <filter string="With Quotation" name="filter_with_quotation" 
+                            domain="[('sale_order_id', '!=', False)]"/>
+                    <filter string="Without Quotation" name="filter_without_quotation" 
+                            domain="[('sale_order_id', '=', False)]"/>
+                    
+                    <separator/>
+                    <filter string="Active" name="filter_active" domain="[('active', '=', True)]"/>
+                    
+                    <group>
+                        <filter string="Stage" name="group_by_stage" context="{'group_by': 'stage_id'}"/>
+                        <filter string="Customer" name="group_by_customer" context="{'group_by': 'partner_id'}"/>
+                        <filter string="AMC Contract" name="group_by_amc_contract" context="{'group_by': 'amc_contract_id'}"/>
+                        <filter string="Project" name="group_by_project" context="{'group_by': 'project_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- FM AMC Estimation Kanban View -->
+        <record id="view_fm_amc_estimation_kanban" model="ir.ui.view">
+            <field name="name">fm.amc.estimation.kanban</field>
+            <field name="model">fm.amc.estimation</field>
+            <field name="arch" type="xml">
+                <kanban default_group_by="stage_id" class="o_kanban_mobile">
+                    <field name="name"/>
+                    <field name="stage_id"/>
+                    <field name="partner_id"/>
+                    <field name="amount_total"/>
+                    <field name="estimation_date"/>
+                    <field name="sale_order_id"/>
+                    <progressbar field="stage_id" 
+                                colors='{"Approved": "success", "Draft": "warning", "Locked": "danger", "Waiting Approval": "info"}'/>
+                    <templates>
+                        <t t-name="card">
+                            <div class="oe_kanban_card oe_kanban_global_click">
+                                <div class="oe_kanban_content">
+                                    <div class="o_kanban_record_top">
+                                        <div class="o_kanban_record_headings">
+                                            <strong class="o_kanban_record_title">
+                                                <field name="name"/>
+                                            </strong>
+                                        </div>
+                                    </div>
+                                    <div class="o_kanban_record_body">
+                                        <div>
+                                            <field name="partner_id"/>
+                                        </div>
+                                        <div>
+                                            <span>Amount: </span><field name="amount_total"/>
+                                        </div>
+                                        <div>
+                                            <span>Date: </span><field name="estimation_date"/>
+                                        </div>
+                                        <div t-if="record.sale_order_id.raw_value">
+                                            <span>Quotation: </span><field name="sale_order_id"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- FM AMC Estimation Action -->
+        <record id="action_fm_amc_estimation" model="ir.actions.act_window">
+            <field name="name">Estimations</field>
+            <field name="res_model">fm.amc.estimation</field>
+            <field name="view_mode">list,form,kanban</field>
+            <field name="context">{}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first Estimation!
+                </p>
+                <p>
+                    Create estimations for AMC Contracts and Projects, then convert them to quotations when approved.
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>
+

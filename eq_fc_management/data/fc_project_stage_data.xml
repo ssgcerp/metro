@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <data>
+        <!-- Default Project Stages -->
+        <record id="project_stage_draft" model="fc.project.stage">
+            <field name="name">Draft</field>
+            <field name="sequence" eval="10"/>
+            <field name="fold" eval="False"/>
+            <field name="color" eval="0"/>
+            <field name="company_id" eval="False"/>
+            <field name="is_default" eval="True"/>
+            <field name="is_confirmed_stage" eval="False"/>
+            <field name="active" eval="True"/>
+            <field name="description">Project in draft stage</field>
+        </record>
+
+        <record id="project_stage_quote_submitted" model="fc.project.stage">
+            <field name="name">Quote Submitted</field>
+            <field name="sequence" eval="20"/>
+            <field name="fold" eval="False"/>
+            <field name="color" eval="1"/>
+            <field name="company_id" eval="False"/>
+            <field name="is_default" eval="True"/>
+            <field name="is_confirmed_stage" eval="False"/>
+            <field name="active" eval="True"/>
+            <field name="description">Quote has been submitted</field>
+        </record>
+
+        <record id="project_stage_awarded" model="fc.project.stage">
+            <field name="name">Awarded</field>
+            <field name="sequence" eval="30"/>
+            <field name="fold" eval="False"/>
+            <field name="color" eval="2"/>
+            <field name="company_id" eval="False"/>
+            <field name="is_default" eval="True"/>
+            <field name="is_confirmed_stage" eval="True"/>
+            <field name="active" eval="True"/>
+            <field name="description">Project has been awarded/confirmed</field>
+        </record>
+
+        <record id="project_stage_in_progress" model="fc.project.stage">
+            <field name="name">In Progress</field>
+            <field name="sequence" eval="40"/>
+            <field name="fold" eval="False"/>
+            <field name="color" eval="3"/>
+            <field name="company_id" eval="False"/>
+            <field name="is_default" eval="True"/>
+            <field name="is_confirmed_stage" eval="False"/>
+            <field name="active" eval="True"/>
+            <field name="description">Project is in progress</field>
+        </record>
+
+        <record id="project_stage_completed" model="fc.project.stage">
+            <field name="name">Completed</field>
+            <field name="sequence" eval="50"/>
+            <field name="fold" eval="True"/>
+            <field name="color" eval="10"/>
+            <field name="company_id" eval="False"/>
+            <field name="is_default" eval="True"/>
+            <field name="is_confirmed_stage" eval="False"/>
+            <field name="active" eval="True"/>
+            <field name="description">Project has been completed</field>
+        </record>
+
+        <record id="project_stage_closed" model="fc.project.stage">
+            <field name="name">Closed</field>
+            <field name="sequence" eval="60"/>
+            <field name="fold" eval="True"/>
+            <field name="color" eval="8"/>
+            <field name="company_id" eval="False"/>
+            <field name="is_default" eval="True"/>
+            <field name="is_confirmed_stage" eval="False"/>
+            <field name="active" eval="True"/>
+            <field name="description">Project has been closed</field>
+        </record>
+
+        <record id="project_stage_cancelled" model="fc.project.stage">
+            <field name="name">Cancelled</field>
+            <field name="sequence" eval="70"/>
+            <field name="fold" eval="True"/>
+            <field name="color" eval="5"/>
+            <field name="company_id" eval="False"/>
+            <field name="is_default" eval="True"/>
+            <field name="is_confirmed_stage" eval="False"/>
+            <field name="active" eval="True"/>
+            <field name="description">Project has been cancelled</field>
+        </record>
+
+        <record id="project_stage_dropped" model="fc.project.stage">
+            <field name="name">Dropped</field>
+            <field name="sequence" eval="80"/>
+            <field name="fold" eval="True"/>
+            <field name="color" eval="9"/>
+            <field name="company_id" eval="False"/>
+            <field name="is_default" eval="True"/>
+            <field name="is_confirmed_stage" eval="False"/>
+            <field name="active" eval="True"/>
+            <field name="description">Project has been dropped</field>
+        </record>
+    </data>
+</odoo>

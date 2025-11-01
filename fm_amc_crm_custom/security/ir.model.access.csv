@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sale_quotation_stage_manager,sale.quotation.stage.manager,fm_amc_crm_custom.model_sale_quotation_stage,sales_team.group_sale_manager,1,1,1,1
+access_sale_quotation_stage_user,sale.quotation.stage.user,fm_amc_crm_custom.model_sale_quotation_stage,sales_team.group_sale_salesman,1,0,0,0
+access_sale_quotation_config_manager,sale.quotation.config.manager,fm_amc_crm_custom.model_sale_quotation_config,sales_team.group_sale_manager,1,1,1,1
+access_sale_quotation_config_user,sale.quotation.config.user,fm_amc_crm_custom.model_sale_quotation_config,sales_team.group_sale_salesman,1,0,0,0
+

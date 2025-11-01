@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Form View for Quotation Stage -->
+        <record id="view_sale_quotation_stage_form" model="ir.ui.view">
+            <field name="name">sale.quotation.stage.form</field>
+            <field name="model">sale.quotation.stage</field>
+            <field name="arch" type="xml">
+                <form string="Quotation Stage">
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="sequence"/>
+                            <field name="color" widget="color_picker"/>
+                            <field name="fold"/>
+                        </group>
+                        <group string="Behavior">
+                            <field name="is_draft_stage"/>
+                            <field name="is_locked_stage"/>
+                            <field name="is_cancelled_stage"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- List View for Quotation Stage -->
+        <record id="view_sale_quotation_stage_tree" model="ir.ui.view">
+            <field name="name">sale.quotation.stage.tree</field>
+            <field name="model">sale.quotation.stage</field>
+            <field name="arch" type="xml">
+                <list string="Quotation Stages">
+                    <field name="name"/>
+                    <field name="code"/>
+                    <field name="sequence"/>
+                    <field name="color" widget="color_picker"/>
+                    <field name="is_draft_stage"/>
+                    <field name="is_locked_stage"/>
+                    <field name="is_cancelled_stage"/>
+                </list>
+            </field>
+        </record>
+    </data>
+</odoo>
+

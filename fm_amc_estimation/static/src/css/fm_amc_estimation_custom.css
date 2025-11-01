@@ -1,0 +1,24 @@
+/* FM AMC Estimation Custom Styles */
+
+/* Style for menu section headers - matching Odoo's dropdown-header pattern */
+li.dropdown-menu_group.dropdown-header {
+    padding-left: 20px !important;
+}
+
+/* Additional styling for section headers */
+li[data-menu-id="menu_amc_settings_section_contracts"].dropdown-header,
+li[data-menu-id="menu_amc_settings_section_estimations"].dropdown-header {
+    padding-left: 20px !important;
+}
+
+/* Make SKU fields bold on product form */
+.o_field_widget[data-name="estimation_sku"],
+.o_field_widget[data-name="default_sku"] {
+    font-weight: bold !important;
+}
+
+.o_field_widget[data-name="estimation_sku"] .o_field_char,
+.o_field_widget[data-name="default_sku"] .o_field_char {
+    font-weight: bold !important;
+}
+

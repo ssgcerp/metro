@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Action for Quotation Configuration -->
+        <record id="action_sale_quotation_config" model="ir.actions.act_window">
+            <field name="name">Quotation Configuration</field>
+            <field name="res_model">sale.quotation.config</field>
+            <field name="view_mode">form</field>
+            <field name="target">current</field>
+            <field name="context">{}</field>
+        </record>
+
+        <!-- Form View for Quotation Configuration -->
+        <record id="view_sale_quotation_config_form" model="ir.ui.view">
+            <field name="name">sale.quotation.config.form</field>
+            <field name="model">sale.quotation.config</field>
+            <field name="arch" type="xml">
+                <form string="Quotation Configuration">
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Stage Colors" col="2">
+                            <field name="draft_stage_color" widget="color_picker"/>
+                            <field name="pending_approval_stage_color" widget="color_picker"/>
+                            <field name="quotation_stage_color" widget="color_picker"/>
+                            <field name="quotation_sent_stage_color" widget="color_picker"/>
+                            <field name="sales_order_stage_color" widget="color_picker"/>
+                            <field name="cancelled_stage_color" widget="color_picker"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>
+

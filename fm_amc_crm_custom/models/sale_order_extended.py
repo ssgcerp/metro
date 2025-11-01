@@ -1,0 +1,133 @@
+# -*- coding: utf-8 -*-
+
+from odoo import models, fields, api
+from odoo.exceptions import UserError, ValidationError
+import logging
+
+_logger = logging.getLogger(__name__)
+
+
+class SaleOrder(models.Model):
+    _inherit = 'sale.order'
+
+    # Estimation fields
+    estimation_id = fields.Many2one('fm.amc.estimation', string='Estimation', tracking=True,
+                                    help='Linked estimation for this quotation')
+    estimated_value = fields.Monetary(string='Estimated', compute='_compute_estimated_value',
+                                      store=False, currency_field='currency_id',
+                                      help='Total estimated value from the linked estimation (untaxed)')
+    is_estimation_order = fields.Boolean(string='Is Estimation Order', compute='_compute_is_estimation_order',
+                                        store=False, help='This order is linked to an estimation')
+
+    # Workflow tracking fields
+    printed_without_approval = fields.Boolean(string='Printed Without Approval', default=False,
+                                             help='Whether quotation was printed before approval')
+
+    # Quotation stage (replacing state field for custom workflow)
+    quotation_stage_id = fields.Many2one('sale.quotation.stage', string='Quotation Stage', 
+                                        tracking=True, copy=False,
+                                        default=lambda self: self._get_default_quotation_stage(),
+                                        help='Current stage in the quotation workflow')
+
+    # Stage flags for button visibility
+    is_draft_stage = fields.Boolean(string='Is Draft Stage', compute='_compute_stage_flags', store=False)
+    is_pending_approval_stage = fields.Boolean(string='Is Pending Approval Stage', compute='_compute_stage_flags', store=False)
+    is_quotation_stage = fields.Boolean(string='Is Quotation Stage', compute='_compute_stage_flags', store=False)
+    is_quotation_sent_stage = fields.Boolean(string='Is Quotation Sent Stage', compute='_compute_stage_flags', store=False)
+    is_sales_order_stage = fields.Boolean(string='Is Sales Order Stage', compute='_compute_stage_flags', store=False)
+    is_locked = fields.Boolean(string='Is Locked', compute='_compute_stage_flags', store=False)
+
+    @api.model
+    def _get_default_quotation_stage(self):
+        """Get default quotation stage"""
+        try:
+            stage = self.env['sale.quotation.stage'].search([('is_draft_stage', '=', True)], limit=1)
+            return stage.id if stage else False
+        except Exception:
+            return False
+
+    @api.depends('quotation_stage_id', 'estimation_id')
+    def _compute_stage_flags(self):
+        """Compute stage flags for button visibility"""
+        for order in self:
+            stage = order.quotation_stage_id
+            order.is_draft_stage = stage.code == 'draft' if stage else False
+            order.is_pending_approval_stage = stage.code == 'pending_approval' if stage else False
+            order.is_quotation_stage = stage.code == 'quotation' if stage else False
+            order.is_quotation_sent_stage = stage.code == 'quotation_sent' if stage else False
+            order.is_sales_order_stage = stage.code == 'sales_order' if stage else False
+            order.is_locked = stage.is_locked_stage if stage else False
+
+    @api.depends('estimation_id')
+    def _compute_is_estimation_order(self):
+        """Check if this order is an estimation order"""
+        for order in self:
+            order.is_estimation_order = bool(order.estimation_id)
+
+    @api.depends('estimation_id')
+    def _compute_estimated_value(self):
+        """Compute estimated value from estimation"""
+        for order in self:
+            if order.estimation_id:
+                order.estimated_value = order.estimation_id.amount_untaxed
+                _logger.info(f"Estimated value computed: {order.estimated_value} for estimation {order.estimation_id.name}")
+            else:
+                order.estimated_value = 0.0
+
+    def action_send_for_approval(self):
+        """Move quotation to Pending Approval stage"""
+        pending_stage = self.env['sale.quotation.stage'].search([('code', '=', 'pending_approval')], limit=1)
+        if not pending_stage:
+            raise ValidationError("Pending Approval stage not found. Please check stage configuration.")
+        self.write({'quotation_stage_id': pending_stage.id})
+        return True
+
+    def action_approve(self):
+        """Move quotation to Quotation stage"""
+        quotation_stage = self.env['sale.quotation.stage'].search([('code', '=', 'quotation')], limit=1)
+        if not quotation_stage:
+            raise ValidationError("Quotation stage not found. Please check stage configuration.")
+        self.write({'quotation_stage_id': quotation_stage.id})
+        return True
+
+    def action_reject(self):
+        """Move quotation back to Draft stage"""
+        draft_stage = self.env['sale.quotation.stage'].search([('code', '=', 'draft')], limit=1)
+        if not draft_stage:
+            raise ValidationError("Draft stage not found. Please check stage configuration.")
+        self.write({'quotation_stage_id': draft_stage.id})
+        return True
+
+    def action_mark_quotation_sent(self):
+        """Move quotation to Quotation Sent stage"""
+        sent_stage = self.env['sale.quotation.stage'].search([('code', '=', 'quotation_sent')], limit=1)
+        if not sent_stage:
+            raise ValidationError("Quotation Sent stage not found. Please check stage configuration.")
+        self.write({'quotation_stage_id': sent_stage.id})
+        return True
+
+    def action_cancel_quotation(self):
+        """Cancel the quotation"""
+        cancelled_stage = self.env['sale.quotation.stage'].search([('code', '=', 'cancelled')], limit=1)
+        if not cancelled_stage:
+            raise ValidationError("Cancelled stage not found. Please check stage configuration.")
+        self.write({'quotation_stage_id': cancelled_stage.id})
+        return True
+
+    def action_reset_to_draft(self):
+        """Reset quotation to draft"""
+        draft_stage = self.env['sale.quotation.stage'].search([('code', '=', 'draft')], limit=1)
+        if not draft_stage:
+            raise ValidationError("Draft stage not found. Please check stage configuration.")
+        self.write({'quotation_stage_id': draft_stage.id})
+        return True
+
+    def action_mark_printed(self):
+        """Mark quotation as printed"""
+        if self.quotation_stage_id.code == 'pending_approval':
+            self.printed_without_approval = True
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'reload',
+        }
+

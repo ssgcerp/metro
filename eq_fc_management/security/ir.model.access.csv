@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_fc_project_config_manager,fc.project.config.manager,model_fc_project_config,project.group_project_manager,1,1,1,1
+access_fc_project_config_user,fc.project.config.user,model_fc_project_config,project.group_project_user,1,0,0,0
+access_fc_project_stage_manager,fc.project.stage.manager,model_fc_project_stage,project.group_project_manager,1,1,1,1
+access_fc_project_stage_user,fc.project.stage.user,model_fc_project_stage,project.group_project_user,1,0,0,0
+access_res_branch_manager,res.branch.manager,model_res_branch,base.group_user,1,1,1,1
+access_project_use_stages_manager,project.use.stages.manager,model_project_project,project.group_project_manager,1,1,1,1
+access_project_use_stages_user,project.use.stages.user,model_project_project,project.group_project_user,1,1,1,1
+access_project_admin_stage,project.admin.stage,model_project_project,base.group_system,1,1,1,1

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Add stage statusbar to project form view - using project.edit_project as reference -->
+        <record id="view_project_form_stage_statusbar" model="ir.ui.view">
+            <field name="name">project.project.form.stage.statusbar</field>
+            <field name="model">project.project</field>
+            <field name="inherit_id" ref="project.edit_project"/>
+            <field name="arch" type="xml">
+                <!-- Add stage statusbar after the sheet starts -->
+                <xpath expr="//sheet" position="inside">
+                    <group>
+                        <field name="stage_id" widget="statusbar" statusbar_visible="draft,quote_submitted,awarded"/>
+                        <field name="project_code" readonly="1" invisible="not project_code"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Kanban inheritance temporarily removed; awaiting exact kanban template structure from this DB -->
+        
+        <!-- List view inheritance temporarily removed; awaiting exact list (tree) view xmlid from this DB -->
+    </data>
+</odoo>

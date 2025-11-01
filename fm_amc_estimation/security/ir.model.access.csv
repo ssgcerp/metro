@@ -1,0 +1,13 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_fm_amc_estimation_manager,fm.amc.estimation.manager,fm_amc_estimation.model_fm_amc_estimation,sales_team.group_sale_manager,1,1,1,1
+access_fm_amc_estimation_user,fm.amc.estimation.user,fm_amc_estimation.model_fm_amc_estimation,sales_team.group_sale_salesman,1,1,1,0
+access_fm_amc_estimation_line_manager,fm.amc.estimation.line.manager,fm_amc_estimation.model_fm_amc_estimation_line,sales_team.group_sale_manager,1,1,1,1
+access_fm_amc_estimation_line_user,fm.amc.estimation.line.user,fm_amc_estimation.model_fm_amc_estimation_line,sales_team.group_sale_salesman,1,1,1,0
+access_fm_amc_estimation_config_manager,fm.amc.estimation.config.manager,fm_amc_estimation.model_fm_amc_estimation_config,sales_team.group_sale_manager,1,1,1,1
+access_fm_amc_estimation_config_user,fm.amc.estimation.config.user,fm_amc_estimation.model_fm_amc_estimation_config,sales_team.group_sale_salesman,1,0,0,0
+access_fm_amc_estimation_stage_manager,fm.amc.estimation.stage.manager,fm_amc_estimation.model_fm_amc_estimation_stage,sales_team.group_sale_manager,1,1,1,1
+access_fm_amc_estimation_stage_user,fm.amc.estimation.stage.user,fm_amc_estimation.model_fm_amc_estimation_stage,sales_team.group_sale_salesman,1,0,0,0
+access_fm_amc_product_sku_config_manager,fm.amc.product.sku.config.manager,fm_amc_estimation.model_fm_amc_product_sku_config,sales_team.group_sale_manager,1,1,1,1
+access_fm_amc_product_sku_config_user,fm.amc.product.sku.config.user,fm_amc_estimation.model_fm_amc_product_sku_config,sales_team.group_sale_salesman,1,0,0,0
+
+

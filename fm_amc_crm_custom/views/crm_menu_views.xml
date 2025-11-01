@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Add "My Quotations" top-level menu under CRM -->
+        <menuitem id="menu_fm_amc_crm_quotations" 
+                  name="My Quotations" 
+                  parent="crm.crm_menu_root"
+                  sequence="11"
+                  action="sale.action_quotations"
+                  groups="sales_team.group_sale_salesman_all_leads"/>
+    </data>
+</odoo>
+
