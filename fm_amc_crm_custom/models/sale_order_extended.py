@@ -128,18 +128,12 @@ class SaleOrder(models.Model):
         
         for est_line in estimation_lines_list:
             # Prepare line values - match the format used in action_create_quotation
-            # For description, use estimation name if available, otherwise product name will be used
-            description = est_line.name or ''
-            
+            # IMPORTANT: Set name AFTER product_id in the dict to ensure it overrides product defaults
             line_vals = {
                 'product_id': est_line.product_id.id if est_line.product_id else False,
                 'product_uom_qty': est_line.product_uom_qty or 1.0,
                 'price_unit': est_line.price_unit or 0.0,
             }
-            
-            # Set description/name - use estimation description if available
-            if description:
-                line_vals['name'] = description
             
             # Set UoM - use estimation UoM or product default UoM
             # In sale.order.line, the field is product_uom_id, not product_uom
@@ -148,10 +142,15 @@ class SaleOrder(models.Model):
             elif est_line.product_id and est_line.product_id.uom_id:
                 line_vals['product_uom_id'] = est_line.product_id.uom_id.id
             
+            # Set description/name AFTER other fields to ensure it overrides product defaults
+            # This is critical - name must be set after product_id to prevent override
+            if est_line.name:
+                line_vals['name'] = est_line.name
+            
             # Note: tax_id cannot be set in One2many command (0,0,vals) - must be set after creation
             
             order_lines.append((0, 0, line_vals))
-            _logger.info(f"Added line: {description or 'N/A'} - Fields: {list(line_vals.keys())}")
+            _logger.info(f"Added line: {est_line.name or 'N/A'} - Fields: {list(line_vals.keys())}")
             # Debug: Check for any incorrect field names
             if 'product_uom' in line_vals:
                 _logger.error(f"ERROR: Found 'product_uom' in line_vals! This should be 'product_uom_id'")
@@ -161,17 +160,15 @@ class SaleOrder(models.Model):
             self.order_line = order_lines
             _logger.info(f"Successfully set {len(order_lines)} order lines")
             
-            # Update descriptions after lines are created to ensure they're properly set
-            # This handles cases where product_id_change might override the description
-            # We need to set it after all lines are created to ensure it persists
+            # Force update descriptions after lines are created
+            # This ensures description persists even if product_id_change tried to override it
             estimation_lines_list_iter = iter(estimation_lines_list)
             for sol in self.order_line:
                 est_line = next(estimation_lines_list_iter, None)
                 if est_line and est_line.name:
-                    # Ensure description is set from estimation, not product default
-                    # Use write to ensure it's saved properly
-                    sol.write({'name': est_line.name})
-                    _logger.info(f"Set description for line: {est_line.name[:50]}")
+                    # Directly set the name to override any product defaults
+                    sol.name = est_line.name
+                    _logger.info(f"Force set description for line: {est_line.name[:50]}")
             
             # Note: Taxes cannot be set in One2many commands or immediately after in onchange
             # They will be set from product defaults automatically when the form loads
