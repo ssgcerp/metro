@@ -124,7 +124,9 @@ class SaleOrder(models.Model):
         
         # Copy all estimation lines to order lines
         order_lines = []
-        for est_line in estimation_lines:
+        estimation_lines_list = list(estimation_lines)
+        
+        for est_line in estimation_lines_list:
             # Prepare line values - match the format used in action_create_quotation
             line_vals = {
                 'product_id': est_line.product_id.id if est_line.product_id else False,
@@ -140,10 +142,7 @@ class SaleOrder(models.Model):
             elif est_line.product_id and est_line.product_id.uom_id:
                 line_vals['product_uom_id'] = est_line.product_id.uom_id.id
             
-            # Add taxes if available
-            # In sale.order.line, taxes field might need to be set via write or may not be available in create
-            # Let's set it after creation or skip for now and let product onchange set it
-            # Note: taxes are typically set via product_id onchange in sale.order.line
+            # Note: tax_id cannot be set in One2many command (0,0,vals) - must be set after creation
             
             order_lines.append((0, 0, line_vals))
             _logger.info(f"Added line: {line_vals.get('name', 'N/A')} - Fields: {list(line_vals.keys())}")
@@ -156,14 +155,14 @@ class SaleOrder(models.Model):
             self.order_line = order_lines
             _logger.info(f"Successfully set {len(order_lines)} order lines")
             
-            # Set taxes after lines are created
-            # Note: In Odoo, tax_id is the correct field, but we need to set it after creation
-            estimation_lines_list = list(estimation_lines)
+            # Set taxes after lines are created (Many2many fields can't be set in One2many command)
+            # Match lines by index since we're creating them in the same order
             for i, sol in enumerate(self.order_line):
                 if i < len(estimation_lines_list):
                     est_line = estimation_lines_list[i]
                     if est_line.tax_id:
-                        sol.write({'tax_id': [(6, 0, est_line.tax_id.ids)]})
+                        sol.tax_id = est_line.tax_id
+                        _logger.info(f"Set taxes for line {i+1}: {len(est_line.tax_id)} tax(es)")
             # Only return notification if called from button (not onchange)
             if hasattr(self, '_context') and not self.env.context.get('from_onchange'):
                 return {
