@@ -142,10 +142,11 @@ class SaleOrder(models.Model):
             elif est_line.product_id and est_line.product_id.uom_id:
                 line_vals['product_uom_id'] = est_line.product_id.uom_id.id
             
-            # Set description/name AFTER other fields to ensure it overrides product defaults
-            # This is critical - name must be set after product_id to prevent override
+            # Set description/name - CRITICAL: This must be the exact description from estimation
+            # The order in dict doesn't matter, but we set it explicitly to ensure it's copied
             if est_line.name:
-                line_vals['name'] = est_line.name
+                # Use the exact description from estimation, not product default
+                line_vals['name'] = est_line.name.strip() if est_line.name else ''
             
             # Note: tax_id cannot be set in One2many command (0,0,vals) - must be set after creation
             
@@ -162,13 +163,18 @@ class SaleOrder(models.Model):
             
             # Force update descriptions after lines are created
             # This ensures description persists even if product_id_change tried to override it
+            # We need to explicitly set the name field to override any product defaults
             estimation_lines_list_iter = iter(estimation_lines_list)
             for sol in self.order_line:
                 est_line = next(estimation_lines_list_iter, None)
                 if est_line and est_line.name:
-                    # Directly set the name to override any product defaults
-                    sol.name = est_line.name
-                    _logger.info(f"Force set description for line: {est_line.name[:50]}")
+                    # Use context to prevent product_id_change from overriding our description
+                    # Directly set the name field value
+                    sol.with_context(skip_product_description=True).name = est_line.name
+                    _logger.info(f"Force set description for line: {est_line.name[:50] if est_line.name else 'N/A'}")
+                    # Verify it was set correctly
+                    if sol.name != est_line.name:
+                        _logger.warning(f"Description mismatch! Expected: {est_line.name[:50]}, Got: {sol.name[:50] if sol.name else 'None'}")
             
             # Note: Taxes cannot be set in One2many commands or immediately after in onchange
             # They will be set from product defaults automatically when the form loads
