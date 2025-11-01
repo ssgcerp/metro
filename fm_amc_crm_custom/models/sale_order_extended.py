@@ -157,12 +157,16 @@ class SaleOrder(models.Model):
             
             # Set taxes after lines are created (Many2many fields can't be set in One2many command)
             # Match lines by index since we're creating them in the same order
+            # Use write() with proper Many2many format for tax_id
             for i, sol in enumerate(self.order_line):
                 if i < len(estimation_lines_list):
                     est_line = estimation_lines_list[i]
                     if est_line.tax_id:
-                        sol.tax_id = est_line.tax_id
-                        _logger.info(f"Set taxes for line {i+1}: {len(est_line.tax_id)} tax(es)")
+                        # Use write with proper Many2many format
+                        tax_ids = est_line.tax_id.ids
+                        if tax_ids:
+                            sol.write({'tax_id': [(6, 0, tax_ids)]})
+                            _logger.info(f"Set taxes for line {i+1}: {len(tax_ids)} tax(es)")
             # Only return notification if called from button (not onchange)
             if hasattr(self, '_context') and not self.env.context.get('from_onchange'):
                 return {
