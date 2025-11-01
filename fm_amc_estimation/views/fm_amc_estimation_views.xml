@@ -44,9 +44,9 @@
                     </header>
                     <sheet>
                         <group>
-                            <group>
+                            <group string="Customer" col="6">
                                 <field name="name" readonly="1" invisible="not name"/>
-                                <field name="partner_id" options="{'no_create': False, 'no_create_edit': False}"/>
+                                <field name="partner_id" string="Customer" options="{'no_create': False, 'no_create_edit': False}"/>
                                 <field name="contact_id" domain="[('parent_id', '=', partner_id), ('is_company', '=', False)]" 
                                        options="{'no_create': True}"/>
                                 <field name="amc_contract_id" 
@@ -55,18 +55,20 @@
                                 <field name="project_id" 
                                        domain="[('partner_id', '=', partner_id)]" 
                                        options="{'no_create': True}"/>
-                                <field name="branch_id" options="{'no_create': False}"/>
-                                <field name="sales_contact_id" domain="[('active', '=', True)]" 
+                                <field name="sales_contact_id" string="Engineer" domain="[('active', '=', True)]" 
                                        options="{'no_create': True}"/>
-                            </group>
-                            <group>
+                                <field name="branch_id" options="{'no_create': False}"/>
                                 <field name="estimation_date"/>
-                                <field name="validity_date"/>
-                                <field name="amount_untaxed" readonly="1"/>
-                                <field name="amount_tax" readonly="1"/>
-                                <field name="amount_total" readonly="1"/>
-                                <field name="currency_id"/>
-                                <field name="sale_order_id" readonly="1" invisible="not sale_order_id"/>
+                                <field name="validity_date" string="Estimated Delivery"/>
+                            </group>
+                            <group string="Estimation Cost" col="6">
+                                <field name="product_cost" readonly="1"/>
+                                <field name="installation_price" readonly="1"/>
+                                <field name="expense" readonly="1"/>
+                                <field name="total_cost" readonly="1"/>
+                                <field name="profit" readonly="1"/>
+                                <field name="price" readonly="1"/>
+                                <field name="currency_id" readonly="1"/>
                             </group>
                         </group>
                         
