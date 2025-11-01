@@ -17,7 +17,7 @@ class FMAMCEstimationLine(models.Model):
         ('project', 'Project Estimation'),
         ('consumable', 'Consumable Estimation'),
         ('expense', 'Expense'),
-    ], string='Line Type', required=True, default='project', readonly=True)
+    ], string='Line Type', required=True, default='project')
     
     # Product Information
     product_id = fields.Many2one('product.product', string='Product', help='Product for this line')
@@ -71,9 +71,17 @@ class FMAMCEstimationLine(models.Model):
         """Prevent changing line_type after creation"""
         if 'line_type' in vals:
             for line in self:
-                if line.line_type != vals['line_type']:
+                if line.line_type and line.line_type != vals['line_type']:
                     raise UserError(f'Cannot change line type from {line.line_type} to {vals["line_type"]}. Each line must stay in its designated tab.')
         return super(FMAMCEstimationLine, self).write(vals)
+    
+    @api.model
+    def default_get(self, fields_list):
+        """Set default line_type from context"""
+        res = super(FMAMCEstimationLine, self).default_get(fields_list)
+        if 'line_type' not in res and self.env.context.get('default_line_type'):
+            res['line_type'] = self.env.context.get('default_line_type')
+        return res
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
