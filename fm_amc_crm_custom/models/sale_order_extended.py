@@ -123,7 +123,8 @@ class SaleOrder(models.Model):
                 elif est_line.product_id and est_line.product_id.uom_id:
                     line_vals['product_uom'] = est_line.product_id.uom_id.id
                 
-                # Create new line
+                # Create new line with order_id reference
+                line_vals['order_id'] = self.id if self.id else False
                 new_line = self.env['sale.order.line'].new(line_vals)
                 
                 # Trigger product onchange to set proper defaults
