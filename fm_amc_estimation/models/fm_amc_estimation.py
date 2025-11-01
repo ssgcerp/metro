@@ -389,7 +389,7 @@ class FMAMCEstimation(models.Model):
                 'product_id': line.product_id.id if line.product_id else False,
                 'name': line.name,
                 'product_uom_qty': line.product_uom_qty,
-                'product_uom': line.product_uom.id if line.product_uom else False,
+                'product_uom_id': line.product_uom.id if line.product_uom else False,
                 'price_unit': line.price_unit,
                 'tax_id': [(6, 0, line.tax_id.ids)],
             })

@@ -134,10 +134,11 @@ class SaleOrder(models.Model):
             }
             
             # Set UoM - use estimation UoM or product default UoM
+            # In sale.order.line, the field is product_uom_id, not product_uom
             if est_line.product_uom:
-                line_vals['product_uom'] = est_line.product_uom.id
+                line_vals['product_uom_id'] = est_line.product_uom.id
             elif est_line.product_id and est_line.product_id.uom_id:
-                line_vals['product_uom'] = est_line.product_id.uom_id.id
+                line_vals['product_uom_id'] = est_line.product_id.uom_id.id
             
             # Add taxes if available
             if est_line.tax_id:
