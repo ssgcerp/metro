@@ -16,7 +16,7 @@ class SaleOrder(models.Model):
     estimated_value = fields.Monetary(string='Estimated', compute='_compute_estimated_value',
                                       store=False, currency_field='currency_id',
                                       help='Total estimated value from the linked estimation (untaxed)')
-    is_estimation_order = fields.Boolean(string='Estimation', default=False,
+    is_estimation_order = fields.Boolean(string='Estimation', default=False, readonly=False,
                                         help='Check this if this quotation is linked to an estimation')
     
     # Additional Quotation Fields
