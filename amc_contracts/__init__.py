@@ -2,8 +2,9 @@
 
 from . import models
 
-def post_init_hook(cr, registry):
+def post_init_hook(env):
     """Create branch_code column after module installation/upgrade"""
+    cr = env.cr
     try:
         cr.execute("""
             SELECT column_name 
@@ -23,8 +24,9 @@ def post_init_hook(cr, registry):
         print(f"⚠ Warning: Could not add branch_code column: {e}")
         print("Please run the SQL manually: ALTER TABLE res_company ADD COLUMN branch_code VARCHAR(10);")
 
-def uninstall_hook(cr, registry):
+def uninstall_hook(env):
     """Optional: Remove branch_code column on module uninstall"""
+    cr = env.cr
     # Uncomment if you want to remove the column on uninstall
     # cr.execute("""
     #     ALTER TABLE res_company 
