@@ -104,7 +104,7 @@ class SaleOrder(models.Model):
                 self.estimated_hours = self.estimation_id.estimated_hours
             # Automatically load lines when estimation is selected
             if self.estimation_id.line_ids:
-                self.action_load_estimation_lines()
+                self.with_context(from_onchange=True).action_load_estimation_lines()
     
     def action_load_estimation_lines(self):
         """Action to copy all estimation lines to quotation - can be called from button or onchange"""
@@ -150,18 +150,20 @@ class SaleOrder(models.Model):
         if order_lines:
             self.order_line = order_lines
             _logger.info(f"Successfully set {len(order_lines)} order lines")
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': 'Success',
-                    'message': f'{len(order_lines)} lines copied from estimation.',
-                    'type': 'success',
-                    'sticky': False,
+            # Only return notification if called from button (not onchange)
+            if hasattr(self, '_context') and not self.env.context.get('from_onchange'):
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Success',
+                        'message': f'{len(order_lines)} lines copied from estimation.',
+                        'type': 'success',
+                        'sticky': False,
+                    }
                 }
-            }
         
-        return {'warning': {'title': 'Warning', 'message': 'No lines were copied.'}}
+        return False
 
     @api.depends('estimation_id')
     def _compute_estimated_value(self):
