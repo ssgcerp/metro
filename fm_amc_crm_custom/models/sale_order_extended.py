@@ -102,7 +102,9 @@ class SaleOrder(models.Model):
             self.is_estimation_order = True
             if not self.estimated_hours:
                 self.estimated_hours = self.estimation_id.estimated_hours
-            # Copy lines will be handled by action_load_estimation_lines method
+            # Automatically load lines when estimation is selected
+            if self.estimation_id.line_ids:
+                self.action_load_estimation_lines()
     
     def action_load_estimation_lines(self):
         """Action to copy all estimation lines to quotation - can be called from button or onchange"""
