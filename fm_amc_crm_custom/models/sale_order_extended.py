@@ -102,47 +102,64 @@ class SaleOrder(models.Model):
             self.is_estimation_order = True
             if not self.estimated_hours:
                 self.estimated_hours = self.estimation_id.estimated_hours
+            # Copy lines will be handled by action_load_estimation_lines method
+    
+    def action_load_estimation_lines(self):
+        """Action to copy all estimation lines to quotation - can be called from button or onchange"""
+        if not self.estimation_id:
+            return {'warning': {'title': 'Warning', 'message': 'Please select an estimation first.'}}
+        
+        # Get all estimation lines (includes project, consumable, and expense)
+        estimation_lines = self.estimation_id.line_ids
+        
+        if not estimation_lines:
+            return {'warning': {'title': 'Warning', 'message': f'Estimation {self.estimation_id.name} has no lines to copy.'}}
+        
+        _logger.info(f"Copying {len(estimation_lines)} lines from estimation {self.estimation_id.name}")
+        
+        # Clear existing order lines first
+        self.order_line = [(5, 0, 0)]
+        
+        # Copy all estimation lines to order lines
+        order_lines = []
+        for est_line in estimation_lines:
+            # Prepare line values - match the format used in action_create_quotation
+            line_vals = {
+                'product_id': est_line.product_id.id if est_line.product_id else False,
+                'name': est_line.name or '',
+                'product_uom_qty': est_line.product_uom_qty or 1.0,
+                'price_unit': est_line.price_unit or 0.0,
+            }
             
-            # Get all estimation lines (includes project, consumable, and expense)
-            estimation_lines = self.estimation_id.line_ids
+            # Set UoM - use estimation UoM or product default UoM
+            if est_line.product_uom:
+                line_vals['product_uom'] = est_line.product_uom.id
+            elif est_line.product_id and est_line.product_id.uom_id:
+                line_vals['product_uom'] = est_line.product_id.uom_id.id
             
-            if estimation_lines:
-                _logger.info(f"Copying {len(estimation_lines)} lines from estimation {self.estimation_id.name}")
-                
-                # Clear existing order lines first
-                self.order_line = [(5, 0, 0)]
-                
-                # Copy all estimation lines to order lines
-                order_lines = []
-                for est_line in estimation_lines:
-                    # Prepare line values - match the format used in action_create_quotation
-                    line_vals = {
-                        'product_id': est_line.product_id.id if est_line.product_id else False,
-                        'name': est_line.name or '',
-                        'product_uom_qty': est_line.product_uom_qty or 1.0,
-                        'price_unit': est_line.price_unit or 0.0,
-                    }
-                    
-                    # Set UoM - use estimation UoM or product default UoM
-                    if est_line.product_uom:
-                        line_vals['product_uom'] = est_line.product_uom.id
-                    elif est_line.product_id and est_line.product_id.uom_id:
-                        line_vals['product_uom'] = est_line.product_id.uom_id.id
-                    
-                    # Add taxes if available
-                    if est_line.tax_id:
-                        line_vals['tax_id'] = [(6, 0, est_line.tax_id.ids)]
-                    
-                    order_lines.append((0, 0, line_vals))
-                    _logger.info(f"Added line: {line_vals.get('name', 'N/A')}")
-                
-                # Set all order lines at once using One2many command format
-                if order_lines:
-                    self.order_line = order_lines
-                    _logger.info(f"Successfully set {len(order_lines)} order lines")
-            else:
-                _logger.warning(f"Estimation {self.estimation_id.name} has no lines")
-                self.order_line = [(5, 0, 0)]
+            # Add taxes if available
+            if est_line.tax_id:
+                line_vals['tax_id'] = [(6, 0, est_line.tax_id.ids)]
+            
+            order_lines.append((0, 0, line_vals))
+            _logger.info(f"Added line: {line_vals.get('name', 'N/A')}")
+        
+        # Set all order lines at once using One2many command format
+        if order_lines:
+            self.order_line = order_lines
+            _logger.info(f"Successfully set {len(order_lines)} order lines")
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Success',
+                    'message': f'{len(order_lines)} lines copied from estimation.',
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+        
+        return {'warning': {'title': 'Warning', 'message': 'No lines were copied.'}}
 
     @api.depends('estimation_id')
     def _compute_estimated_value(self):
