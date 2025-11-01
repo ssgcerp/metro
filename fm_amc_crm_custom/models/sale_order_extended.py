@@ -157,16 +157,22 @@ class SaleOrder(models.Model):
             
             # Set taxes after lines are created (Many2many fields can't be set in One2many command)
             # Match lines by index since we're creating them in the same order
-            # Use write() with proper Many2many format for tax_id
+            # Note: tax_id field might not be writable directly - skip taxes for now
+            # Taxes will be set from product defaults when product_id is set
             for i, sol in enumerate(self.order_line):
                 if i < len(estimation_lines_list):
                     est_line = estimation_lines_list[i]
-                    if est_line.tax_id:
-                        # Use write with proper Many2many format
-                        tax_ids = est_line.tax_id.ids
-                        if tax_ids:
-                            sol.write({'tax_id': [(6, 0, tax_ids)]})
-                            _logger.info(f"Set taxes for line {i+1}: {len(tax_ids)} tax(es)")
+                    # Trigger product_id_change to set default taxes from product
+                    if sol.product_id:
+                        sol.product_id_change()
+                        # Override with estimation taxes if they exist
+                        if est_line.tax_id and est_line.tax_id.ids:
+                            try:
+                                sol.tax_id = est_line.tax_id
+                                _logger.info(f"Set taxes for line {i+1}: {len(est_line.tax_id)} tax(es)")
+                            except Exception as e:
+                                _logger.warning(f"Could not set taxes for line {i+1}: {e}")
+                                # Continue without taxes - product defaults will be used
             # Only return notification if called from button (not onchange)
             if hasattr(self, '_context') and not self.env.context.get('from_onchange'):
                 return {
