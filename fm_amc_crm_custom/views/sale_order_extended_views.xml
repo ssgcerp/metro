@@ -109,6 +109,12 @@
                     <field name="with_uom" string="With UoM?"/>
                     <field name="estimated_value" invisible="not is_estimation_order" readonly="1"/>
                 </xpath>
+                
+                <!-- Ensure order_line name field is visible and editable -->
+                <xpath expr="//field[@name='order_line']//field[@name='name']" position="attributes">
+                    <attribute name="readonly">display_type == 'line_section'</attribute>
+                    <attribute name="placeholder">Click or press enter to add a description</attribute>
+                </xpath>
             </field>
         </record>
 

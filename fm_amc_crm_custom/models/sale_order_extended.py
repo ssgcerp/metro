@@ -163,12 +163,14 @@ class SaleOrder(models.Model):
             
             # Update descriptions after lines are created to ensure they're properly set
             # This handles cases where product_id_change might override the description
+            # We need to set it after all lines are created to ensure it persists
             estimation_lines_list_iter = iter(estimation_lines_list)
             for sol in self.order_line:
                 est_line = next(estimation_lines_list_iter, None)
                 if est_line and est_line.name:
                     # Ensure description is set from estimation, not product default
-                    sol.name = est_line.name
+                    # Use write to ensure it's saved properly
+                    sol.write({'name': est_line.name})
                     _logger.info(f"Set description for line: {est_line.name[:50]}")
             
             # Note: Taxes cannot be set in One2many commands or immediately after in onchange
