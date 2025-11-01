@@ -97,11 +97,27 @@ class SaleOrder(models.Model):
 
     @api.onchange('estimation_id')
     def _onchange_estimation_id(self):
-        """Update is_estimation_order and copy fields from estimation when linked"""
+        """Update is_estimation_order, copy fields and lines from estimation when linked"""
         if self.estimation_id:
             self.is_estimation_order = True
             if not self.estimated_hours:
                 self.estimated_hours = self.estimation_id.estimated_hours
+            
+            # Copy all estimation lines (Project, Consumable, Expense) to order lines
+            order_lines = []
+            for est_line in self.estimation_id.line_ids:
+                line_vals = {
+                    'product_id': est_line.product_id.id if est_line.product_id else False,
+                    'name': est_line.name,
+                    'product_uom_qty': est_line.product_uom_qty,
+                    'product_uom': est_line.product_uom.id if est_line.product_uom else False,
+                    'price_unit': est_line.price_unit,
+                    'tax_id': [(6, 0, est_line.tax_id.ids)],
+                }
+                order_lines.append((0, 0, line_vals))
+            
+            # Replace existing order lines with estimation lines
+            self.order_line = order_lines
 
     @api.depends('estimation_id')
     def _compute_estimated_value(self):
