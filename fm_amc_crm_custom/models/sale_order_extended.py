@@ -103,21 +103,28 @@ class SaleOrder(models.Model):
             if not self.estimated_hours:
                 self.estimated_hours = self.estimation_id.estimated_hours
             
+            # Clear existing order lines first
+            self.order_line = [(5, 0, 0)]
+            
             # Copy all estimation lines (Project, Consumable, Expense) to order lines
             order_lines = []
             for est_line in self.estimation_id.line_ids:
                 line_vals = {
                     'product_id': est_line.product_id.id if est_line.product_id else False,
-                    'name': est_line.name,
-                    'product_uom_qty': est_line.product_uom_qty,
+                    'name': est_line.name or '',
+                    'product_uom_qty': est_line.product_uom_qty or 1.0,
                     'product_uom': est_line.product_uom.id if est_line.product_uom else False,
-                    'price_unit': est_line.price_unit,
-                    'tax_id': [(6, 0, est_line.tax_id.ids)],
+                    'price_unit': est_line.price_unit or 0.0,
                 }
+                # Add taxes if available
+                if est_line.tax_id:
+                    line_vals['tax_id'] = [(6, 0, est_line.tax_id.ids)]
+                
                 order_lines.append((0, 0, line_vals))
             
-            # Replace existing order lines with estimation lines
-            self.order_line = order_lines
+            # Add all estimation lines to order
+            if order_lines:
+                self.order_line = order_lines
 
     @api.depends('estimation_id')
     def _compute_estimated_value(self):
