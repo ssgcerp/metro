@@ -85,7 +85,7 @@
                                        options="{'no_create_edit': False}"
                                        domain="[('line_type', '=', 'project')]">
                                     <list string="Project Estimations" editable="bottom" default_order="sequence">
-                                        <field name="line_type" invisible="1" default="project"/>
+                                        <field name="line_type" invisible="1" column_invisible="1" default="project"/>
                                         <field name="sequence" widget="handle"/>
                                         <field name="product_id" options="{'no_create': True}"/>
                                         <field name="name"/>
@@ -105,7 +105,7 @@
                                        options="{'no_create_edit': False}"
                                        domain="[('line_type', '=', 'consumable')]">
                                     <list string="Consumable Estimations" editable="bottom" default_order="sequence">
-                                        <field name="line_type" invisible="1" default="consumable"/>
+                                        <field name="line_type" invisible="1" column_invisible="1" default="consumable"/>
                                         <field name="sequence" widget="handle"/>
                                         <field name="product_id" options="{'no_create': True}"/>
                                         <field name="name"/>
@@ -125,7 +125,7 @@
                                        options="{'no_create_edit': False}"
                                        domain="[('line_type', '=', 'expense')]">
                                     <list string="Expense" editable="bottom" default_order="sequence">
-                                        <field name="line_type" invisible="1" default="expense"/>
+                                        <field name="line_type" invisible="1" column_invisible="1" default="expense"/>
                                         <field name="sequence" widget="handle"/>
                                         <field name="product_id" options="{'no_create': True}"/>
                                         <field name="name"/>
