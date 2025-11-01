@@ -16,8 +16,38 @@ class SaleOrder(models.Model):
     estimated_value = fields.Monetary(string='Estimated', compute='_compute_estimated_value',
                                       store=False, currency_field='currency_id',
                                       help='Total estimated value from the linked estimation (untaxed)')
-    is_estimation_order = fields.Boolean(string='Is Estimation Order', compute='_compute_is_estimation_order',
+    is_estimation_order = fields.Boolean(string='Estimation', compute='_compute_is_estimation_order',
                                         store=False, help='This order is linked to an estimation')
+    
+    # Additional Quotation Fields
+    attention_id = fields.Many2one('res.partner', string='Attention',
+                                   domain="[('parent_id', '=', partner_id), ('is_company', '=', False)]",
+                                   help='Attention/Contact person')
+    client_id = fields.Many2one('res.partner', string='Client',
+                               help='Client for this quotation')
+    consultants_ids = fields.Many2many('res.partner', 'sale_order_consultants_rel',
+                                      'order_id', 'partner_id', string='Consultants',
+                                      help='Consultants involved in this quotation')
+    is_project_order = fields.Boolean(string='Project Order', default=False,
+                                      help='Is this a project order?')
+    estimated_hours = fields.Float(string='Estimated Hours', default=0.0,
+                                   help='Estimated hours for this quotation')
+    direct_order = fields.Boolean(string='Direct Order', default=False,
+                                 help='Is this a direct order?')
+    revised_quotation = fields.Boolean(string='Revised Quotation', default=False,
+                                      help='Is this a revised quotation?')
+    lumpsum = fields.Boolean(string='Lumpsum', default=False,
+                            help='Is this a lumpsum quotation?')
+    with_brand = fields.Boolean(string='Brand', default=False,
+                               help='Include brand in quotation?')
+    with_stamp = fields.Boolean(string='With Stamp', default=False,
+                               help='Include stamp in quotation?')
+    with_unit_price = fields.Boolean(string='With Unit Price', default=False,
+                                    help='Show unit price in quotation?')
+    with_uom = fields.Boolean(string='With UoM', default=False,
+                              help='Show unit of measure in quotation?')
+    validity_date = fields.Date(string='Expiration Date', 
+                               help='Date until which this quotation is valid')
 
     # Workflow tracking fields
     printed_without_approval = fields.Boolean(string='Printed Without Approval', default=False,
@@ -73,6 +103,13 @@ class SaleOrder(models.Model):
                 _logger.info(f"Estimated value computed: {order.estimated_value} for estimation {order.estimation_id.name}")
             else:
                 order.estimated_value = 0.0
+    
+    @api.onchange('estimation_id')
+    def _onchange_estimation_id(self):
+        """Copy fields from estimation when linked"""
+        if self.estimation_id:
+            if not self.estimated_hours:
+                self.estimated_hours = self.estimation_id.estimated_hours
 
     def action_send_for_approval(self):
         """Move quotation to Pending Approval stage"""

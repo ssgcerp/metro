@@ -73,13 +73,37 @@
                            invisible="not quotation_stage_id"/>
                 </xpath>
                 
-                <!-- Add Estimation Fields -->
+                <!-- Reorganize fields to match quotation layout - Left Column -->
                 <xpath expr="//field[@name='partner_id']" position="after">
-                    <field name="estimation_id" 
-                           domain="[('partner_id', '=', partner_id), ('is_approved', '=', True)]"
-                           options="{'no_open': True, 'no_create': True}"/>
-                    <field name="estimated_value" invisible="not is_estimation_order" readonly="1"/>
-                    <field name="is_estimation_order" invisible="1"/>
+                    <field name="company_id" string="Branch?"/>
+                    <field name="attention_id" string="Attention?" 
+                           domain="[('parent_id', '=', partner_id), ('is_company', '=', False)]"/>
+                    <field name="client_id" string="Client?"/>
+                    <field name="consultants_ids" string="Consultants?" widget="many2many_tags" 
+                           options="{'no_create': True}"/>
+                    <field name="is_project_order" string="Project Order?"/>
+                    <field name="estimated_hours" string="Estimated Hours?" widget="float_time"/>
+                </xpath>
+                
+                <!-- Right Column Fields - Find the parent group and add right column -->
+                <xpath expr="//group[.//field[@name='partner_id']]" position="inside">
+                    <group col="6">
+                        <field name="validity_date" string="Expiration?"/>
+                        <field name="date_order" string="Quotation Date?"/>
+                        <field name="payment_term_id" string="Payment Terms"/>
+                        <field name="is_estimation_order" string="Estimation?" invisible="1"/>
+                        <field name="estimation_id" string="Estimation?" 
+                               domain="[('partner_id', '=', partner_id), ('is_approved', '=', True)]"
+                               options="{'no_open': True, 'no_create': True}"/>
+                        <field name="direct_order" string="Direct Order?"/>
+                        <field name="revised_quotation" string="Revised Quotation?"/>
+                        <field name="lumpsum" string="Lumpsum?"/>
+                        <field name="with_brand" string="Brand?"/>
+                        <field name="with_stamp" string="With Stamp?"/>
+                        <field name="with_unit_price" string="With Unit Price?"/>
+                        <field name="with_uom" string="With UoM?"/>
+                        <field name="estimated_value" invisible="not is_estimation_order" readonly="1"/>
+                    </group>
                 </xpath>
             </field>
         </record>
