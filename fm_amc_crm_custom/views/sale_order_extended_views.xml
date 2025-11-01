@@ -90,7 +90,7 @@
                 <xpath expr="//group[@name='order_details']" position="inside">
               
                     <field name="is_project_order" string="Project Order?"/>
-                    <field name="is_estimation_order" string="Estimation?" invisible="1"/>
+                    <field name="is_estimation_order" string="Estimation?"/>
                     <field name="estimation_id" string="Estimation?" 
                            domain="[('partner_id', '=', partner_id), ('is_approved', '=', True)]"
                            options="{'no_open': True, 'no_create': True}"
