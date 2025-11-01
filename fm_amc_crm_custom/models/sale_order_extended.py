@@ -103,15 +103,19 @@ class SaleOrder(models.Model):
             if not self.estimated_hours:
                 self.estimated_hours = self.estimation_id.estimated_hours
             
-            # Clear existing order lines first
-            self.order_line = [(5, 0, 0)]
+            # Get all estimation lines (includes project, consumable, and expense)
+            estimation_lines = self.estimation_id.line_ids
             
-            # Copy all estimation lines (Project, Consumable, Expense) to order lines
-            # Use line_ids which contains all lines regardless of type
-            order_lines = []
-            if self.estimation_id.line_ids:
-                for est_line in self.estimation_id.line_ids:
-                    # Prepare line values
+            if estimation_lines:
+                _logger.info(f"Copying {len(estimation_lines)} lines from estimation {self.estimation_id.name}")
+                
+                # Clear existing order lines first
+                self.order_line = [(5, 0, 0)]
+                
+                # Copy all estimation lines to order lines
+                order_lines = []
+                for est_line in estimation_lines:
+                    # Prepare line values - match the format used in action_create_quotation
                     line_vals = {
                         'product_id': est_line.product_id.id if est_line.product_id else False,
                         'name': est_line.name or '',
@@ -130,10 +134,15 @@ class SaleOrder(models.Model):
                         line_vals['tax_id'] = [(6, 0, est_line.tax_id.ids)]
                     
                     order_lines.append((0, 0, line_vals))
+                    _logger.info(f"Added line: {line_vals.get('name', 'N/A')}")
                 
-                # Set all order lines at once
+                # Set all order lines at once using One2many command format
                 if order_lines:
                     self.order_line = order_lines
+                    _logger.info(f"Successfully set {len(order_lines)} order lines")
+            else:
+                _logger.warning(f"Estimation {self.estimation_id.name} has no lines")
+                self.order_line = [(5, 0, 0)]
 
     @api.depends('estimation_id')
     def _compute_estimated_value(self):
