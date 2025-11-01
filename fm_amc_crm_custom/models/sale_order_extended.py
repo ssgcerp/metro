@@ -145,7 +145,10 @@ class SaleOrder(models.Model):
                 line_vals['tax_id'] = [(6, 0, est_line.tax_id.ids)]
             
             order_lines.append((0, 0, line_vals))
-            _logger.info(f"Added line: {line_vals.get('name', 'N/A')}")
+            _logger.info(f"Added line: {line_vals.get('name', 'N/A')} - Fields: {list(line_vals.keys())}")
+            # Debug: Check for any incorrect field names
+            if 'product_uom' in line_vals:
+                _logger.error(f"ERROR: Found 'product_uom' in line_vals! This should be 'product_uom_id'")
         
         # Set all order lines at once using One2many command format
         if order_lines:
