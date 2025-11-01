@@ -94,7 +94,8 @@
                     <field name="estimation_id" string="Estimation?" 
                            domain="[('partner_id', '=', partner_id), ('is_approved', '=', True)]"
                            options="{'no_open': True, 'no_create': True}"
-                           invisible="not is_estimation_order"/>
+                           invisible="not is_estimation_order"
+                           required="is_estimation_order"/>
                     <field name="direct_order" string="Direct Order?"/>
                     <field name="revised_quotation" string="Revised Quotation?"/>
                     <field name="lumpsum" string="Lumpsum?"/>

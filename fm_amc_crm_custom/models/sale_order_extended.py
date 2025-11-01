@@ -16,8 +16,8 @@ class SaleOrder(models.Model):
     estimated_value = fields.Monetary(string='Estimated', compute='_compute_estimated_value',
                                       store=False, currency_field='currency_id',
                                       help='Total estimated value from the linked estimation (untaxed)')
-    is_estimation_order = fields.Boolean(string='Estimation', compute='_compute_is_estimation_order',
-                                        store=False, help='This order is linked to an estimation')
+    is_estimation_order = fields.Boolean(string='Estimation', default=False,
+                                        help='Check this if this quotation is linked to an estimation')
     
     # Additional Quotation Fields
     attention_id = fields.Many2one('res.partner', string='Attention',
@@ -88,11 +88,20 @@ class SaleOrder(models.Model):
             order.is_sales_order_stage = stage.code == 'sales_order' if stage else False
             order.is_locked = stage.is_locked_stage if stage else False
 
-    @api.depends('estimation_id')
-    def _compute_is_estimation_order(self):
-        """Check if this order is an estimation order"""
-        for order in self:
-            order.is_estimation_order = bool(order.estimation_id)
+    @api.onchange('is_estimation_order')
+    def _onchange_is_estimation_order(self):
+        """Clear estimation_id when is_estimation_order is unchecked"""
+        if not self.is_estimation_order:
+            self.estimation_id = False
+            self.estimated_hours = 0.0
+
+    @api.onchange('estimation_id')
+    def _onchange_estimation_id(self):
+        """Update is_estimation_order and copy fields from estimation when linked"""
+        if self.estimation_id:
+            self.is_estimation_order = True
+            if not self.estimated_hours:
+                self.estimated_hours = self.estimation_id.estimated_hours
 
     @api.depends('estimation_id')
     def _compute_estimated_value(self):
