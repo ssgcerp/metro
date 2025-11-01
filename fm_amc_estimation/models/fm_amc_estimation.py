@@ -24,6 +24,9 @@ class FMAMCEstimation(models.Model):
                                  help='Contact person for this estimation')
     
     # Integration Fields
+    lead_id = fields.Many2one('crm.lead', string='Lead', tracking=True,
+                              help='Related CRM Lead/Opportunity',
+                              domain="[('partner_id', '=', partner_id)]")
     amc_contract_id = fields.Many2one('amc.contract', string='AMC Contract', tracking=True, 
                                       help='Related AMC Contract', 
                                       domain="[('customer_id', '=', partner_id), ('active', '=', True), ('stage_id.name', 'not in', ['Draft', 'Cancelled', 'Blocked'])]")
@@ -38,6 +41,10 @@ class FMAMCEstimation(models.Model):
     sales_contact_id = fields.Many2one('hr.employee', string='Sales Contact', 
                                        domain="[('active', '=', True)]", tracking=True, 
                                        help='Sales contact person')
+    
+    # Additional Information
+    estimated_hours = fields.Float(string='Estimated Hours', default=0.0, 
+                                   help='Estimated hours for this estimation')
     
     # Dates
     estimation_date = fields.Date(string='Estimation Date', default=fields.Date.today, 
@@ -183,10 +190,13 @@ class FMAMCEstimation(models.Model):
 
     @api.onchange('partner_id')
     def _onchange_partner_id(self):
-        """Update domain for AMC Contract and Project when partner changes"""
+        """Update domain for AMC Contract, Project, and Lead when partner changes"""
         if self.partner_id:
             return {
                 'domain': {
+                    'lead_id': [
+                        ('partner_id', '=', self.partner_id.id)
+                    ],
                     'amc_contract_id': [
                         ('customer_id', '=', self.partner_id.id),
                         ('active', '=', True),
