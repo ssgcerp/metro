@@ -88,11 +88,13 @@
                 
                 <!-- Move fields to order_details group -->
                 <xpath expr="//group[@name='order_details']" position="inside">
-                <field name="estimation_id" string="Estimation?" 
-                               domain="[('partner_id', '=', partner_id), ('is_approved', '=', True)]"
-                               options="{'no_open': True, 'no_create': True}"/>
+              
                     <field name="is_project_order" string="Project Order?"/>
-                    <field name="is_estimation_order" string="Estimation?" readonly="1"/>
+                    <field name="is_estimation_order" string="Estimation?" invisible="1"/>
+                    <field name="estimation_id" string="Estimation?" 
+                           domain="[('partner_id', '=', partner_id), ('is_approved', '=', True)]"
+                           options="{'no_open': True, 'no_create': True}"
+                           invisible="not is_estimation_order"/>
                     <field name="direct_order" string="Direct Order?"/>
                     <field name="revised_quotation" string="Revised Quotation?"/>
                     <field name="lumpsum" string="Lumpsum?"/>
