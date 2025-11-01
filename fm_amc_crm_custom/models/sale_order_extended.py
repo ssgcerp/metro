@@ -168,9 +168,9 @@ class SaleOrder(models.Model):
             for sol in self.order_line:
                 est_line = next(estimation_lines_list_iter, None)
                 if est_line and est_line.name:
-                    # Use context to prevent product_id_change from overriding our description
-                    # Directly set the name field value
-                    sol.with_context(skip_product_description=True).name = est_line.name
+                    # Set flag to preserve name and use context to prevent product_id_change override
+                    sol._preserve_name_on_change = True
+                    sol.with_context(from_estimation_load=True).name = est_line.name
                     _logger.info(f"Force set description for line: {est_line.name[:50] if est_line.name else 'N/A'}")
                     # Verify it was set correctly
                     if sol.name != est_line.name:
