@@ -104,47 +104,36 @@ class SaleOrder(models.Model):
                 self.estimated_hours = self.estimation_id.estimated_hours
             
             # Clear existing order lines first
-            if self.order_line:
-                self.order_line = [(5, 0, 0)]
+            self.order_line = [(5, 0, 0)]
             
             # Copy all estimation lines (Project, Consumable, Expense) to order lines
-            new_lines = self.env['sale.order.line']
-            for est_line in self.estimation_id.line_ids:
-                line_vals = {
-                    'product_id': est_line.product_id.id if est_line.product_id else False,
-                    'name': est_line.name or '',
-                    'product_uom_qty': est_line.product_uom_qty or 1.0,
-                    'price_unit': est_line.price_unit or 0.0,
-                }
-                
-                # Set UoM
-                if est_line.product_uom:
-                    line_vals['product_uom'] = est_line.product_uom.id
-                elif est_line.product_id and est_line.product_id.uom_id:
-                    line_vals['product_uom'] = est_line.product_id.uom_id.id
-                
-                # Create new line with order_id reference
-                line_vals['order_id'] = self.id if self.id else False
-                new_line = self.env['sale.order.line'].new(line_vals)
-                
-                # Trigger product onchange to set proper defaults
-                if est_line.product_id:
-                    new_line.product_id_change()
-                    # Override with estimation values after onchange
-                    new_line.name = est_line.name or new_line.name
-                    new_line.product_uom_qty = est_line.product_uom_qty or 1.0
+            # Use line_ids which contains all lines regardless of type
+            order_lines = []
+            if self.estimation_id.line_ids:
+                for est_line in self.estimation_id.line_ids:
+                    # Prepare line values
+                    line_vals = {
+                        'product_id': est_line.product_id.id if est_line.product_id else False,
+                        'name': est_line.name or '',
+                        'product_uom_qty': est_line.product_uom_qty or 1.0,
+                        'price_unit': est_line.price_unit or 0.0,
+                    }
+                    
+                    # Set UoM - use estimation UoM or product default UoM
                     if est_line.product_uom:
-                        new_line.product_uom = est_line.product_uom
-                    new_line.price_unit = est_line.price_unit or 0.0
+                        line_vals['product_uom'] = est_line.product_uom.id
+                    elif est_line.product_id and est_line.product_id.uom_id:
+                        line_vals['product_uom'] = est_line.product_id.uom_id.id
+                    
+                    # Add taxes if available
+                    if est_line.tax_id:
+                        line_vals['tax_id'] = [(6, 0, est_line.tax_id.ids)]
+                    
+                    order_lines.append((0, 0, line_vals))
                 
-                # Set taxes if available
-                if est_line.tax_id:
-                    new_line.tax_id = est_line.tax_id
-                
-                new_lines |= new_line
-            
-            # Replace order lines
-            self.order_line = new_lines
+                # Set all order lines at once
+                if order_lines:
+                    self.order_line = order_lines
 
     @api.depends('estimation_id')
     def _compute_estimated_value(self):
