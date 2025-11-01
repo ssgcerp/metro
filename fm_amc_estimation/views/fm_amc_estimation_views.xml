@@ -43,54 +43,40 @@
                                statusbar_visible="draft,waiting approval,approved,locked"/>
                     </header>
                     <sheet>
-                        <!-- Top Section: Two Equal Columns -->
-                        <group>
-                            <!-- Left Column: Customer Details -->
-                            <group col="6">
+                     <group col="3">
+                            <!-- Column 1: Customer -->
+                            <group string="CUSTOMER">
                                 <field name="name" string="Estimation Number" readonly="1" invisible="not name"/>
                                 <field name="partner_id" string="Customer" options="{'no_create': False, 'no_create_edit': False}"/>
-                                <field name="lead_id" string="Lead" domain="[('partner_id', '=', partner_id)]" 
-                                       options="{'no_create': True}"/>
-                                <field name="sales_contact_id" string="Engineer" domain="[('active', '=', True)]" 
-                                       options="{'no_create': True}"/>
-                                <field name="estimated_hours" widget="float_time" string="Estimated Hours"/>
+                                <field name="lead_id" string="Lead" domain="[('partner_id', '=', partner_id)]" options="{'no_create': True}"/>
+                                <field name="contact_id" domain="[('parent_id', '=', partner_id), ('is_company', '=', False)]"
+                                    options="{'no_create': True}"/>
                                 <field name="branch_id" options="{'no_create': False}"/>
-                                <field name="validity_date" string="Estimated Delivery"/>
+                                <field name="sales_contact_id" string="Engineer" domain="[('active', '=', True)]" options="{'no_create': True}"/>
+                                <field name="estimated_hours" widget="float_time" string="Estimated Hours"/>
                             </group>
-                            <!-- Right Column: Estimation Information -->
-                            <group col="6">
+
+                            <!-- Column 2: Contract Details -->
+                            <group string="CONTRACTS">
                                 <field name="estimation_date"/>
-                                <field name="contact_id" domain="[('parent_id', '=', partner_id), ('is_company', '=', False)]" 
-                                       options="{'no_create': True}"/>
-                                <field name="amc_contract_id" 
-                                       domain="[('customer_id', '=', partner_id), ('active', '=', True), ('stage_id.name', 'not in', ['Draft', 'Cancelled', 'Blocked'])]" 
-                                       options="{'no_create': True}"/>
-                                <field name="project_id" 
-                                       domain="[('partner_id', '=', partner_id)]" 
-                                       options="{'no_create': True}"/>
-                                <field name="sales_contact_id" string="Sales Contact" domain="[('active', '=', True)]" 
-                                       options="{'no_create': True}"/>
                                 <field name="validity_date"/>
+                                <field name="amc_contract_id"
+                                    domain="[('customer_id', '=', partner_id), ('active', '=', True), ('stage_id.name', 'not in', ['Draft', 'Cancelled', 'Blocked'])]"
+                                    options="{'no_create': True}"/>
+                                <field name="project_id" domain="[('partner_id', '=', partner_id)]" options="{'no_create': True}"/>
                             </group>
-                        </group>
-                        <!-- Bottom Section: ESTIMATION COST with Two Sub-columns -->
-                        <group string="ESTIMATION COST">
-                            <!-- Left Sub-column: Cost Breakdown -->
-                            <group col="6">
-                                <field name="product_cost" readonly="1"/>
-                                <field name="installation_price" readonly="1"/>
-                                <field name="profit" readonly="1"/>
+
+                            <!-- Column 3: Estimation Summary -->
+                            <group string="ESTIMATION COST">
+                                <field name="project_amount_total" string="Project Estimations" readonly="1"/>
+                                <field name="consumable_amount_total" string="Consumable Estimations" readonly="1"/>
+                                <field name="expense_amount_total" string="Expense" readonly="1"/>
                                 <field name="amount_untaxed" string="Subtotal" readonly="1"/>
                                 <field name="amount_tax" string="Tax" readonly="1"/>
                                 <field name="amount_total" string="Total" readonly="1"/>
                             </group>
-                            <!-- Right Sub-column: Summary Totals -->
-                            <group col="6">
-                                <field name="project_amount_total" string="Project Estimations" readonly="1"/>
-                                <field name="consumable_amount_total" string="Consumable Estimations" readonly="1"/>
-                                <field name="expense_amount_total" string="Expense" readonly="1"/>
-                            </group>
                         </group>
+                     
                         
                         <notebook>
                             <page string="Project Estimations" name="project_estimations">
