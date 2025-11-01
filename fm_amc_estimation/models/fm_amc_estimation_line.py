@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from odoo import models, fields, api
+from odoo.exceptions import UserError
 
 
 class FMAMCEstimationLine(models.Model):
@@ -16,7 +17,7 @@ class FMAMCEstimationLine(models.Model):
         ('project', 'Project Estimation'),
         ('consumable', 'Consumable Estimation'),
         ('expense', 'Expense'),
-    ], string='Line Type', required=True, default='project')
+    ], string='Line Type', required=True, default='project', readonly=True)
     
     # Product Information
     product_id = fields.Many2one('product.product', string='Product', help='Product for this line')
@@ -57,6 +58,22 @@ class FMAMCEstimationLine(models.Model):
             
             line.price_tax = sum(t.get('amount', 0.0) for t in taxes.get('taxes', []))
             line.price_total = line.price_subtotal + line.price_tax
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Set line_type from context if not provided"""
+        for vals in vals_list:
+            if 'line_type' not in vals and self.env.context.get('default_line_type'):
+                vals['line_type'] = self.env.context.get('default_line_type')
+        return super(FMAMCEstimationLine, self).create(vals_list)
+
+    def write(self, vals):
+        """Prevent changing line_type after creation"""
+        if 'line_type' in vals:
+            for line in self:
+                if line.line_type != vals['line_type']:
+                    raise UserError(f'Cannot change line type from {line.line_type} to {vals["line_type"]}. Each line must stay in its designated tab.')
+        return super(FMAMCEstimationLine, self).write(vals)
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
