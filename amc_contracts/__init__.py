@@ -3,7 +3,7 @@
 from . import models
 
 def post_init_hook(env):
-    """Create branch_code column after module installation/upgrade"""
+    """Create branch_code column after module installation-upgrade"""
     cr = env.cr
     try:
         cr.execute("""
