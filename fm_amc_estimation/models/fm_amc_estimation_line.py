@@ -17,7 +17,7 @@ class FMAMCEstimationLine(models.Model):
         ('project', 'Project Estimation'),
         ('consumable', 'Consumable Estimation'),
         ('expense', 'Expense'),
-    ], string='Line Type', required=True, default='project')
+    ], string='Line Type', required=True)
     
     # Product Information
     product_id = fields.Many2one('product.product', string='Product', help='Product for this line')
@@ -59,13 +59,32 @@ class FMAMCEstimationLine(models.Model):
             line.price_tax = sum(t.get('amount', 0.0) for t in taxes.get('taxes', []))
             line.price_total = line.price_subtotal + line.price_tax
 
+    @api.model
+    def default_get(self, fields_list):
+        """Set default line_type from context - always enforce context"""
+        res = super(FMAMCEstimationLine, self).default_get(fields_list)
+        # Always prioritize context over any existing value
+        if self.env.context.get('default_line_type'):
+            res['line_type'] = self.env.context.get('default_line_type')
+        elif 'line_type' not in res:
+            # Only use fallback if no context and not in result
+            res['line_type'] = 'project'
+        return res
+
     @api.model_create_multi
     def create(self, vals_list):
-        """Set line_type from context if not provided"""
+        """Set line_type from context - enforce context always"""
+        # Get context value once
+        context_line_type = self.env.context.get('default_line_type')
         for vals in vals_list:
-            if 'line_type' not in vals and self.env.context.get('default_line_type'):
-                vals['line_type'] = self.env.context.get('default_line_type')
-        return super(FMAMCEstimationLine, self).create(vals_list)
+            # Always prioritize context - override any existing line_type value
+            if context_line_type:
+                vals['line_type'] = context_line_type
+            elif 'line_type' not in vals:
+                # Fallback only if absolutely no context and not provided
+                vals['line_type'] = 'project'
+        result = super(FMAMCEstimationLine, self).create(vals_list)
+        return result
 
     def write(self, vals):
         """Prevent changing line_type after creation"""
@@ -74,14 +93,6 @@ class FMAMCEstimationLine(models.Model):
                 if line.line_type and line.line_type != vals['line_type']:
                     raise UserError(f'Cannot change line type from {line.line_type} to {vals["line_type"]}. Each line must stay in its designated tab.')
         return super(FMAMCEstimationLine, self).write(vals)
-    
-    @api.model
-    def default_get(self, fields_list):
-        """Set default line_type from context"""
-        res = super(FMAMCEstimationLine, self).default_get(fields_list)
-        if 'line_type' not in res and self.env.context.get('default_line_type'):
-            res['line_type'] = self.env.context.get('default_line_type')
-        return res
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
