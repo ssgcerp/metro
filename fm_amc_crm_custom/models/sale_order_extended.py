@@ -141,8 +141,9 @@ class SaleOrder(models.Model):
                 line_vals['product_uom_id'] = est_line.product_id.uom_id.id
             
             # Add taxes if available
-            if est_line.tax_id:
-                line_vals['tax_id'] = [(6, 0, est_line.tax_id.ids)]
+            # In sale.order.line, taxes field might need to be set via write or may not be available in create
+            # Let's set it after creation or skip for now and let product onchange set it
+            # Note: taxes are typically set via product_id onchange in sale.order.line
             
             order_lines.append((0, 0, line_vals))
             _logger.info(f"Added line: {line_vals.get('name', 'N/A')} - Fields: {list(line_vals.keys())}")
@@ -154,6 +155,15 @@ class SaleOrder(models.Model):
         if order_lines:
             self.order_line = order_lines
             _logger.info(f"Successfully set {len(order_lines)} order lines")
+            
+            # Set taxes after lines are created
+            # Note: In Odoo, tax_id is the correct field, but we need to set it after creation
+            estimation_lines_list = list(estimation_lines)
+            for i, sol in enumerate(self.order_line):
+                if i < len(estimation_lines_list):
+                    est_line = estimation_lines_list[i]
+                    if est_line.tax_id:
+                        sol.write({'tax_id': [(6, 0, est_line.tax_id.ids)]})
             # Only return notification if called from button (not onchange)
             if hasattr(self, '_context') and not self.env.context.get('from_onchange'):
                 return {
