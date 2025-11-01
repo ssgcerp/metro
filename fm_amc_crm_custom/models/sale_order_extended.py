@@ -175,13 +175,6 @@ class SaleOrder(models.Model):
                 _logger.info(f"Estimated value computed: {order.estimated_value} for estimation {order.estimation_id.name}")
             else:
                 order.estimated_value = 0.0
-    
-    @api.onchange('estimation_id')
-    def _onchange_estimation_id(self):
-        """Copy fields from estimation when linked"""
-        if self.estimation_id:
-            if not self.estimated_hours:
-                self.estimated_hours = self.estimation_id.estimated_hours
 
     def action_send_for_approval(self):
         """Move quotation to Pending Approval stage"""
