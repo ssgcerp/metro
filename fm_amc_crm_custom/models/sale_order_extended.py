@@ -155,24 +155,10 @@ class SaleOrder(models.Model):
             self.order_line = order_lines
             _logger.info(f"Successfully set {len(order_lines)} order lines")
             
-            # Set taxes after lines are created (Many2many fields can't be set in One2many command)
-            # Match lines by index since we're creating them in the same order
-            # Note: tax_id field might not be writable directly - skip taxes for now
-            # Taxes will be set from product defaults when product_id is set
-            for i, sol in enumerate(self.order_line):
-                if i < len(estimation_lines_list):
-                    est_line = estimation_lines_list[i]
-                    # Trigger product_id_change to set default taxes from product
-                    if sol.product_id:
-                        sol.product_id_change()
-                        # Override with estimation taxes if they exist
-                        if est_line.tax_id and est_line.tax_id.ids:
-                            try:
-                                sol.tax_id = est_line.tax_id
-                                _logger.info(f"Set taxes for line {i+1}: {len(est_line.tax_id)} tax(es)")
-                            except Exception as e:
-                                _logger.warning(f"Could not set taxes for line {i+1}: {e}")
-                                # Continue without taxes - product defaults will be used
+            # Note: Taxes cannot be set in One2many commands or immediately after in onchange
+            # They will be set from product defaults automatically when the form loads
+            # If custom taxes from estimation are needed, user will need to set them manually
+            # or we can add a button to sync taxes after record is saved
             # Only return notification if called from button (not onchange)
             if hasattr(self, '_context') and not self.env.context.get('from_onchange'):
                 return {
