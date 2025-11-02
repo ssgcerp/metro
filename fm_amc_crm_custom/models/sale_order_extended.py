@@ -281,7 +281,7 @@ class SaleOrder(models.Model):
                 year = None
                 if order.date_order:
                     year = order.date_order.year
-                elif order.date_order:
+                else:
                     year = fields.Date.today().year
                 
                 # Generate quotation number
