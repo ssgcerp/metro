@@ -78,8 +78,8 @@
                     <field name="printed_without_approval" invisible="1"/>
                 </xpath>
                 
-                <!-- Add Quotation Stage Statusbar after state -->
-                <xpath expr="//field[@name='state']" position="after">
+                <!-- Hide default state statusbar and replace with quotation stage statusbar -->
+                <xpath expr="//field[@name='state'][@widget='statusbar']" position="replace">
                     <field name="quotation_stage_id" widget="statusbar" 
                            statusbar_visible="draft,pending_approval,quotation,quotation_sent,sales_order"
                            invisible="not quotation_stage_id"/>
