@@ -252,6 +252,50 @@ class SaleOrder(models.Model):
             raise ValidationError("Draft stage not found. Please check stage configuration.")
         self.write({'quotation_stage_id': draft_stage.id})
         return True
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Override create to generate quotation number using config when estimation with AMC contract exists"""
+        orders = super().create(vals_list)
+        
+        # Check if we should use custom quotation numbering
+        config = self.env['sale.quotation.config'].get_config()
+        
+        for order in orders:
+            # Only generate custom number if quotation has estimation with AMC contract
+            use_amc_format = False
+            if order.estimation_id and order.estimation_id.amc_contract_id:
+                use_amc_format = True
+            
+            # If we have estimation with AMC contract, use custom numbering
+            if use_amc_format or (order.estimation_id and config.prefix):
+                # Get branch code from company if available
+                branch_code = None
+                if order.company_id and hasattr(order.company_id, 'code'):
+                    branch_code = order.company_id.code
+                elif order.company_id:
+                    # Try to get code from company name or use a default
+                    branch_code = getattr(order.company_id, 'abbreviation', None) or order.company_id.name[:3].upper() if order.company_id.name else None
+                
+                # Get year
+                year = None
+                if order.date_order:
+                    year = order.date_order.year
+                elif order.date_order:
+                    year = fields.Date.today().year
+                
+                # Generate quotation number
+                quotation_number = config.generate_quotation_number(
+                    branch_code=branch_code,
+                    year=year,
+                    use_amc_format=use_amc_format
+                )
+                
+                # Update the name if we generated a custom number
+                if quotation_number:
+                    order.write({'name': quotation_number})
+        
+        return orders
 
     def action_mark_printed(self):
         """Mark quotation as printed"""
