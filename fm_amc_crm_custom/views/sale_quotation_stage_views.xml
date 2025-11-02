@@ -36,6 +36,7 @@
                                 <field name="is_draft_stage"/>
                                 <field name="is_locked_stage"/>
                                 <field name="is_cancelled_stage"/>
+                                <field name="is_confirmed_stage"/>
                             </group>
                         </group>
                     </sheet>
@@ -56,6 +57,7 @@
                     <field name="is_draft_stage"/>
                     <field name="is_locked_stage"/>
                     <field name="is_cancelled_stage"/>
+                    <field name="is_confirmed_stage"/>
                     <field name="fold"/>
                 </list>
             </field>

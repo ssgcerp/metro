@@ -17,6 +17,7 @@ class SaleQuotationStage(models.Model):
     is_draft_stage = fields.Boolean(string='Is Draft Stage', help='This stage represents draft quotations')
     is_locked_stage = fields.Boolean(string='Is Locked Stage', help='Quotations in this stage cannot be modified')
     is_cancelled_stage = fields.Boolean(string='Is Cancelled Stage', help='This stage represents cancelled quotations')
+    is_confirmed_stage = fields.Boolean(string='Is Confirmed Stage', help='This stage represents confirmed quotations (Sales Orders)')
     
     # Visual customization
     color = fields.Integer(string='Color', default=0, help='Color code for this stage')
