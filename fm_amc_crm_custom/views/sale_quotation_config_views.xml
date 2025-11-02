@@ -24,16 +24,6 @@
                             </group>
                         </group>
                         <notebook>
-                            <page string="Stage Colors" name="stage_colors">
-                                <group string="Stage Colors" col="2">
-                                    <field name="draft_stage_color" widget="color_picker"/>
-                                    <field name="pending_approval_stage_color" widget="color_picker"/>
-                                    <field name="quotation_stage_color" widget="color_picker"/>
-                                    <field name="quotation_sent_stage_color" widget="color_picker"/>
-                                    <field name="sales_order_stage_color" widget="color_picker"/>
-                                    <field name="cancelled_stage_color" widget="color_picker"/>
-                                </group>
-                            </page>
                             <page string="Quotation Number Format" name="quotation_number_format">
                                 <div class="oe_title">
                                     <h1>Quotation Number Format Configuration</h1>
@@ -44,6 +34,7 @@
                                     <group>
                                         <field name="prefix" placeholder="e.g., QUO"/>
                                         <field name="module_code" placeholder="e.g., QUO"/>
+                                        <field name="amc_prefix" placeholder="e.g., AMC"/>
                                         <field name="separator" placeholder="e.g., /"/>
                                         <field name="padding_digits" placeholder="e.g., 4"/>
                                         <field name="next_number" placeholder="Leave empty for auto"/>
@@ -60,23 +51,36 @@
                                                placeholder="e.g., {prefix}/{modulecode}/{branchcode}/{nextnumber}/{year}"/>
                                     </group>
                                 </group>
+                                <group>
+                                    <group>
+                                        <field name="amc_quotation_format_text" 
+                                               placeholder="e.g., {prefix}/{amcprefix}/{modulecode}/{branchcode}/{nextnumber}/{year}"
+                                               options="{'help': 'Custom format text specifically for AMC Quotations'}"/>
+                                    </group>
+                                </group>
                                 <div class="alert alert-info" role="alert" style="margin-top: 10px;">
                                     <strong>Available Placeholders (case-insensitive):</strong><br/>
                                     <ul style="margin-top: 5px;">
                                         <li><code>{prefix}</code> - Prefix value (e.g., QUO)</li>
                                         <li><code>{modulecode}</code> - Module code (e.g., QUO)</li>
+                                        <li><code>{amcprefix}</code> - AMC prefix value (e.g., AMC) - only for AMC quotations</li>
                                         <li><code>{branchcode}</code> - Branch code (e.g., FUJ)</li>
                                         <li><code>{nextnumber}</code> - Sequential number (padded based on Padding Digits, e.g., 0001, 1213)</li>
                                         <li><code>{year}</code> - Year (e.g., 2025)</li>
                                     </ul>
                                     <br/>
                                     <strong>Format Text Priority:</strong><br/>
-                                    1. If "Format Text" is set, it will be used<br/>
-                                    2. If Format Text is empty, the standard format will be used based on checkboxes above<br/>
+                                    1. If "Format Text for AMC Quotations" is set, it will be used for AMC Quotations<br/>
+                                    2. Otherwise, if "Format Text" is set, it will be used<br/>
+                                    3. If both are empty, the standard format will be used based on checkboxes above<br/>
                                     <br/>
                                     <strong>Example Format (Standard):</strong><br/>
                                     <code>{prefix}/{modulecode}/{branchcode}/{nextnumber}/{year}</code><br/>
-                                    Result: <strong>QUO/QUO/FUJ/1213/2025</strong>
+                                    Result: <strong>QUO/QUO/FUJ/1213/2025</strong><br/>
+                                    <br/>
+                                    <strong>Example Format (AMC):</strong><br/>
+                                    <code>{prefix}/{amcprefix}/{modulecode}/{branchcode}/{nextnumber}/{year}</code><br/>
+                                    Result: <strong>QUO/AMC/QUO/FUJ/1213/2025</strong>
                                 </div>
                                 
                                 <div class="alert alert-info" role="alert">
