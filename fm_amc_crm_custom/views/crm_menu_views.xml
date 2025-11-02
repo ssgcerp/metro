@@ -9,10 +9,16 @@
                   action="sale.action_quotations"
                   groups="sales_team.group_sale_salesman_all_leads"/>
         
+        <!-- CRM Configuration Submenu -->
+        <menuitem id="menu_fm_amc_crm_config" 
+                  name="Configuration" 
+                  parent="crm.crm_menu_root"
+                  sequence="99"/>
+        
         <!-- Quotation Configuration menu under CRM Configuration -->
         <menuitem id="menu_sale_quotation_config" 
                   name="Quotation Configuration" 
-                  parent="crm.menu_crm_config"
+                  parent="menu_fm_amc_crm_config"
                   action="action_sale_quotation_config"
                   sequence="50"/>
     </data>
