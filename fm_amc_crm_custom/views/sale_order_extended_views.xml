@@ -16,33 +16,45 @@
                     <!-- Draft Stage Buttons -->
                     <button name="action_send_for_approval" string="Send for Approval" 
                             type="object" class="oe_highlight"
-                            invisible="not is_draft_stage"/>
-                    <button name="action_mark_printed" string="Print" 
+                            invisible="not is_draft_stage or is_locked"/>
+                    <button name="action_reset_to_draft" string="Reset" 
                             type="object"
-                            invisible="not is_draft_stage"/>
-                    
-                    <!-- Pending Approval Stage Buttons -->
-                    <button name="action_approve" string="Approve for Quotation" 
-                            type="object" class="oe_highlight"
-                            invisible="not is_pending_approval_stage"/>
-                    <button name="action_reject" string="Decline" 
-                            type="object"
-                            invisible="not is_pending_approval_stage"/>
-                    <button name="action_mark_printed" string="Print" 
-                            type="object"
-                            invisible="not is_pending_approval_stage"/>
-                    
-                    <!-- Quotation Stage Buttons -->
-                    <button name="action_mark_quotation_sent" string="Mark as Sent" 
-                            type="object" class="oe_highlight"
-                            invisible="not is_quotation_stage"/>
+                            invisible="not is_draft_stage or is_locked"/>
                     <button name="action_cancel_quotation" string="Cancel" 
                             type="object"
-                            invisible="not is_quotation_stage"/>
+                            invisible="not is_draft_stage or is_locked"/>
+                    <button name="action_mark_printed" string="Print" 
+                            type="object"
+                            invisible="not is_draft_stage or is_locked"/>
+                    
+                    <!-- Pending Approval Stage Buttons -->
+                    <button name="action_approve" string="Approve" 
+                            type="object" class="oe_highlight"
+                            invisible="not is_pending_approval_stage or is_locked"/>
+                    <button name="action_reject" string="Decline" 
+                            type="object"
+                            invisible="not is_pending_approval_stage or is_locked"/>
+                    <button name="action_cancel_quotation" string="Cancel" 
+                            type="object"
+                            invisible="not is_pending_approval_stage or is_locked"/>
+                    <button name="action_mark_printed" string="Print" 
+                            type="object"
+                            invisible="not is_pending_approval_stage or is_locked"/>
+                    
+                    <!-- Quotation Stage (Approved) Buttons -->
+                    <button name="action_mark_printed" string="Print" 
+                            type="object" class="oe_highlight"
+                            invisible="not is_quotation_stage or is_locked"/>
+                    <button name="action_cancel_quotation" string="Cancel" 
+                            type="object"
+                            invisible="not is_quotation_stage or is_locked"/>
                     
                     <!-- Quotation Sent Stage Buttons -->
                     <button name="action_confirm" string="Confirm" 
                             type="object" class="oe_highlight"
+                            invisible="not is_quotation_sent_stage or is_locked"/>
+                    <button name="action_reset_to_draft" string="Reset to Draft" 
+                            type="object"
                             invisible="not is_quotation_sent_stage or is_locked"/>
                     <button name="action_cancel_quotation" string="Cancel" 
                             type="object"

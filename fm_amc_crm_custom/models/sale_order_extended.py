@@ -48,6 +48,8 @@ class SaleOrder(models.Model):
                               help='Show unit of measure in quotation?')
     validity_date = fields.Date(string='Expiration Date', 
                                help='Date until which this quotation is valid')
+    decline_reason = fields.Text(string='Decline Reason', 
+                                help='Reason for declining the quotation')
 
     # Workflow tracking fields
     printed_without_approval = fields.Boolean(string='Printed Without Approval', default=False,
@@ -222,11 +224,30 @@ class SaleOrder(models.Model):
         return True
 
     def action_reject(self):
-        """Move quotation back to Draft stage"""
+        """Decline quotation and return to Draft stage with reason"""
+        # Open a wizard to capture decline reason
+        return {
+            'name': 'Decline Quotation',
+            'type': 'ir.actions.act_window',
+            'res_model': 'sale.quotation.decline.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_order_id': self.id,
+            }
+        }
+    
+    def action_reject_confirm(self, reason=''):
+        """Confirm rejection and move quotation back to Draft stage"""
         draft_stage = self.env['sale.quotation.stage'].search([('code', '=', 'draft')], limit=1)
         if not draft_stage:
             raise ValidationError("Draft stage not found. Please check stage configuration.")
-        self.write({'quotation_stage_id': draft_stage.id})
+        self.write({
+            'quotation_stage_id': draft_stage.id,
+            'decline_reason': reason
+        })
+        if reason:
+            self.message_post(body=f'Quotation declined. Reason: {reason}')
         return True
 
     def action_mark_quotation_sent(self):
@@ -306,8 +327,25 @@ class SaleOrder(models.Model):
         """Mark quotation as printed"""
         if self.quotation_stage_id.code == 'pending_approval':
             self.printed_without_approval = True
+        elif self.quotation_stage_id.code == 'quotation':
+            # After printing in Approved/Quotation stage, move to Quotation Sent
+            sent_stage = self.env['sale.quotation.stage'].search([('code', '=', 'quotation_sent')], limit=1)
+            if sent_stage:
+                self.write({'quotation_stage_id': sent_stage.id})
         return {
             'type': 'ir.actions.client',
             'tag': 'reload',
         }
+    
+    def action_confirm(self):
+        """Override Odoo default confirm to update stage after confirmation"""
+        # Call parent confirm method (Odoo default)
+        result = super(SaleOrder, self).action_confirm()
+        
+        # After confirmation, move to Sales Order stage
+        sales_order_stage = self.env['sale.quotation.stage'].search([('code', '=', 'sales_order')], limit=1)
+        if sales_order_stage:
+            self.write({'quotation_stage_id': sales_order_stage.id})
+        
+        return result
 

@@ -15,6 +15,13 @@
                   parent="crm.crm_menu_config"
                   action="action_sale_quotation_config"
                   sequence="50"/>
+        
+        <!-- Quotation Stages menu under CRM Configuration -->
+        <menuitem id="menu_sale_quotation_stage" 
+                  name="Quotation Stages" 
+                  parent="crm.crm_menu_config"
+                  action="action_sale_quotation_stage"
+                  sequence="51"/>
     </data>
 </odoo>
 
