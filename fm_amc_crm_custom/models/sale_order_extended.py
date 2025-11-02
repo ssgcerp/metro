@@ -262,13 +262,17 @@ class SaleOrder(models.Model):
         config = self.env['sale.quotation.config'].get_config()
         
         for order in orders:
-            # Only generate custom number if quotation has estimation with AMC contract
+            # Check if quotation has estimation with AMC contract
+            # AMC format should only be used if:
+            # 1. Quotation has an estimation (estimation_id)
+            # 2. AND that estimation has an AMC contract (amc_contract_id)
             use_amc_format = False
             if order.estimation_id and order.estimation_id.amc_contract_id:
                 use_amc_format = True
             
-            # If we have estimation with AMC contract, use custom numbering
-            if use_amc_format or (order.estimation_id and config.prefix):
+            # Only use custom numbering if quotation has an estimation
+            # Use AMC format only if estimation has AMC contract, otherwise use standard format
+            if order.estimation_id:
                 # Get branch code from company if available
                 branch_code = None
                 if order.company_id and hasattr(order.company_id, 'code'):
@@ -285,6 +289,7 @@ class SaleOrder(models.Model):
                     year = fields.Date.today().year
                 
                 # Generate quotation number
+                # use_amc_format is True only when estimation has AMC contract
                 quotation_number = config.generate_quotation_number(
                     branch_code=branch_code,
                     year=year,
