@@ -18,6 +18,27 @@
                     <attribute name="class">o_header_with_quotation_stages</attribute>
                 </xpath>
                 
+                <!-- Add invisible fields FIRST before using them in XPath -->
+                <xpath expr="//header" position="inside">
+                    <field name="is_draft_stage" invisible="1"/>
+                    <field name="quotation_stage_id" invisible="1"/>
+                </xpath>
+                
+                <!-- Hide default Odoo buttons when in Draft stage or when quotation_stage_id exists -->
+                <xpath expr="//header//button[@name='action_print']" position="attributes">
+                    <attribute name="invisible">is_draft_stage or not quotation_stage_id</attribute>
+                </xpath>
+                <xpath expr="//header//button[@name='action_preview_quotation']" position="attributes">
+                    <attribute name="invisible">is_draft_stage or not quotation_stage_id</attribute>
+                </xpath>
+                <xpath expr="//header//button[@name='action_quotation_send']" position="attributes">
+                    <attribute name="invisible">quotation_stage_id</attribute>
+                </xpath>
+                <!-- Hide default Confirm button in Draft stage -->
+                <xpath expr="//header//button[@name='action_confirm'][not(@invisible)]" position="attributes">
+                    <attribute name="invisible">is_draft_stage and quotation_stage_id</attribute>
+                </xpath>
+                
                 <xpath expr="//header" position="inside">
                     <!-- Add invisible computed fields for button visibility FIRST -->
                     <field name="is_draft_stage" invisible="1"/>
@@ -31,7 +52,7 @@
                     <field name="printed_without_approval" invisible="1"/>
                     <field name="quotation_stage_id" invisible="1"/>
                     
-                    <!-- Draft Stage Buttons -->
+                    <!-- Draft Stage Buttons - ONLY these two should be visible in Draft -->
                     <button name="action_send_for_approval" string="Send for Approval" 
                             type="object" class="oe_highlight"
                             invisible="not is_draft_stage or is_locked"/>
@@ -39,51 +60,51 @@
                             type="object"
                             invisible="not is_draft_stage or is_locked"/>
                     
-                    <!-- Pending Approval Stage Buttons -->
+                    <!-- Pending Approval Stage Buttons - Hide in Draft -->
                     <button name="action_approve" string="Approve" 
                             type="object" class="oe_highlight"
-                            invisible="not is_pending_approval_stage or is_locked"/>
+                            invisible="is_draft_stage or not is_pending_approval_stage or is_locked"/>
                     <button name="action_reject" string="Decline" 
                             type="object"
-                            invisible="not is_pending_approval_stage or is_locked"/>
+                            invisible="is_draft_stage or not is_pending_approval_stage or is_locked"/>
                     <button name="action_cancel_quotation" string="Cancel" 
                             type="object"
-                            invisible="not is_pending_approval_stage or is_locked"/>
+                            invisible="is_draft_stage or not is_pending_approval_stage or is_locked"/>
                     
-                    <!-- Quotation Stage (Approved) Buttons -->
+                    <!-- Quotation Stage (Approved) Buttons - Hide in Draft -->
                     <button name="action_mark_quotation_sent" string="Send" 
                             type="object" class="oe_highlight"
-                            invisible="not is_quotation_stage or is_locked"/>
+                            invisible="is_draft_stage or not is_quotation_stage or is_locked"/>
                     <button name="action_mark_printed" string="Print" 
                             type="object"
-                            invisible="not is_quotation_stage or is_locked"/>
+                            invisible="is_draft_stage or not is_quotation_stage or is_locked"/>
                     <button name="action_reset_to_draft" string="Reset to Draft" 
                             type="object"
-                            invisible="not is_quotation_stage or is_locked"/>
+                            invisible="is_draft_stage or not is_quotation_stage or is_locked"/>
                     
-                    <!-- Quotation Sent Stage Buttons -->
+                    <!-- Quotation Sent Stage Buttons - Hide in Draft -->
                     <button name="action_confirm" string="Confirm" 
                             type="object" class="oe_highlight"
-                            invisible="not is_quotation_sent_stage or is_locked"/>
+                            invisible="is_draft_stage or not is_quotation_sent_stage or is_locked"/>
                     <button name="action_cancel_quotation" string="Cancel" 
                             type="object"
-                            invisible="not is_quotation_sent_stage or is_locked"/>
+                            invisible="is_draft_stage or not is_quotation_sent_stage or is_locked"/>
                     <button name="action_reset_to_draft" string="Reset to Draft" 
                             type="object"
-                            invisible="not is_quotation_sent_stage or is_locked"/>
+                            invisible="is_draft_stage or not is_quotation_sent_stage or is_locked"/>
                     
-                    <!-- Cancelled Stage Buttons -->
+                    <!-- Cancelled Stage Buttons - Hide in Draft -->
                     <button name="action_reset_to_draft" string="Reset to Draft" 
                             type="object" class="oe_highlight"
-                            invisible="not is_cancelled_stage"/>
+                            invisible="is_draft_stage or not is_cancelled_stage"/>
                     
-                    <!-- Sales Order Stage Buttons -->
+                    <!-- Sales Order Stage Buttons - Hide in Draft -->
                     <button name="action_reset_to_draft" string="Reset to Draft" 
                             type="object"
-                            invisible="not is_sales_order_stage"/>
+                            invisible="is_draft_stage or not is_sales_order_stage"/>
                     <button name="action_cancel_quotation" string="Cancel" 
                             type="object"
-                            invisible="not is_sales_order_stage"/>
+                            invisible="is_draft_stage or not is_sales_order_stage"/>
                 </xpath>
                 
                 <!-- Hide default state statusbar and replace with quotation stage statusbar -->
