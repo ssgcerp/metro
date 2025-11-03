@@ -142,7 +142,7 @@ class ProductBrandVariant(models.Model):
             'name': f'Stock Locations - {self.name}',
             'type': 'ir.actions.act_window',
             'res_model': 'product.brand.stock',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('brand_variant_id', '=', self.id)],
             'context': {
                 'default_brand_variant_id': self.id,
