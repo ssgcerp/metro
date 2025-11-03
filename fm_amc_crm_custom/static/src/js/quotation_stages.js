@@ -17,6 +17,19 @@ patch(FormController.prototype, {
                 }, 300);
                 return () => clearInterval(interval);
             });
+            
+            // Also run on model updates
+            if (this.model && this.model.root) {
+                useEffect(() => {
+                    const updateButtonVisibility = () => {
+                        setTimeout(() => this._hideDefaultButtons(), 100);
+                    };
+                    this.model.root.on('change', updateButtonVisibility);
+                    return () => {
+                        this.model.root.off('change', updateButtonVisibility);
+                    };
+                });
+            }
         }
     },
 
