@@ -7,13 +7,12 @@ from odoo.exceptions import ValidationError
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
     
-    # Ensure Goods option is available in Product Type field
+    # Change Product Type label from "Goods" to "Consumables"
     # Odoo 19 base has: 'product' (Goods), 'service' (Service), 'combo' (Combo)
-    # If 'product' (Goods) is missing for any reason, we add it explicitly
-    # Note: 'product' type is typically already present in Odoo base
+    # We override the label for 'product' type to display as "Consumables"
     type = fields.Selection(
         selection_add=[
-            ('product', 'Goods'),
+            ('product', 'Consumables'),
         ],
         ondelete={
             'product': 'set default',

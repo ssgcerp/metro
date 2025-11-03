@@ -11,7 +11,7 @@
         This module extends Odoo Inventory to support:
         
         **Product Types:**
-        - Ensures Goods option is available in Product Type field
+        - Changes "Goods" label to "Consumables" in Product Type field
         
         **Brand Management:**
         - Multiple brand variants per product
