@@ -6,10 +6,12 @@ The **FM Inventory Custom** module extends Odoo 19 Inventory functionality with 
 
 ## Features
 
-### 1. Custom Product Types
+### 1. Product Types
 
-- **Consumable**: Products that are consumed but not tracked in inventory (equivalent to Odoo's 'consu' type)
-- **Storable Product**: Products equivalent to Odoo's 'product' type but handled separately
+The module uses Odoo's standard Product Type field with three options:
+- **Goods** (product): Storable products tracked in inventory
+- **Service** (service): Services that are not tracked in inventory
+- **Consumable** (consu): Products that are consumed but not tracked in inventory
 
 ### 2. Brand Management System
 

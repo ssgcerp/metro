@@ -11,8 +11,7 @@
         This module extends Odoo Inventory to support:
         
         **Product Types:**
-        - Consumable: Products that are consumed but not tracked in inventory
-        - Storable Product: Products equivalent to Goods but handled separately
+        - Uses Odoo's standard Product Type field: Goods, Service, and Consumable
         
         **Brand Management:**
         - Multiple brand variants per product
