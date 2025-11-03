@@ -12,6 +12,7 @@
         
         **Product Types:**
         - Changes "Goods" label to "Consumables" in Product Type field
+        - Ensures inventory tracking is enabled for Consumables (product type)
         
         **Brand Management:**
         - Multiple brand variants per product

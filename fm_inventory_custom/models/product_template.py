@@ -35,6 +35,33 @@ class ProductTemplate(models.Model):
         help='Multiple brand variants with individual pricing and stock tracking'
     )
     
+    @api.onchange('type')
+    def _onchange_type_ensure_tracking(self):
+        """Ensure inventory tracking is enabled for Consumables (product type)"""
+        if self.type == 'product':
+            # For product type (Consumables), ensure tracking is enabled
+            # If tracking is 'none', set it to 'lot' as default
+            if not self.tracking or self.tracking == 'none':
+                self.tracking = 'lot'
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Ensure inventory tracking for Consumables (product type) on create"""
+        for vals in vals_list:
+            if vals.get('type') == 'product':
+                # Ensure tracking is set for product type (Consumables)
+                if 'tracking' not in vals or not vals.get('tracking') or vals.get('tracking') == 'none':
+                    vals['tracking'] = 'lot'
+        return super().create(vals_list)
+    
+    def write(self, vals):
+        """Ensure inventory tracking for Consumables (product type) on write"""
+        if vals.get('type') == 'product':
+            # Ensure tracking is set for product type (Consumables)
+            if 'tracking' not in vals or not vals.get('tracking') or vals.get('tracking') == 'none':
+                vals['tracking'] = 'lot'
+        return super().write(vals)
+    
 
 
 class ProductBrandVariant(models.Model):
