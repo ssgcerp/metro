@@ -34,23 +34,26 @@ class SaleOrderLine(models.Model):
     @api.onchange('product_id')
     def product_id_change(self):
         """Override to preserve description when loading from estimation"""
-        # If we're loading from estimation, preserve the existing name
-        if self.env.context.get('from_estimation_load') or self._preserve_name_on_change:
-            old_name = self.name if self.name else None
-            # Try to call parent method if it exists
-            try:
-                res = super().product_id_change()
-            except AttributeError:
-                # Base method doesn't exist or was renamed in Odoo 19
-                res = {}
-            # Restore the estimation description
-            if old_name:
-                self.name = old_name
-            return res
-        # Normal behavior - call parent if it exists
-        try:
-            return super().product_id_change()
-        except AttributeError:
+        # Check if we should preserve the name (from estimation load)
+        preserve_name = self.env.context.get('from_estimation_load') or self._preserve_name_on_change
+        
+        # Store the old name if we need to preserve it
+        old_name = self.name if preserve_name and self.name else None
+        
+        # Check if parent class has product_id_change method
+        parent_class = self.__class__.__mro__[1]  # Get parent class
+        has_parent_method = hasattr(parent_class, 'product_id_change')
+        
+        # Call parent method if it exists
+        if has_parent_method:
+            res = super().product_id_change()
+        else:
             # Base method doesn't exist in Odoo 19, return empty dict
-            return {}
+            res = {}
+        
+        # Restore the estimation description if we were preserving it
+        if preserve_name and old_name:
+            self.name = old_name
+        
+        return res
 
