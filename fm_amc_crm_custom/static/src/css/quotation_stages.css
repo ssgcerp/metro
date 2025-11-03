@@ -17,17 +17,13 @@
     display: none !important;
 }
 
-/* When in draft stage, hide ALL buttons except Send for Approval and Cancel */
-.o_form_view[data-model="sale.order"].o_draft_stage header button[type="object"]:not([name="action_send_for_approval"]):not([name="action_cancel_quotation"]) {
-    display: none !important;
-    visibility: hidden !important;
-}
-
-/* Hide ALL buttons except Send for Approval and Cancel when in draft (by class added by JS) */
+/* When in draft stage, hide ALL buttons except Send for Approval and Cancel (by class added by JS) */
 .o_form_view[data-model="sale.order"].o_draft_stage header button[type="object"]:not([name="action_send_for_approval"]):not([name="action_cancel_quotation"]) {
     display: none !important;
     visibility: hidden !important;
     opacity: 0 !important;
     pointer-events: none !important;
+    position: absolute !important;
+    left: -9999px !important;
 }
 

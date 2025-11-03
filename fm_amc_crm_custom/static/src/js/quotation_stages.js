@@ -12,9 +12,12 @@ patch(FormController.prototype, {
         super.setup(...arguments);
         if (this.props.resModel === 'sale.order') {
             useEffect(() => {
+                // Run immediately
+                this._hideDefaultButtons();
+                // Then run every 200ms for faster response
                 const interval = setInterval(() => {
                     this._hideDefaultButtons();
-                }, 300);
+                }, 200);
                 return () => clearInterval(interval);
             });
             
