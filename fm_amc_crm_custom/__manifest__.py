@@ -35,6 +35,7 @@
     'assets': {
         'web.assets_backend': [
             'fm_amc_crm_custom/static/src/css/quotation_stages.css',
+            'fm_amc_crm_custom/static/src/js/quotation_stages.js',
         ],
     },
     'installable': True,
