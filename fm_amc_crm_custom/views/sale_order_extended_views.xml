@@ -12,7 +12,36 @@
                     <attribute name="class">o_sheet_inherit_quotations</attribute>
                 </xpath>
                 
+                <!-- Hide default Odoo buttons when quotation_stage_id exists -->
+                <!-- Send button -->
+                <xpath expr="//header//button[@name='action_quotation_send']" position="attributes">
+                    <attribute name="invisible">quotation_stage_id</attribute>
+                </xpath>
+                <!-- Print button -->
+                <xpath expr="//header//button[@name='action_print']" position="attributes">
+                    <attribute name="invisible">quotation_stage_id</attribute>
+                </xpath>
+                <!-- Preview button -->
+                <xpath expr="//header//button[@name='action_preview_quotation']" position="attributes">
+                    <attribute name="invisible">quotation_stage_id</attribute>
+                </xpath>
+                <!-- Hide default Confirm button when not in quotation_sent_stage -->
+                <xpath expr="//header//button[@name='action_confirm']" position="attributes">
+                    <attribute name="invisible">quotation_stage_id and not is_quotation_sent_stage</attribute>
+                </xpath>
+                
                 <xpath expr="//header" position="inside">
+                    <!-- Add invisible computed fields for button visibility FIRST -->
+                    <field name="is_draft_stage" invisible="1"/>
+                    <field name="is_pending_approval_stage" invisible="1"/>
+                    <field name="is_quotation_stage" invisible="1"/>
+                    <field name="is_quotation_sent_stage" invisible="1"/>
+                    <field name="is_sales_order_stage" invisible="1"/>
+                    <field name="is_declined_stage" invisible="1"/>
+                    <field name="is_cancelled_stage" invisible="1"/>
+                    <field name="is_locked" invisible="1"/>
+                    <field name="printed_without_approval" invisible="1"/>
+                    
                     <!-- Draft Stage Buttons -->
                     <button name="action_send_for_approval" string="Send for Approval" 
                             type="object" class="oe_highlight"
@@ -66,17 +95,6 @@
                     <button name="action_cancel_quotation" string="Cancel" 
                             type="object"
                             invisible="not is_sales_order_stage"/>
-                    
-                    <!-- Add invisible computed fields for button visibility -->
-                    <field name="is_draft_stage" invisible="1"/>
-                    <field name="is_pending_approval_stage" invisible="1"/>
-                    <field name="is_quotation_stage" invisible="1"/>
-                    <field name="is_quotation_sent_stage" invisible="1"/>
-                    <field name="is_sales_order_stage" invisible="1"/>
-                    <field name="is_declined_stage" invisible="1"/>
-                    <field name="is_cancelled_stage" invisible="1"/>
-                    <field name="is_locked" invisible="1"/>
-                    <field name="printed_without_approval" invisible="1"/>
                 </xpath>
                 
                 <!-- Hide default state statusbar and replace with quotation stage statusbar -->

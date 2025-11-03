@@ -80,19 +80,29 @@ class SaleOrder(models.Model):
         except Exception:
             return False
 
-    @api.depends('quotation_stage_id', 'estimation_id')
+    @api.depends('quotation_stage_id')
     def _compute_stage_flags(self):
         """Compute stage flags for button visibility"""
         for order in self:
             stage = order.quotation_stage_id
-            order.is_draft_stage = stage.code == 'draft' if stage else False
-            order.is_pending_approval_stage = stage.code == 'pending_approval' if stage else False
-            order.is_quotation_stage = stage.code == 'quotation' if stage else False
-            order.is_quotation_sent_stage = stage.code == 'quotation_sent' if stage else False
-            order.is_sales_order_stage = stage.code == 'sales_order' if stage else False
-            order.is_declined_stage = stage.code == 'declined' if stage else False
-            order.is_cancelled_stage = stage.code == 'cancelled' if stage else False
-            order.is_locked = stage.is_locked_stage if stage else False
+            if stage:
+                order.is_draft_stage = (stage.code == 'draft')
+                order.is_pending_approval_stage = (stage.code == 'pending_approval')
+                order.is_quotation_stage = (stage.code == 'quotation')
+                order.is_quotation_sent_stage = (stage.code == 'quotation_sent')
+                order.is_sales_order_stage = (stage.code == 'sales_order')
+                order.is_declined_stage = (stage.code == 'declined')
+                order.is_cancelled_stage = (stage.code == 'cancelled')
+                order.is_locked = stage.is_locked_stage
+            else:
+                order.is_draft_stage = False
+                order.is_pending_approval_stage = False
+                order.is_quotation_stage = False
+                order.is_quotation_sent_stage = False
+                order.is_sales_order_stage = False
+                order.is_declined_stage = False
+                order.is_cancelled_stage = False
+                order.is_locked = False
 
     @api.onchange('is_estimation_order')
     def _onchange_is_estimation_order(self):
