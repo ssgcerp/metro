@@ -22,16 +22,12 @@
                            options="{'horizontal': true}"
                            domain="[('product_type', '=', type)]"
                            context="{'default_product_type': type}"/>
+                    <field name="brand_id" placeholder="Select Primary Brand"/>
                 </xpath>
                 
                 <!-- Hide the original category field (which is not after type) -->
                 <xpath expr="//field[@name='categ_id'][1][not(preceding-sibling::field[@name='type'])]" position="attributes">
                     <attribute name="invisible">1</attribute>
-                </xpath>
-                
-                <!-- Add brand field after the category field that comes after type -->
-                <xpath expr="//field[@name='type']" position="after">
-                    <field name="brand_id" placeholder="Select Primary Brand"/>
                 </xpath>
                 
                 <!-- Add brand variants tab -->
