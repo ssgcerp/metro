@@ -16,14 +16,6 @@
                            context="{'default_product_type': type}"/>
                 </xpath>
                 
-                <!-- Update original category field with domain and hide it if not after type -->
-                <xpath expr="//field[@name='categ_id'][not(preceding-sibling::field[@name='type'])]" position="attributes">
-                    <attribute name="widget">radio</attribute>
-                    <attribute name="options">{'horizontal': true}</attribute>
-                    <attribute name="domain">[('product_type', '=', type)]</attribute>
-                    <attribute name="invisible">1</attribute>
-                </xpath>
-                
                 <!-- Hide the original category field if it's not after type -->
                 <xpath expr="//field[@name='categ_id'][not(preceding-sibling::field[@name='type'])]" position="attributes">
                     <attribute name="invisible">1</attribute>
