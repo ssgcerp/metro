@@ -17,13 +17,7 @@
                     <button name="action_send_for_approval" string="Send for Approval" 
                             type="object" class="oe_highlight"
                             invisible="not is_draft_stage or is_locked"/>
-                    <button name="action_reset_to_draft" string="Reset" 
-                            type="object"
-                            invisible="not is_draft_stage or is_locked"/>
                     <button name="action_cancel_quotation" string="Cancel" 
-                            type="object"
-                            invisible="not is_draft_stage or is_locked"/>
-                    <button name="action_mark_printed" string="Print" 
                             type="object"
                             invisible="not is_draft_stage or is_locked"/>
                     
@@ -37,15 +31,15 @@
                     <button name="action_cancel_quotation" string="Cancel" 
                             type="object"
                             invisible="not is_pending_approval_stage or is_locked"/>
-                    <button name="action_mark_printed" string="Print" 
-                            type="object"
-                            invisible="not is_pending_approval_stage or is_locked"/>
                     
                     <!-- Quotation Stage (Approved) Buttons -->
-                    <button name="action_mark_printed" string="Print" 
+                    <button name="action_mark_quotation_sent" string="Send" 
                             type="object" class="oe_highlight"
                             invisible="not is_quotation_stage or is_locked"/>
-                    <button name="action_cancel_quotation" string="Cancel" 
+                    <button name="action_mark_printed" string="Print" 
+                            type="object"
+                            invisible="not is_quotation_stage or is_locked"/>
+                    <button name="action_reset_to_draft" string="Reset to Draft" 
                             type="object"
                             invisible="not is_quotation_stage or is_locked"/>
                     
@@ -53,12 +47,17 @@
                     <button name="action_confirm" string="Confirm" 
                             type="object" class="oe_highlight"
                             invisible="not is_quotation_sent_stage or is_locked"/>
-                    <button name="action_reset_to_draft" string="Reset to Draft" 
-                            type="object"
-                            invisible="not is_quotation_sent_stage or is_locked"/>
                     <button name="action_cancel_quotation" string="Cancel" 
                             type="object"
                             invisible="not is_quotation_sent_stage or is_locked"/>
+                    <button name="action_reset_to_draft" string="Reset to Draft" 
+                            type="object"
+                            invisible="not is_quotation_sent_stage or is_locked"/>
+                    
+                    <!-- Cancelled Stage Buttons -->
+                    <button name="action_reset_to_draft" string="Reset to Draft" 
+                            type="object" class="oe_highlight"
+                            invisible="not is_cancelled_stage"/>
                     
                     <!-- Sales Order Stage Buttons -->
                     <button name="action_reset_to_draft" string="Reset to Draft" 
@@ -74,6 +73,8 @@
                     <field name="is_quotation_stage" invisible="1"/>
                     <field name="is_quotation_sent_stage" invisible="1"/>
                     <field name="is_sales_order_stage" invisible="1"/>
+                    <field name="is_declined_stage" invisible="1"/>
+                    <field name="is_cancelled_stage" invisible="1"/>
                     <field name="is_locked" invisible="1"/>
                     <field name="printed_without_approval" invisible="1"/>
                 </xpath>
@@ -81,7 +82,7 @@
                 <!-- Hide default state statusbar and replace with quotation stage statusbar -->
                 <xpath expr="//field[@name='state'][@widget='statusbar']" position="replace">
                     <field name="quotation_stage_id" widget="statusbar" 
-                           statusbar_visible="draft,pending_approval,quotation,quotation_sent,sales_order"
+                           statusbar_visible="draft,pending_approval,declined,quotation,quotation_sent,sales_order,cancelled"
                            invisible="not quotation_stage_id"/>
                 </xpath>
                 

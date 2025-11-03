@@ -57,6 +57,17 @@
             <field name="color">4</field>
         </record>
         
+        <!-- Declined Stage -->
+        <record id="sale_quotation_stage_declined" model="sale.quotation.stage">
+            <field name="name">Declined</field>
+            <field name="code">declined</field>
+            <field name="sequence">25</field>
+            <field name="is_draft_stage" eval="False"/>
+            <field name="is_locked_stage" eval="False"/>
+            <field name="is_cancelled_stage" eval="False"/>
+            <field name="color">2</field>
+        </record>
+        
         <!-- Cancelled Stage -->
         <record id="sale_quotation_stage_cancelled" model="sale.quotation.stage">
             <field name="name">Cancelled</field>

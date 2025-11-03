@@ -67,6 +67,8 @@ class SaleOrder(models.Model):
     is_quotation_stage = fields.Boolean(string='Is Quotation Stage', compute='_compute_stage_flags', store=False)
     is_quotation_sent_stage = fields.Boolean(string='Is Quotation Sent Stage', compute='_compute_stage_flags', store=False)
     is_sales_order_stage = fields.Boolean(string='Is Sales Order Stage', compute='_compute_stage_flags', store=False)
+    is_declined_stage = fields.Boolean(string='Is Declined Stage', compute='_compute_stage_flags', store=False)
+    is_cancelled_stage = fields.Boolean(string='Is Cancelled Stage', compute='_compute_stage_flags', store=False)
     is_locked = fields.Boolean(string='Is Locked', compute='_compute_stage_flags', store=False)
 
     @api.model
@@ -88,6 +90,8 @@ class SaleOrder(models.Model):
             order.is_quotation_stage = stage.code == 'quotation' if stage else False
             order.is_quotation_sent_stage = stage.code == 'quotation_sent' if stage else False
             order.is_sales_order_stage = stage.code == 'sales_order' if stage else False
+            order.is_declined_stage = stage.code == 'declined' if stage else False
+            order.is_cancelled_stage = stage.code == 'cancelled' if stage else False
             order.is_locked = stage.is_locked_stage if stage else False
 
     @api.onchange('is_estimation_order')
@@ -238,12 +242,12 @@ class SaleOrder(models.Model):
         }
     
     def action_reject_confirm(self, reason=''):
-        """Confirm rejection and move quotation back to Draft stage"""
-        draft_stage = self.env['sale.quotation.stage'].search([('code', '=', 'draft')], limit=1)
-        if not draft_stage:
-            raise ValidationError("Draft stage not found. Please check stage configuration.")
+        """Confirm rejection and move quotation to Declined stage"""
+        declined_stage = self.env['sale.quotation.stage'].search([('code', '=', 'declined')], limit=1)
+        if not declined_stage:
+            raise ValidationError("Declined stage not found. Please check stage configuration.")
         self.write({
-            'quotation_stage_id': draft_stage.id,
+            'quotation_stage_id': declined_stage.id,
             'decline_reason': reason
         })
         if reason:
