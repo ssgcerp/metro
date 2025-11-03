@@ -37,47 +37,48 @@ patch(FormController.prototype, {
         const formElement = document.querySelector('.o_form_view[data-model="sale.order"]');
         if (!formElement) return;
         
-        // Check if quotation stages are enabled by looking for the statusbar
-        const statusbar = formElement.querySelector('.o_statusbar_buttons');
-        if (!statusbar) return;
-        
-        // Determine current stage by finding active/highlighted statusbar button
+        // Try to get stage from model first (more reliable)
         let currentStage = null;
-        const statusbarButtons = statusbar.querySelectorAll('button');
-        
-        // First, try to find active button by class
-        statusbarButtons.forEach(btn => {
-            if (btn.classList.contains('btn-primary') || btn.classList.contains('active') || btn.getAttribute('aria-pressed') === 'true') {
-                const text = btn.textContent.trim().toLowerCase();
-                if (text.includes('draft')) currentStage = 'draft';
-                else if (text.includes('pending') || text.includes('approval')) currentStage = 'pending_approval';
-                else if (text.includes('quotation') && text.includes('sent')) currentStage = 'quotation_sent';
-                else if (text.includes('quotation') || text.includes('approved')) currentStage = 'quotation';
-                else if (text.includes('sales') || text.includes('order')) currentStage = 'sales_order';
-                else if (text.includes('declined')) currentStage = 'declined';
-                else if (text.includes('cancelled')) currentStage = 'cancelled';
+        if (this.model && this.model.root) {
+            const record = this.model.root;
+            if (record.data && record.data.quotation_stage_id) {
+                const stageData = record.data.quotation_stage_id;
+                if (Array.isArray(stageData) && stageData.length > 1) {
+                    // It's a Many2one field: [id, name] or {id, name}
+                    const stageName = (typeof stageData[1] === 'string') ? stageData[1] : stageData[1]?.name || '';
+                    const stageNameLower = stageName.toLowerCase();
+                    if (stageNameLower.includes('draft')) currentStage = 'draft';
+                    else if (stageNameLower.includes('pending') || stageNameLower.includes('approval')) currentStage = 'pending_approval';
+                    else if (stageNameLower.includes('quotation') && stageNameLower.includes('sent')) currentStage = 'quotation_sent';
+                    else if (stageNameLower.includes('quotation') || stageNameLower.includes('approved')) currentStage = 'quotation';
+                    else if (stageNameLower.includes('sales') || stageNameLower.includes('order')) currentStage = 'sales_order';
+                    else if (stageNameLower.includes('declined')) currentStage = 'declined';
+                    else if (stageNameLower.includes('cancelled')) currentStage = 'cancelled';
+                }
             }
-        });
+        }
         
-        // If still no stage found, check the hidden input value
+        // Fallback: Check statusbar if model didn't provide stage
         if (!currentStage) {
-            const hiddenInput = formElement.querySelector('input[name="quotation_stage_id"][type="hidden"]');
-            if (hiddenInput && hiddenInput.value) {
-                // Try to match by finding button with matching data attributes
+            const statusbar = formElement.querySelector('.o_statusbar_buttons');
+            if (statusbar) {
+                const statusbarButtons = statusbar.querySelectorAll('button');
                 statusbarButtons.forEach(btn => {
-                    const btnText = btn.textContent.trim().toLowerCase();
-                    if (btnText.includes('draft')) currentStage = 'draft';
-                    else if (btnText.includes('pending') || btnText.includes('approval')) currentStage = 'pending_approval';
-                    else if (btnText.includes('quotation') && btnText.includes('sent')) currentStage = 'quotation_sent';
-                    else if (btnText.includes('quotation') || btnText.includes('approved')) currentStage = 'quotation';
-                    else if (btnText.includes('sales') || btnText.includes('order')) currentStage = 'sales_order';
-                    else if (btnText.includes('declined')) currentStage = 'declined';
-                    else if (btnText.includes('cancelled')) currentStage = 'cancelled';
+                    if (btn.classList.contains('btn-primary') || btn.classList.contains('active') || btn.getAttribute('aria-pressed') === 'true') {
+                        const text = btn.textContent.trim().toLowerCase();
+                        if (text.includes('draft')) currentStage = 'draft';
+                        else if (text.includes('pending') || text.includes('approval')) currentStage = 'pending_approval';
+                        else if (text.includes('quotation') && text.includes('sent')) currentStage = 'quotation_sent';
+                        else if (text.includes('quotation') || text.includes('approved')) currentStage = 'quotation';
+                        else if (text.includes('sales') || text.includes('order')) currentStage = 'sales_order';
+                        else if (text.includes('declined')) currentStage = 'declined';
+                        else if (text.includes('cancelled')) currentStage = 'cancelled';
+                    }
                 });
             }
         }
         
-        // Fallback: if still no stage, assume draft
+        // Final fallback: assume draft
         if (!currentStage) {
             currentStage = 'draft';
         }
