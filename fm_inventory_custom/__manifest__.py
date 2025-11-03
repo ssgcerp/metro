@@ -11,8 +11,8 @@
         This module extends Odoo Inventory to support:
         
         **Product Types:**
-        - Changes "Goods" label to "Consumables" in Product Type field
-        - Ensures inventory tracking is enabled for Consumables (product type)
+        - Uses Odoo's default Product Type field (no customizations)
+        - Category field displays as radio buttons for easier selection
         
         **Brand Management:**
         - Multiple brand variants per product
