@@ -2,7 +2,7 @@
 
 import { FormController } from "@web/views/form/form_controller";
 import { patch } from "@web/core/utils/patch";
-import { useEffect } from "@odoo/owl";
+import { onMounted, onWillUnmount } from "@odoo/owl";
 
 /**
  * Patch FormController to hide default Odoo buttons when custom quotation stages are active
@@ -11,28 +11,41 @@ patch(FormController.prototype, {
     setup() {
         super.setup(...arguments);
         if (this.props.resModel === 'sale.order') {
-            useEffect(() => {
+            this._buttonVisibilityInterval = null;
+            this._buttonVisibilityCleanup = null;
+            
+            onMounted(() => {
                 // Run immediately
                 this._hideDefaultButtons();
                 // Then run every 200ms for faster response
-                const interval = setInterval(() => {
+                this._buttonVisibilityInterval = setInterval(() => {
                     this._hideDefaultButtons();
                 }, 200);
-                return () => clearInterval(interval);
-            });
-            
-            // Also run on model updates
-            if (this.model && this.model.root) {
-                useEffect(() => {
+                
+                // Also run on model updates if model is available
+                if (this.model && this.model.root) {
                     const updateButtonVisibility = () => {
                         setTimeout(() => this._hideDefaultButtons(), 100);
                     };
                     this.model.root.on('change', updateButtonVisibility);
-                    return () => {
-                        this.model.root.off('change', updateButtonVisibility);
+                    this._buttonVisibilityCleanup = () => {
+                        if (this.model && this.model.root) {
+                            this.model.root.off('change', updateButtonVisibility);
+                        }
                     };
-                });
-            }
+                }
+            });
+            
+            onWillUnmount(() => {
+                if (this._buttonVisibilityInterval) {
+                    clearInterval(this._buttonVisibilityInterval);
+                    this._buttonVisibilityInterval = null;
+                }
+                if (this._buttonVisibilityCleanup) {
+                    this._buttonVisibilityCleanup();
+                    this._buttonVisibilityCleanup = null;
+                }
+            });
         }
     },
 
