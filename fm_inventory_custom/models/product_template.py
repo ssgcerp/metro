@@ -33,14 +33,9 @@ class ProductTemplate(models.Model):
         help='Multiple brand variants with individual pricing and stock tracking'
     )
     
-    @api.model
-    def _get_product_type_default(self):
-        """Get default product type"""
-        return 'storable_custom'
-    
     @api.onchange('product_type_custom')
     def _onchange_product_type_custom(self):
-        """Map custom types to standard Odoo types"""
+        """Map custom types to standard Odoo types for inventory tracking"""
         type_mapping = {
             'consumable_custom': 'consu',
             'storable_custom': 'product',
@@ -48,14 +43,24 @@ class ProductTemplate(models.Model):
         if self.product_type_custom in type_mapping:
             self.type = type_mapping[self.product_type_custom]
     
+    @api.onchange('type')
+    def _onchange_type_to_custom(self):
+        """Map standard Odoo types back to custom types when possible"""
+        if self.type == 'consu':
+            self.product_type_custom = 'consumable_custom'
+        elif self.type == 'product':
+            self.product_type_custom = 'storable_custom'
+    
     @api.model_create_multi
     def create(self, vals_list):
         """Set default type if not provided"""
         for vals in vals_list:
-            if 'type' not in vals and 'product_type_custom' not in vals:
+            # Set product_type_custom default if not provided
+            if 'product_type_custom' not in vals:
                 vals['product_type_custom'] = 'storable_custom'
-                vals['type'] = 'product'
-            elif 'product_type_custom' in vals and 'type' not in vals:
+            
+            # Map custom type to standard Odoo type
+            if 'type' not in vals and 'product_type_custom' in vals:
                 type_mapping = {
                     'consumable_custom': 'consu',
                     'storable_custom': 'product',
