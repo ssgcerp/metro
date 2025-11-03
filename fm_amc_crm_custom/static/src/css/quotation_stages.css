@@ -1,13 +1,13 @@
-/* AGGRESSIVE: Hide Print, Confirm, Preview buttons when quotation_stage_id exists (Draft stage) */
-.o_form_view[data-model="sale.order"] header button[type="object"]:has-text("Print"):not([name="action_mark_printed"]),
-.o_form_view[data-model="sale.order"] header button[type="object"]:has-text("Confirm"):not([name="action_confirm"]),
-.o_form_view[data-model="sale.order"] header button[type="object"]:has-text("Preview"),
+/* AGGRESSIVE: Hide Print, Confirm, Preview buttons by attributes */
 .o_form_view[data-model="sale.order"] header button[type="object"][data-original-title*="Print"]:not([name="action_mark_printed"]),
 .o_form_view[data-model="sale.order"] header button[type="object"][data-original-title*="Confirm"]:not([name="action_confirm"]),
 .o_form_view[data-model="sale.order"] header button[type="object"][data-original-title*="Preview"],
 .o_form_view[data-model="sale.order"] header button[type="object"][title*="Print"]:not([name="action_mark_printed"]),
 .o_form_view[data-model="sale.order"] header button[type="object"][title*="Confirm"]:not([name="action_confirm"]),
-.o_form_view[data-model="sale.order"] header button[type="object"][title*="Preview"] {
+.o_form_view[data-model="sale.order"] header button[type="object"][title*="Preview"],
+.o_form_view[data-model="sale.order"] header button[type="object"][aria-label*="Print"]:not([name="action_mark_printed"]),
+.o_form_view[data-model="sale.order"] header button[type="object"][aria-label*="Confirm"]:not([name="action_confirm"]),
+.o_form_view[data-model="sale.order"] header button[type="object"][aria-label*="Preview"] {
     display: none !important;
     visibility: hidden !important;
 }
