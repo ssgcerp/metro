@@ -11,7 +11,8 @@
                 <xpath expr="//field[@name='type']" position="after">
                     <field name="product_type_custom" 
                            widget="radio"
-                           options="{'horizontal': true}"/>
+                           options="{'horizontal': true}"
+                           help="Custom product type classification (independent from Odoo's type field)"/>
                 </xpath>
                 
                 <!-- Add brand field -->

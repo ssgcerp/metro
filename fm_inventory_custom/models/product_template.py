@@ -35,38 +35,36 @@ class ProductTemplate(models.Model):
     
     @api.onchange('product_type_custom')
     def _onchange_product_type_custom(self):
-        """Map custom types to standard Odoo types for inventory tracking"""
-        type_mapping = {
-            'consumable_custom': 'consu',
-            'storable_custom': 'product',
-        }
-        if self.product_type_custom in type_mapping:
-            self.type = type_mapping[self.product_type_custom]
+        """Map custom types to standard Odoo types for inventory tracking
+        
+        Note: We don't forcefully set the type field to avoid conflicts.
+        The product_type_custom is independent and used for our custom logic.
+        """
+        # Don't try to set type field automatically - let it remain independent
+        # The custom type is for our module's use and doesn't need to sync with Odoo's type field
+        pass
     
     @api.onchange('type')
     def _onchange_type_to_custom(self):
         """Map standard Odoo types back to custom types when possible"""
-        if self.type == 'consu':
-            self.product_type_custom = 'consumable_custom'
-        elif self.type == 'product':
-            self.product_type_custom = 'storable_custom'
+        # Only set if product_type_custom is not already set
+        if not self.product_type_custom:
+            if self.type == 'consu':
+                self.product_type_custom = 'consumable_custom'
+            elif self.type in ('product', 'storable'):
+                # Support both 'product' and 'storable' if Odoo 19 uses different values
+                self.product_type_custom = 'storable_custom'
     
     @api.model_create_multi
     def create(self, vals_list):
-        """Set default type if not provided"""
+        """Set default product_type_custom if not provided"""
         for vals in vals_list:
             # Set product_type_custom default if not provided
             if 'product_type_custom' not in vals:
                 vals['product_type_custom'] = 'storable_custom'
             
-            # Map custom type to standard Odoo type
-            if 'type' not in vals and 'product_type_custom' in vals:
-                type_mapping = {
-                    'consumable_custom': 'consu',
-                    'storable_custom': 'product',
-                }
-                if vals['product_type_custom'] in type_mapping:
-                    vals['type'] = type_mapping[vals['product_type_custom']]
+            # Don't try to set 'type' field - let Odoo handle it
+            # The product_type_custom is independent and doesn't need to sync with type
         return super().create(vals_list)
 
 
