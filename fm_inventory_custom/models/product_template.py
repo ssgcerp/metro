@@ -7,9 +7,17 @@ from odoo.exceptions import ValidationError
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
     
-    # Extend the type field to ensure Consumable is available
-    # Odoo already has 'consu' (Consumable), 'product' (Storable/Goods), 'service' (Service)
-    # We just need to make sure it's properly visible and usable
+    # Extend the type field to add Consumables option
+    # Odoo base has: 'product' (Goods), 'service' (Service)
+    # We add: 'consu' (Consumables) if not already present
+    type = fields.Selection(
+        selection_add=[
+            ('consu', 'Consumables'),
+        ],
+        ondelete={
+            'consu': 'set default',
+        }
+    )
     
     # Brand relationship (primary brand)
     brand_id = fields.Many2one(
