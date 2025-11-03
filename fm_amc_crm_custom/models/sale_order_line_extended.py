@@ -40,13 +40,12 @@ class SaleOrderLine(models.Model):
         # Store the old name if we need to preserve it
         old_name = self.name if preserve_name and self.name else None
         
-        # Check if parent class has product_id_change method
-        parent_class = self.__class__.__mro__[1]  # Get parent class
-        has_parent_method = hasattr(parent_class, 'product_id_change')
+        # Try to get parent method safely using getattr
+        parent_method = getattr(super(), 'product_id_change', None)
         
-        # Call parent method if it exists
-        if has_parent_method:
-            res = super().product_id_change()
+        # Call parent method if it exists, otherwise return empty dict
+        if parent_method:
+            res = parent_method()
         else:
             # Base method doesn't exist in Odoo 19, return empty dict
             res = {}
