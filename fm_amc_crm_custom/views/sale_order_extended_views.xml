@@ -18,21 +18,8 @@
                     <attribute name="class">o_header_with_quotation_stages</attribute>
                 </xpath>
                 
-                <!-- Add invisible fields FIRST before using them in conditions -->
+                <!-- Add invisible computed fields for button visibility FIRST -->
                 <xpath expr="//header" position="inside">
-                    <field name="is_draft_stage" invisible="1"/>
-                    <field name="is_pending_approval_stage" invisible="1"/>
-                    <field name="is_quotation_stage" invisible="1"/>
-                    <field name="is_quotation_sent_stage" invisible="1"/>
-                    <field name="is_sales_order_stage" invisible="1"/>
-                    <field name="is_declined_stage" invisible="1"/>
-                    <field name="is_cancelled_stage" invisible="1"/>
-                    <field name="is_locked" invisible="1"/>
-                    <field name="printed_without_approval" invisible="1"/>
-                    <field name="quotation_stage_id" invisible="1"/>
-                
-                <xpath expr="//header" position="inside">
-                    <!-- Add invisible computed fields for button visibility FIRST -->
                     <field name="is_draft_stage" invisible="1"/>
                     <field name="is_pending_approval_stage" invisible="1"/>
                     <field name="is_quotation_stage" invisible="1"/>
