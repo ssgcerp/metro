@@ -9,7 +9,7 @@
             <field name="arch" type="xml">
                 <!-- Add Product Type field after category name -->
                 <xpath expr="//field[@name='name']" position="after">
-                    <field name="product_type" widget="radio" options="{'horizontal': true}"/>
+                    <field name="product_type" widget="radio" options="{'horizontal': true}" class="o_small_radio"/>
                 </xpath>
             </field>
         </record>

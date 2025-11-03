@@ -65,7 +65,7 @@
     ],
     'assets': {
         'web.assets_backend': [
-            # Add CSS/JS if needed later
+            'fm_inventory_custom/static/src/css/product_category_custom.css',
         ],
     },
     'installable': True,
