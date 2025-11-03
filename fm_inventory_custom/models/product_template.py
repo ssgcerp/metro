@@ -8,8 +8,12 @@ class ProductTemplate(models.Model):
     _inherit = 'product.template'
     
     # Extend the type field to add Consumables option
-    # Odoo 19 base has: 'product' (Goods), 'service' (Service), 'combo' (Combo)
-    # We add: 'consu' (Consumables) as a new option
+    # Odoo 19 base selection typically includes:
+    #   - 'product' (Goods/Storable Product)
+    #   - 'service' (Service)
+    #   - 'combo' (Combo - if available)
+    # We add: 'consu' (Consumables) to the existing selection
+    # selection_add preserves all existing options and adds the new one
     type = fields.Selection(
         selection_add=[
             ('consu', 'Consumables'),
