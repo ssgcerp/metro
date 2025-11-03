@@ -7,16 +7,9 @@ from odoo.exceptions import ValidationError
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
     
-    # New product types
-    product_type_custom = fields.Selection(
-        selection=[
-            ('consumable_custom', 'Consumable'),
-            ('storable_custom', 'Storable Product'),
-        ],
-        string='Product Type (Custom)',
-        help='Custom product type classification',
-        default='storable_custom'
-    )
+    # Extend the type field to ensure Consumable is available
+    # Odoo already has 'consu' (Consumable), 'product' (Storable/Goods), 'service' (Service)
+    # We just need to make sure it's properly visible and usable
     
     # Brand relationship (primary brand)
     brand_id = fields.Many2one(
@@ -33,39 +26,6 @@ class ProductTemplate(models.Model):
         help='Multiple brand variants with individual pricing and stock tracking'
     )
     
-    @api.onchange('product_type_custom')
-    def _onchange_product_type_custom(self):
-        """Map custom types to standard Odoo types for inventory tracking
-        
-        Note: We don't forcefully set the type field to avoid conflicts.
-        The product_type_custom is independent and used for our custom logic.
-        """
-        # Don't try to set type field automatically - let it remain independent
-        # The custom type is for our module's use and doesn't need to sync with Odoo's type field
-        pass
-    
-    @api.onchange('type')
-    def _onchange_type_to_custom(self):
-        """Map standard Odoo types back to custom types when possible"""
-        # Only set if product_type_custom is not already set
-        if not self.product_type_custom:
-            if self.type == 'consu':
-                self.product_type_custom = 'consumable_custom'
-            elif self.type in ('product', 'storable'):
-                # Support both 'product' and 'storable' if Odoo 19 uses different values
-                self.product_type_custom = 'storable_custom'
-    
-    @api.model_create_multi
-    def create(self, vals_list):
-        """Set default product_type_custom if not provided"""
-        for vals in vals_list:
-            # Set product_type_custom default if not provided
-            if 'product_type_custom' not in vals:
-                vals['product_type_custom'] = 'storable_custom'
-            
-            # Don't try to set 'type' field - let Odoo handle it
-            # The product_type_custom is independent and doesn't need to sync with type
-        return super().create(vals_list)
 
 
 class ProductBrandVariant(models.Model):

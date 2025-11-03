@@ -7,14 +7,6 @@
             <field name="model">product.template</field>
             <field name="inherit_id" ref="product.product_template_form_view"/>
             <field name="arch" type="xml">
-                <!-- Add product type custom field -->
-                <xpath expr="//field[@name='type']" position="after">
-                    <field name="product_type_custom" 
-                           widget="radio"
-                           options="{'horizontal': true}"
-                           help="Custom product type classification (independent from Odoo's type field)"/>
-                </xpath>
-                
                 <!-- Add brand field -->
                 <xpath expr="//field[@name='categ_id']" position="after">
                     <field name="brand_id" placeholder="Select Primary Brand"/>
