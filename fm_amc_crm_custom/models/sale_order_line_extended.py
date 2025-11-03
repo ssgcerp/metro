@@ -37,10 +37,20 @@ class SaleOrderLine(models.Model):
         # If we're loading from estimation, preserve the existing name
         if self.env.context.get('from_estimation_load') or self._preserve_name_on_change:
             old_name = self.name if self.name else None
-            res = super(SaleOrderLine, self).product_id_change()
+            # Try to call parent method if it exists
+            try:
+                res = super().product_id_change()
+            except AttributeError:
+                # Base method doesn't exist or was renamed in Odoo 19
+                res = {}
             # Restore the estimation description
             if old_name:
                 self.name = old_name
             return res
-        return super(SaleOrderLine, self).product_id_change()
+        # Normal behavior - call parent if it exists
+        try:
+            return super().product_id_change()
+        except AttributeError:
+            # Base method doesn't exist in Odoo 19, return empty dict
+            return {}
 
