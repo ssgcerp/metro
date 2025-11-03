@@ -65,7 +65,7 @@ class ProductTemplate(models.Model):
             # Show categories that match the product type OR categories without product_type set (for flexibility)
             return ['|', ('product_type', '=', self.type), ('product_type', '=', False)]
         else:
-            # If no type selected, show all categories
+            # If no type selected, show all categories (no restriction)
             return []
     
 
