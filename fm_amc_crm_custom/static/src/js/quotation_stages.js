@@ -12,7 +12,6 @@ patch(FormController.prototype, {
         super.setup(...arguments);
         if (this.props.resModel === 'sale.order') {
             this._buttonVisibilityInterval = null;
-            this._buttonVisibilityCleanup = null;
             
             onMounted(() => {
                 // Run immediately
@@ -21,29 +20,12 @@ patch(FormController.prototype, {
                 this._buttonVisibilityInterval = setInterval(() => {
                     this._hideDefaultButtons();
                 }, 200);
-                
-                // Also run on model updates if model is available
-                if (this.model && this.model.root) {
-                    const updateButtonVisibility = () => {
-                        setTimeout(() => this._hideDefaultButtons(), 100);
-                    };
-                    this.model.root.on('change', updateButtonVisibility);
-                    this._buttonVisibilityCleanup = () => {
-                        if (this.model && this.model.root) {
-                            this.model.root.off('change', updateButtonVisibility);
-                        }
-                    };
-                }
             });
             
             onWillUnmount(() => {
                 if (this._buttonVisibilityInterval) {
                     clearInterval(this._buttonVisibilityInterval);
                     this._buttonVisibilityInterval = null;
-                }
-                if (this._buttonVisibilityCleanup) {
-                    this._buttonVisibilityCleanup();
-                    this._buttonVisibilityCleanup = null;
                 }
             });
         }
