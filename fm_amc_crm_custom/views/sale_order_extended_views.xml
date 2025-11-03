@@ -12,6 +12,12 @@
                     <attribute name="class">o_sheet_inherit_quotations</attribute>
                 </xpath>
                 
+                <!-- Hide default Odoo buttons when quotation_stage_id is set -->
+                <!-- Try to hide common default buttons - use conditional xpath that only applies if buttons exist -->
+                <xpath expr="//header" position="attributes">
+                    <attribute name="class">o_header_with_quotation_stages</attribute>
+                </xpath>
+                
                 <xpath expr="//header" position="inside">
                     <!-- Add invisible computed fields for button visibility FIRST -->
                     <field name="is_draft_stage" invisible="1"/>
@@ -23,6 +29,7 @@
                     <field name="is_cancelled_stage" invisible="1"/>
                     <field name="is_locked" invisible="1"/>
                     <field name="printed_without_approval" invisible="1"/>
+                    <field name="quotation_stage_id" invisible="1"/>
                     
                     <!-- Draft Stage Buttons -->
                     <button name="action_send_for_approval" string="Send for Approval" 

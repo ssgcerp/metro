@@ -32,6 +32,11 @@
         'views/sale_order_extended_views.xml',
         'views/crm_menu_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'fm_amc_crm_custom/static/src/css/quotation_stages.css',
+        ],
+    },
     'installable': True,
     'application': False,
     'auto_install': False,
