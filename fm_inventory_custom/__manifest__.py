@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'FM Inventory Custom',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'category': 'Inventory/Inventory',
     'summary': 'FM Inventory Customizations with Brand Management',
     'description': '''
