@@ -22,6 +22,25 @@ class ProductTemplate(models.Model):
         help='Multiple brand variants with individual pricing and stock tracking'
     )
     
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Inherit product type from category if not specified"""
+        for vals in vals_list:
+            # If type is not specified and category has a product_type, use it
+            if 'type' not in vals or not vals.get('type'):
+                categ_id = vals.get('categ_id')
+                if categ_id:
+                    category = self.env['product.category'].browse(categ_id)
+                    if category.product_type:
+                        vals['type'] = category.product_type
+        return super().create(vals_list)
+    
+    @api.onchange('categ_id')
+    def _onchange_categ_id_product_type(self):
+        """Auto-set product type from category when category changes"""
+        if self.categ_id and self.categ_id.product_type and not self.type:
+            self.type = self.categ_id.product_type
+    
 
 
 class ProductBrandVariant(models.Model):

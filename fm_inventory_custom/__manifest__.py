@@ -13,6 +13,7 @@
         **Product Types:**
         - Uses Odoo's default Product Type field (no customizations)
         - Category field displays as radio buttons for easier selection
+        - Product Type field added to Product Categories for default type assignment
         
         **Brand Management:**
         - Multiple brand variants per product
@@ -49,6 +50,7 @@
         'security/security.xml',
         'data/product_type_data.xml',
         'data/product_brand_demo.xml',
+        'views/product_category_views.xml',
         'views/product_brand_views.xml',
         'views/product_template_views.xml',
         'views/product_product_views.xml',
