@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- This file defines the custom product types -->
+        <!-- Types are handled in Python code, not XML -->
+    </data>
+</odoo>
+

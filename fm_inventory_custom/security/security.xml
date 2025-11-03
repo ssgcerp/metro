@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Product Brand: Inventory Manager -->
+        <record id="group_product_brand_manager" model="res.groups">
+            <field name="name">Product Brand Manager</field>
+            <field name="category_id" ref="base.module_category_inventory"/>
+            <field name="implied_ids" eval="[(4, ref('stock.group_stock_manager'))]"/>
+        </record>
+        
+        <!-- Product Brand: Inventory User -->
+        <record id="group_product_brand_user" model="res.groups">
+            <field name="name">Product Brand User</field>
+            <field name="category_id" ref="base.module_category_inventory"/>
+            <field name="implied_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
+        </record>
+    </data>
+</odoo>
+
