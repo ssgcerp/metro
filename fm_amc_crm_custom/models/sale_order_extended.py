@@ -231,34 +231,45 @@ class SaleOrder(models.Model):
         """
         # Generate quotation number when sending for approval
         # This ensures quotation number is only generated after approval request, not at creation
-        # Check if name is still default Odoo name or doesn't match our custom format
-        needs_number = False
-        if not self.name or self.name == 'New':
-            needs_number = True
-        else:
-            # Check if it looks like a default Odoo sequence number (not our custom format)
-            # Default Odoo quotes usually start with 'S0' or 'SO' or are numeric only
-            # Our custom format starts with prefix (e.g., QUO, AMC)
-            config = self.env['sale.quotation.config'].get_config()
-            prefix = (config.prefix or '').upper()
-            amc_prefix = (config.amc_prefix or '').upper()
-            name_upper = (self.name or '').upper()
-            
-            # If it doesn't start with our prefix or AMC prefix, regenerate
-            if prefix and not name_upper.startswith(prefix) and not name_upper.startswith(amc_prefix):
-                needs_number = True
         
-        if needs_number:
-            config = self.env['sale.quotation.config'].get_config()
-            
-            # Check if quotation has estimation with AMC contract
-            # AMC format should only be used if:
-            # 1. Quotation has an estimation (estimation_id)
-            # 2. AND that estimation has an AMC contract (amc_contract_id)
-            use_amc_format = False
-            if self.estimation_id and self.estimation_id.amc_contract_id:
-                use_amc_format = True
-            
+        config = self.env['sale.quotation.config'].get_config()
+        
+        # Check if quotation has estimation with AMC contract
+        # AMC format should only be used if:
+        # 1. Quotation has an estimation (estimation_id)
+        # 2. AND that estimation has an AMC contract (amc_contract_id)
+        use_amc_format = False
+        if self.estimation_id and self.estimation_id.amc_contract_id:
+            use_amc_format = True
+        
+        # Check if custom format is configured
+        # Only attempt custom numbering if format_text (standard) or amc_quotation_format_text (AMC) is configured
+        format_configured = False
+        if use_amc_format:
+            format_configured = bool(config.amc_quotation_format_text)
+        else:
+            format_configured = bool(config.format_text)
+        
+        # Only generate custom number if:
+        # 1. Custom format is configured, AND
+        # 2. Name is still default ("New" or empty), OR
+        # 3. Name doesn't match the expected custom format
+        needs_number = False
+        if format_configured:
+            if not self.name or self.name == 'New':
+                needs_number = True
+            else:
+                # Check if it matches our custom format
+                # Custom format should start with prefix or AMC prefix
+                prefix = (config.prefix or '').upper()
+                amc_prefix = (config.amc_prefix or '').upper()
+                name_upper = (self.name or '').upper()
+                
+                # If it doesn't start with our prefix or AMC prefix, regenerate
+                if prefix and not name_upper.startswith(prefix) and not name_upper.startswith(amc_prefix):
+                    needs_number = True
+        
+        if needs_number and format_configured:
             # Get branch code from company if available
             branch_code = None
             if self.company_id and hasattr(self.company_id, 'code'):
@@ -275,8 +286,7 @@ class SaleOrder(models.Model):
                 year = fields.Date.today().year
             
             # Generate quotation number using configuration
-            # use_amc_format is True only when estimation has AMC contract
-            # For quotations without estimation, use_amc_format will be False and standard format will be used
+            # This will return None if no format_text is configured
             quotation_number = config.generate_quotation_number(
                 branch_code=branch_code,
                 year=year,
@@ -284,9 +294,16 @@ class SaleOrder(models.Model):
             )
             
             # Update the name if we generated a custom number
+            # If quotation_number is None, it means no custom format is configured,
+            # so we let Odoo handle the default numbering (don't override the name)
             if quotation_number:
                 self.write({'name': quotation_number})
-                _logger.info(f"Generated quotation number: {quotation_number} (AMC format: {use_amc_format}, Estimation: {bool(self.estimation_id)})")
+                _logger.info(f"Generated custom quotation number: {quotation_number} (AMC format: {use_amc_format}, Estimation: {bool(self.estimation_id)})")
+            else:
+                _logger.info(f"No custom format configured - using Odoo default numbering (AMC format: {use_amc_format}, Estimation: {bool(self.estimation_id)})")
+        elif not format_configured:
+            # No custom format configured, let Odoo handle default numbering
+            _logger.info(f"No custom format configured in Quotation Configuration - using Odoo default numbering")
         
         # Move to Pending Approval stage
         pending_stage = self.env['sale.quotation.stage'].search([('code', '=', 'pending_approval')], limit=1)

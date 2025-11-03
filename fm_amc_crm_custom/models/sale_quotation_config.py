@@ -65,14 +65,32 @@ class SaleQuotationConfig(models.Model):
             year: Year to include in the number
             use_amc_format: If True, use AMC quotation format (when AMC contract is linked)
         
-        If format_text is set, use it with placeholders.
-        Otherwise, use the standard format: [PREFIX]/[MODULE_CODE]/[BRANCH_CODE]/[SEQUENTIAL]/[YEAR]
-        Example: QUO/QUO/FUJ/1213/2025
+        Returns:
+            Custom quotation number string if format_text is configured, None otherwise
+            (None means fall back to Odoo's default sequence numbering)
+        
+        Logic:
+            1. First check if 'format_text' (standard) or 'amc_quotation_format_text' (AMC) is provided
+            2. If format text is provided, use it to generate custom quotation number
+            3. If no format text is provided, return None to use Odoo's default numbering
         """
         config = self
         
+        # Check if custom format is configured
+        # For AMC quotations, check amc_quotation_format_text
+        # For standard quotations, check format_text
+        format_text_to_use = None
+        if use_amc_format:
+            format_text_to_use = config.amc_quotation_format_text or None
+        else:
+            format_text_to_use = config.format_text or None
+        
+        # If no custom format is specified, return None to use Odoo's default numbering
+        if not format_text_to_use:
+            return None
+        
         # Get sequence number based on whether this is an AMC quotation or not
-        if use_amc_format and config.amc_quotation_format_text:
+        if use_amc_format:
             # Use AMC quotation sequence
             sequence_obj = self.env['ir.sequence'].search([
                 ('code', '=', 'sale.quotation.sequence.amc')
@@ -110,44 +128,12 @@ class SaleQuotationConfig(models.Model):
             except (ValueError, TypeError):
                 sequence = 1
         
-        # If use_amc_format is True and AMC quotation format text is provided, use it
-        if use_amc_format and config.amc_quotation_format_text:
+        # Generate quotation number using the custom format text
+        if use_amc_format:
             # Pass AMC prefix for AMC quotations
-            return config._generate_from_format_text(config.amc_quotation_format_text, branch_code, year, sequence, config, amc_prefix=config.amc_prefix)
-        
-        # If custom format text is provided, use it
-        if config.format_text:
-            return config._generate_from_format_text(config.format_text, branch_code, year, sequence, config)
-        
-        # Otherwise use the standard format
-        # Build quotation number parts
-        parts = []
-        
-        # Add prefix
-        if config.prefix:
-            parts.append(config.prefix)
-        
-        # Add module code
-        if config.module_code:
-            parts.append(config.module_code)
-        
-        # Add branch code if enabled and provided
-        if config.use_branch_code and branch_code:
-            parts.append(branch_code)
-        
-        # Add padded sequence number
-        padded_sequence = str(sequence).zfill(config.padding_digits)
-        parts.append(padded_sequence)
-        
-        # Add year if enabled and provided
-        if config.use_year and year:
-            parts.append(str(year))
-        
-        # Join with separator
-        separator = config.separator or '/'
-        quotation_number = separator.join(parts)
-        
-        return quotation_number
+            return config._generate_from_format_text(format_text_to_use, branch_code, year, sequence, config, amc_prefix=config.amc_prefix)
+        else:
+            return config._generate_from_format_text(format_text_to_use, branch_code, year, sequence, config)
     
     def _generate_from_format_text(self, format_text, branch_code, year, sequence, config, amc_prefix=None):
         """Generate quotation number from custom format text
