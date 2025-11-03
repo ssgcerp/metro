@@ -35,11 +35,38 @@ class ProductTemplate(models.Model):
                         vals['type'] = category.product_type
         return super().create(vals_list)
     
+    @api.onchange('type')
+    def _onchange_type_filter_category(self):
+        """Filter categories based on selected product type and clear category if it doesn't match"""
+        if self.type:
+            # If current category doesn't match the type, clear it
+            if self.categ_id and self.categ_id.product_type and self.categ_id.product_type != self.type:
+                self.categ_id = False
+        return {
+            'domain': {
+                'categ_id': self._get_category_domain()
+            }
+        }
+    
     @api.onchange('categ_id')
     def _onchange_categ_id_product_type(self):
         """Auto-set product type from category when category changes"""
         if self.categ_id and self.categ_id.product_type and not self.type:
             self.type = self.categ_id.product_type
+            return {
+                'domain': {
+                    'categ_id': self._get_category_domain()
+                }
+            }
+    
+    def _get_category_domain(self):
+        """Get domain for category field based on product type"""
+        if self.type:
+            # Show categories that match the product type OR categories without product_type set (for flexibility)
+            return ['|', ('product_type', '=', self.type), ('product_type', '=', False)]
+        else:
+            # If no type selected, show all categories
+            return []
     
 
 

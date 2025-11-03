@@ -7,13 +7,27 @@
             <field name="model">product.template</field>
             <field name="inherit_id" ref="product.product_template_form_view"/>
             <field name="arch" type="xml">
-                <!-- Change category field to radio buttons -->
-                <xpath expr="//field[@name='categ_id']" position="replace">
-                    <field name="categ_id" widget="radio" options="{'horizontal': true}"/>
+                <!-- Move category field to appear right after product type field -->
+                <xpath expr="//field[@name='type']" position="after">
+                    <field name="categ_id" 
+                           widget="radio" 
+                           options="{'horizontal': true}"
+                           domain="[('product_type', '=', type), ('product_type', '=', False)]"
+                           context="{'default_product_type': type}"/>
                 </xpath>
                 
-                <!-- Add brand field -->
-                <xpath expr="//field[@name='categ_id']" position="after">
+                <!-- Hide the original category field if it exists elsewhere -->
+                <xpath expr="//field[@name='categ_id'][not(preceding-sibling::field[@name='type'])]" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                
+                <!-- Add brand field after the moved category field -->
+                <xpath expr="//field[@name='categ_id'][preceding-sibling::field[@name='type']]" position="after">
+                    <field name="brand_id" placeholder="Select Primary Brand"/>
+                </xpath>
+                
+                <!-- If category was already after type, ensure brand appears -->
+                <xpath expr="//field[@name='categ_id'][not(following-sibling::field[@name='brand_id'])]" position="after">
                     <field name="brand_id" placeholder="Select Primary Brand"/>
                 </xpath>
                 
