@@ -62,11 +62,11 @@ class ProductTemplate(models.Model):
     def _get_category_domain(self):
         """Get domain for category field based on product type"""
         if self.type:
-            # Show categories that match the product type OR categories without product_type set (for flexibility)
-            return ['|', ('product_type', '=', self.type), ('product_type', '=', False)]
+            # Show ONLY categories that match the selected product type
+            return [('product_type', '=', self.type)]
         else:
-            # If no type selected, show all categories (no restriction)
-            return []
+            # If no type selected, show no categories (must select type first)
+            return [('id', '=', False)]
     
 
 
