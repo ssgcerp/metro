@@ -9,7 +9,9 @@
             <field name="arch" type="xml">
                 <!-- Add product type custom field -->
                 <xpath expr="//field[@name='type']" position="after">
-                    <field name="product_type_custom" invisible="type != 'consu' and type != 'product'"/>
+                    <field name="product_type_custom" 
+                           widget="radio"
+                           options="{'horizontal': true}"/>
                 </xpath>
                 
                 <!-- Add brand field -->

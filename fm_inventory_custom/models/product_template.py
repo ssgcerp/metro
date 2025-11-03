@@ -9,14 +9,13 @@ class ProductTemplate(models.Model):
     
     # New product types
     product_type_custom = fields.Selection(
-        selection_add=[
+        selection=[
             ('consumable_custom', 'Consumable'),
             ('storable_custom', 'Storable Product'),
         ],
-        ondelete={
-            'consumable_custom': 'set default',
-            'storable_custom': 'set default',
-        }
+        string='Product Type (Custom)',
+        help='Custom product type classification',
+        default='storable_custom'
     )
     
     # Brand relationship (primary brand)
