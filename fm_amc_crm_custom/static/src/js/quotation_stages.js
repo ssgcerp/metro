@@ -1,8 +1,5 @@
 /** @odoo-module **/
 
-import { Component, onMounted, onWillUnmount } from "@odoo/owl";
-import { registry } from "@web/core/registry";
-
 /**
  * Hide default Odoo buttons when custom quotation stages are active
  */
