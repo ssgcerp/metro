@@ -23,11 +23,11 @@
     visibility: hidden !important;
 }
 
-/* Also hide when quotation_stage_id field exists (even without class) */
-.o_form_view[data-model="sale.order"]:has([name="quotation_stage_id"]) header button[type="object"]:has-text("Print"):not([name="action_mark_printed"]),
-.o_form_view[data-model="sale.order"]:has([name="quotation_stage_id"]) header button[type="object"]:has-text("Confirm"):not([name="action_confirm"]),
-.o_form_view[data-model="sale.order"]:has([name="quotation_stage_id"]) header button[type="object"]:has-text("Preview") {
+/* Hide ALL buttons except Send for Approval and Cancel when in draft (by class added by JS) */
+.o_form_view[data-model="sale.order"].o_draft_stage header button[type="object"]:not([name="action_send_for_approval"]):not([name="action_cancel_quotation"]) {
     display: none !important;
     visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
