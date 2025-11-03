@@ -7,6 +7,20 @@ from odoo.exceptions import ValidationError
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
     
+    # Ensure Goods option is available in Product Type field
+    # Odoo 19 base has: 'product' (Goods), 'service' (Service), 'combo' (Combo)
+    # If 'product' (Goods) is missing for any reason, we add it explicitly
+    # Note: 'product' type is typically already present in Odoo base
+    type = fields.Selection(
+        selection_add=[
+            ('product', 'Goods'),
+        ],
+        ondelete={
+            'product': 'set default',
+        },
+        string='Product Type'
+    )
+    
     # Brand relationship (primary brand)
     brand_id = fields.Many2one(
         'product.brand',
