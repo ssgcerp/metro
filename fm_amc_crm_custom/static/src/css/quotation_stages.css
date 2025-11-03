@@ -1,38 +1,33 @@
-/* Hide default Odoo buttons when custom quotation stages are active */
-/* Hide buttons that are not our custom buttons when quotation_stage_id field exists in the form */
-.o_form_view:has([name="quotation_stage_id"]) header button:not([name="action_send_for_approval"]):not([name="action_cancel_quotation"]):not([name="action_approve"]):not([name="action_reject"]):not([name="action_mark_quotation_sent"]):not([name="action_mark_printed"]):not([name="action_reset_to_draft"]):not([name="action_confirm"]) {
-    /* This hides all buttons except our custom ones */
-    /* But we need to be more specific - only hide buttons in the main header button area */
+/* AGGRESSIVE: Hide Print, Confirm, Preview buttons when quotation_stage_id exists (Draft stage) */
+.o_form_view[data-model="sale.order"] header button[type="object"]:has-text("Print"):not([name="action_mark_printed"]),
+.o_form_view[data-model="sale.order"] header button[type="object"]:has-text("Confirm"):not([name="action_confirm"]),
+.o_form_view[data-model="sale.order"] header button[type="object"]:has-text("Preview"),
+.o_form_view[data-model="sale.order"] header button[type="object"][data-original-title*="Print"]:not([name="action_mark_printed"]),
+.o_form_view[data-model="sale.order"] header button[type="object"][data-original-title*="Confirm"]:not([name="action_confirm"]),
+.o_form_view[data-model="sale.order"] header button[type="object"][data-original-title*="Preview"],
+.o_form_view[data-model="sale.order"] header button[type="object"][title*="Print"]:not([name="action_mark_printed"]),
+.o_form_view[data-model="sale.order"] header button[type="object"][title*="Confirm"]:not([name="action_confirm"]),
+.o_form_view[data-model="sale.order"] header button[type="object"][title*="Preview"] {
+    display: none !important;
+    visibility: hidden !important;
 }
 
-/* Hide ALL default Odoo buttons when quotation stages are active */
+/* Hide ALL default Odoo buttons when quotation stages are active, except our custom ones */
 .o_form_view[data-model="sale.order"] header button[type="object"]:not([name="action_send_for_approval"]):not([name="action_cancel_quotation"]):not([name="action_approve"]):not([name="action_reject"]):not([name="action_mark_quotation_sent"]):not([name="action_mark_printed"]):not([name="action_reset_to_draft"]):not([name="action_confirm"]) {
     display: none !important;
 }
 
-/* Additional rules to hide default buttons by text content */
-.o_form_view[data-model="sale.order"] header button[type="object"][data-original-title*="Send"]:not([name="action_send_for_approval"]):not([name="action_mark_quotation_sent"]),
-.o_form_view[data-model="sale.order"] header button[type="object"][data-original-title*="Print"]:not([name="action_mark_printed"]),
-.o_form_view[data-model="sale.order"] header button[type="object"][data-original-title*="Preview"] {
+/* When in draft stage, hide ALL buttons except Send for Approval and Cancel */
+.o_form_view[data-model="sale.order"].o_draft_stage header button[type="object"]:not([name="action_send_for_approval"]):not([name="action_cancel_quotation"]) {
     display: none !important;
+    visibility: hidden !important;
 }
 
-/* When in draft stage, hide all buttons except Send for Approval and Cancel */
-.o_form_view[data-model="sale.order"].o_draft_stage header button[type="object"][name="action_approve"],
-.o_form_view[data-model="sale.order"].o_draft_stage header button[type="object"][name="action_reject"],
-.o_form_view[data-model="sale.order"].o_draft_stage header button[type="object"][name="action_mark_quotation_sent"],
-.o_form_view[data-model="sale.order"].o_draft_stage header button[type="object"][name="action_mark_printed"],
-.o_form_view[data-model="sale.order"].o_draft_stage header button[type="object"][name="action_reset_to_draft"],
-.o_form_view[data-model="sale.order"].o_draft_stage header button[type="object"][name="action_confirm"] {
+/* Also hide when quotation_stage_id field exists (even without class) */
+.o_form_view[data-model="sale.order"]:has([name="quotation_stage_id"]) header button[type="object"]:has-text("Print"):not([name="action_mark_printed"]),
+.o_form_view[data-model="sale.order"]:has([name="quotation_stage_id"]) header button[type="object"]:has-text("Confirm"):not([name="action_confirm"]),
+.o_form_view[data-model="sale.order"]:has([name="quotation_stage_id"]) header button[type="object"]:has-text("Preview") {
     display: none !important;
-}
-
-/* Fallback: Hide by common button names */
-.o_header_with_quotation_stages button[name="action_quotation_send"],
-.o_header_with_quotation_stages button[accesskey*="Send"]:not([name="action_send_for_approval"]):not([name="action_mark_quotation_sent"]),
-.o_header_with_quotation_stages button[accesskey*="Print"]:not([name="action_mark_printed"]),
-.o_header_with_quotation_stages button[accesskey*="Preview"],
-.o_header_with_quotation_stages button[accesskey*="Confirm"]:not([name="action_confirm"]) {
-    display: none !important;
+    visibility: hidden !important;
 }
 

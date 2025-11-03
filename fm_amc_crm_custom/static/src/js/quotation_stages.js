@@ -37,6 +37,10 @@ patch(FormController.prototype, {
         const formElement = document.querySelector('.o_form_view[data-model="sale.order"]');
         if (!formElement) return;
         
+        // Check if quotation_stage_id exists to know if we should hide default buttons
+        const hasQuotationStage = formElement.querySelector('[name="quotation_stage_id"]');
+        if (!hasQuotationStage) return;
+        
         // Try to get stage from model first (more reliable)
         let currentStage = null;
         if (this.model && this.model.root) {
@@ -78,9 +82,19 @@ patch(FormController.prototype, {
             }
         }
         
-        // Final fallback: assume draft
+        // Final fallback: assume draft if statusbar shows draft
         if (!currentStage) {
-            currentStage = 'draft';
+            const statusbar = formElement.querySelector('.o_statusbar_buttons');
+            if (statusbar) {
+                const statusbarButtons = statusbar.querySelectorAll('button');
+                statusbarButtons.forEach(btn => {
+                    const text = btn.textContent.trim().toLowerCase();
+                    if (text.includes('draft')) {
+                        currentStage = 'draft';
+                    }
+                });
+            }
+            if (!currentStage) currentStage = 'draft';
         }
         
         const header = formElement.querySelector('header');
@@ -91,19 +105,37 @@ patch(FormController.prototype, {
         
         buttons.forEach(button => {
             const buttonName = button.getAttribute('name');
-            const buttonText = button.textContent.trim();
+            const buttonText = button.textContent.trim().toLowerCase();
+            const buttonTitle = button.getAttribute('title') || button.getAttribute('data-original-title') || '';
             
-            // Always hide buttons without name attribute or default Odoo buttons
-            if (!buttonName) {
-                button.style.display = 'none';
-                return;
+            // AGGRESSIVE: Hide Print, Confirm, Preview buttons in Draft stage
+            if (currentStage === 'draft') {
+                // Hide by text content
+                if (buttonText === 'print' || buttonText === 'confirm' || buttonText === 'preview') {
+                    if (buttonName !== 'action_mark_printed' && buttonName !== 'action_confirm') {
+                        button.style.display = 'none';
+                        button.style.visibility = 'hidden';
+                        button.setAttribute('hidden', 'true');
+                        return;
+                    }
+                }
+                // Hide by title/tooltip
+                if (buttonTitle.toLowerCase().includes('print') || 
+                    buttonTitle.toLowerCase().includes('confirm') || 
+                    buttonTitle.toLowerCase().includes('preview')) {
+                    if (buttonName !== 'action_mark_printed' && buttonName !== 'action_confirm') {
+                        button.style.display = 'none';
+                        button.style.visibility = 'hidden';
+                        button.setAttribute('hidden', 'true');
+                        return;
+                    }
+                }
             }
             
-            // Hide default Odoo buttons by text (but allow our custom ones)
-            if ((buttonText === 'Send' && buttonName !== 'action_send_for_approval' && buttonName !== 'action_mark_quotation_sent') ||
-                (buttonText === 'Print' && buttonName !== 'action_mark_printed') ||
-                buttonText === 'Preview') {
+            // Always hide buttons without name attribute
+            if (!buttonName) {
                 button.style.display = 'none';
+                button.style.visibility = 'hidden';
                 return;
             }
             
@@ -143,6 +175,7 @@ patch(FormController.prototype, {
             } else {
                 button.style.display = 'none';
                 button.style.visibility = 'hidden';
+                button.setAttribute('hidden', 'true');
             }
         });
         
