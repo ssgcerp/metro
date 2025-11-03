@@ -37,36 +37,48 @@ class ProductTemplate(models.Model):
     
     @api.onchange('type')
     def _onchange_type_filter_category(self):
-        """Filter categories based on selected product type and clear category if it doesn't match"""
+        """Dynamically filter categories based on selected product type
+        
+        When Product Type changes:
+        - Clear category if it doesn't match the new type
+        - Update domain to show only matching categories
+        """
+        domain = []
         if self.type:
-            # If current category doesn't match the type, clear it
+            # Filter: Show only categories matching the selected product type
+            domain = [('product_type', '=', self.type)]
+            # If current category doesn't match the new type, clear it
             if self.categ_id and self.categ_id.product_type and self.categ_id.product_type != self.type:
                 self.categ_id = False
+        else:
+            # If no type selected, hide all categories
+            domain = [('id', '=', False)]
+        
         return {
             'domain': {
-                'categ_id': self._get_category_domain()
+                'categ_id': domain
             }
         }
     
     @api.onchange('categ_id')
     def _onchange_categ_id_product_type(self):
-        """Auto-set product type from category when category changes"""
-        if self.categ_id and self.categ_id.product_type and not self.type:
-            self.type = self.categ_id.product_type
+        """Auto-set product type from category when category changes
+        
+        When Category changes:
+        - If category has a product_type and product type is not set, use category's type
+        - Update domain to match
+        """
+        if self.categ_id and self.categ_id.product_type:
+            if not self.type:
+                # Auto-set product type from category
+                self.type = self.categ_id.product_type
+            # Return updated domain
             return {
                 'domain': {
-                    'categ_id': self._get_category_domain()
+                    'categ_id': [('product_type', '=', self.type)]
                 }
             }
-    
-    def _get_category_domain(self):
-        """Get domain for category field based on product type"""
-        if self.type:
-            # Show ONLY categories that match the selected product type
-            return [('product_type', '=', self.type)]
-        else:
-            # If no type selected, show no categories (must select type first)
-            return [('id', '=', False)]
+        return {}
     
 
 

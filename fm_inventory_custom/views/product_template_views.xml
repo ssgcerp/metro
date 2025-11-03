@@ -7,7 +7,7 @@
             <field name="model">product.template</field>
             <field name="inherit_id" ref="product.product_template_form_view"/>
             <field name="arch" type="xml">
-                <!-- Move category field to appear right after product type field with proper domain filtering -->
+                <!-- Move category field to appear right after product type field with dynamic domain filtering -->
                 <xpath expr="//field[@name='type']" position="after">
                     <field name="categ_id" 
                            widget="radio" 
