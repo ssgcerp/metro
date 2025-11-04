@@ -84,13 +84,16 @@ class FMAMCEstimation(models.Model):
     line_ids = fields.One2many('fm.amc.estimation.line', 'estimation_id', 
                                string='Estimation Lines')
     
-    # Separate line collections for tabs (same inverse but different domain in views)
+    # Separate line collections for tabs (same inverse but different domain)
     project_line_ids = fields.One2many('fm.amc.estimation.line', 'estimation_id', 
-                                      string='Project Lines')
+                                      string='Project Lines',
+                                      domain=[('line_type', '=', 'project')])
     consumable_line_ids = fields.One2many('fm.amc.estimation.line', 'estimation_id', 
-                                          string='Consumable Lines')
+                                          string='Consumable Lines',
+                                          domain=[('line_type', '=', 'consumable')])
     expense_line_ids = fields.One2many('fm.amc.estimation.line', 'estimation_id', 
-                                       string='Expense Lines')
+                                       string='Expense Lines',
+                                       domain=[('line_type', '=', 'expense')])
     
     # Related Quotation
     sale_order_id = fields.Many2one('sale.order', string='Created Quotation', 
@@ -386,7 +389,7 @@ class FMAMCEstimation(models.Model):
                 'product_id': line.product_id.id if line.product_id else False,
                 'name': line.name,
                 'product_uom_qty': line.product_uom_qty,
-                'product_uom': line.product_uom.id if line.product_uom else False,
+                'product_uom_id': line.product_uom.id if line.product_uom else False,
                 'price_unit': line.price_unit,
                 'tax_id': [(6, 0, line.tax_id.ids)],
             })

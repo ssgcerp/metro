@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Note: Using existing stock groups for brand management -->
+        <!-- stock.group_stock_manager and stock.group_stock_user are already defined -->
+        <!-- Access rights are configured in ir.model.access.csv -->
+    </data>
+</odoo>
+

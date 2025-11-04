@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Product Brand Products Action - Define first so it can be referenced -->
+        <record id="action_product_brand_products" model="ir.actions.act_window">
+            <field name="name">Products</field>
+            <field name="res_model">product.template</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('brand_id', '=', active_id)]</field>
+        </record>
+        
+        <!-- Product Brand List View -->
+        <record id="view_product_brand_tree" model="ir.ui.view">
+            <field name="name">product.brand.list</field>
+            <field name="model">product.brand</field>
+            <field name="arch" type="xml">
+                <list string="Brands">
+                    <field name="name"/>
+                    <field name="code"/>
+                    <field name="logo" widget="image"/>
+                    <field name="product_count"/>
+                    <field name="product_variant_count"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+        
+        <!-- Product Brand Form View -->
+        <record id="view_product_brand_form" model="ir.ui.view">
+            <field name="name">product.brand.form</field>
+            <field name="model">product.brand</field>
+            <field name="arch" type="xml">
+                <form string="Brand">
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="%(action_product_brand_products)d" type="action" 
+                                    class="oe_stat_button" icon="fa-cubes">
+                                <field name="product_count" widget="statinfo" string="Products"/>
+                            </button>
+                        </div>
+                        <widget name="web_ribbon" title="Archived" bg_color="bg-danger" 
+                                invisible="active"/>
+                        <group>
+                            <group>
+                                <field name="name" placeholder="Brand Name"/>
+                                <field name="code" placeholder="Brand Code"/>
+                                <field name="active"/>
+                            </group>
+                            <group>
+                                <field name="logo" widget="image"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="description" placeholder="Brand Description"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+        
+        <!-- Product Brand Search View -->
+        <record id="view_product_brand_search" model="ir.ui.view">
+            <field name="name">product.brand.search</field>
+            <field name="model">product.brand</field>
+            <field name="arch" type="xml">
+                <search string="Brands">
+                    <field name="name" string="Brand Name"/>
+                    <field name="code" string="Brand Code"/>
+                    <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                </search>
+            </field>
+        </record>
+        
+        <!-- Product Brand Action -->
+        <record id="action_product_brand" model="ir.actions.act_window">
+            <field name="name">Brands</field>
+            <field name="res_model">product.brand</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[]</field>
+            <field name="context">{'search_default_active': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first brand!
+                </p><p>
+                    Brands help you manage different product variants with individual pricing and stock tracking.
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>
+

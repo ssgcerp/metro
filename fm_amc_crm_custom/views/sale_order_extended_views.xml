@@ -12,74 +12,128 @@
                     <attribute name="class">o_sheet_inherit_quotations</attribute>
                 </xpath>
                 
+                <!-- Hide default Odoo buttons when quotation_stage_id is set -->
+                <!-- Try to hide common default buttons - use conditional xpath that only applies if buttons exist -->
+                <xpath expr="//header" position="attributes">
+                    <attribute name="class">o_header_with_quotation_stages</attribute>
+                </xpath>
+                
+                <!-- Add invisible computed fields for button visibility FIRST -->
                 <xpath expr="//header" position="inside">
-                    <!-- Draft Stage Buttons -->
-                    <button name="action_send_for_approval" string="Send for Approval" 
-                            type="object" class="oe_highlight"
-                            invisible="not is_draft_stage"/>
-                    <button name="action_mark_printed" string="Print" 
-                            type="object"
-                            invisible="not is_draft_stage"/>
-                    
-                    <!-- Pending Approval Stage Buttons -->
-                    <button name="action_approve" string="Approve for Quotation" 
-                            type="object" class="oe_highlight"
-                            invisible="not is_pending_approval_stage"/>
-                    <button name="action_reject" string="Decline" 
-                            type="object"
-                            invisible="not is_pending_approval_stage"/>
-                    <button name="action_mark_printed" string="Print" 
-                            type="object"
-                            invisible="not is_pending_approval_stage"/>
-                    
-                    <!-- Quotation Stage Buttons -->
-                    <button name="action_mark_quotation_sent" string="Mark as Sent" 
-                            type="object" class="oe_highlight"
-                            invisible="not is_quotation_stage"/>
-                    <button name="action_cancel_quotation" string="Cancel" 
-                            type="object"
-                            invisible="not is_quotation_stage"/>
-                    
-                    <!-- Quotation Sent Stage Buttons -->
-                    <button name="action_confirm" string="Confirm" 
-                            type="object" class="oe_highlight"
-                            invisible="not is_quotation_sent_stage or is_locked"/>
-                    <button name="action_cancel_quotation" string="Cancel" 
-                            type="object"
-                            invisible="not is_quotation_sent_stage or is_locked"/>
-                    
-                    <!-- Sales Order Stage Buttons -->
-                    <button name="action_reset_to_draft" string="Reset to Draft" 
-                            type="object"
-                            invisible="not is_sales_order_stage"/>
-                    <button name="action_cancel_quotation" string="Cancel" 
-                            type="object"
-                            invisible="not is_sales_order_stage"/>
-                    
-                    <!-- Add invisible computed fields for button visibility -->
                     <field name="is_draft_stage" invisible="1"/>
                     <field name="is_pending_approval_stage" invisible="1"/>
                     <field name="is_quotation_stage" invisible="1"/>
                     <field name="is_quotation_sent_stage" invisible="1"/>
                     <field name="is_sales_order_stage" invisible="1"/>
+                    <field name="is_declined_stage" invisible="1"/>
+                    <field name="is_cancelled_stage" invisible="1"/>
                     <field name="is_locked" invisible="1"/>
                     <field name="printed_without_approval" invisible="1"/>
+                    <field name="quotation_stage_id" invisible="1"/>
+                    
+                    <!-- Draft Stage Buttons - ONLY these two should be visible in Draft -->
+                    <button name="action_send_for_approval" string="Send for Approval" 
+                            type="object" class="oe_highlight"
+                            invisible="not is_draft_stage or is_locked"/>
+                    <button name="action_cancel_quotation" string="Cancel" 
+                            type="object"
+                            invisible="not is_draft_stage or is_locked"/>
+                    
+                    <!-- Pending Approval Stage Buttons - Hide in Draft -->
+                    <button name="action_approve" string="Approve" 
+                            type="object" class="oe_highlight"
+                            invisible="is_draft_stage or not is_pending_approval_stage or is_locked"/>
+                    <button name="action_reject" string="Decline" 
+                            type="object"
+                            invisible="is_draft_stage or not is_pending_approval_stage or is_locked"/>
+                    <button name="action_cancel_quotation" string="Cancel" 
+                            type="object"
+                            invisible="is_draft_stage or not is_pending_approval_stage or is_locked"/>
+                    
+                    <!-- Quotation Stage (Approved) Buttons - Hide in Draft -->
+                    <button name="action_mark_quotation_sent" string="Send" 
+                            type="object" class="oe_highlight"
+                            invisible="is_draft_stage or not is_quotation_stage or is_locked"/>
+                    <button name="action_mark_printed" string="Print" 
+                            type="object"
+                            invisible="is_draft_stage or not is_quotation_stage or is_locked"/>
+                    <button name="action_reset_to_draft" string="Reset to Draft" 
+                            type="object"
+                            invisible="is_draft_stage or not is_quotation_stage or is_locked"/>
+                    
+                    <!-- Quotation Sent Stage Buttons - Hide in Draft -->
+                    <button name="action_confirm" string="Confirm" 
+                            type="object" class="oe_highlight"
+                            invisible="is_draft_stage or not is_quotation_sent_stage or is_locked"/>
+                    <button name="action_cancel_quotation" string="Cancel" 
+                            type="object"
+                            invisible="is_draft_stage or not is_quotation_sent_stage or is_locked"/>
+                    <button name="action_reset_to_draft" string="Reset to Draft" 
+                            type="object"
+                            invisible="is_draft_stage or not is_quotation_sent_stage or is_locked"/>
+                    
+                    <!-- Cancelled Stage Buttons - Hide in Draft -->
+                    <button name="action_reset_to_draft" string="Reset to Draft" 
+                            type="object" class="oe_highlight"
+                            invisible="is_draft_stage or not is_cancelled_stage"/>
+                    
+                    <!-- Sales Order Stage Buttons - Hide in Draft -->
+                    <button name="action_reset_to_draft" string="Reset to Draft" 
+                            type="object"
+                            invisible="is_draft_stage or not is_sales_order_stage"/>
+                    <button name="action_cancel_quotation" string="Cancel" 
+                            type="object"
+                            invisible="is_draft_stage or not is_sales_order_stage"/>
                 </xpath>
                 
-                <!-- Add Quotation Stage Statusbar after state -->
-                <xpath expr="//field[@name='state']" position="after">
+                <!-- Hide default state statusbar and replace with quotation stage statusbar -->
+                <xpath expr="//field[@name='state'][@widget='statusbar']" position="replace">
                     <field name="quotation_stage_id" widget="statusbar" 
-                           statusbar_visible="draft,pending_approval,quotation,quotation_sent,sales_order"
+                           statusbar_visible="draft,pending_approval,declined,quotation,quotation_sent,sales_order,cancelled"
                            invisible="not quotation_stage_id"/>
                 </xpath>
                 
-                <!-- Add Estimation Fields -->
+                <!-- Reorganize fields to match quotation layout - Left Column -->
                 <xpath expr="//field[@name='partner_id']" position="after">
-                    <field name="estimation_id" 
+                    <field name="company_id" string="Branch?"/>
+                    <field name="attention_id" string="Attention?" 
+                           domain="[('parent_id', '=', partner_id), ('is_company', '=', False)]"/>
+                   
+                    <field name="consultants_ids" string="Consultants?" widget="many2many_tags" 
+                           options="{'no_create': True}"/>
+                    
+                     
+                    <field name="estimated_hours" string="Estimated Hours?" widget="float_time"/>
+                </xpath>
+                
+                <!-- Move fields to order_details group -->
+                <xpath expr="//group[@name='order_details']" position="inside">
+              
+                    <field name="is_project_order" string="Project Order?"/>
+                    <field name="is_estimation_order" string="Estimation?"/>
+                    <field name="estimation_id" string="Estimation?" 
                            domain="[('partner_id', '=', partner_id), ('is_approved', '=', True)]"
-                           options="{'no_open': True, 'no_create': True}"/>
+                           options="{'no_open': True, 'no_create': True}"
+                           invisible="not is_estimation_order"
+                           required="is_estimation_order"/>
+                    <button name="action_load_estimation_lines" string="Load Estimation Lines" 
+                            type="object" class="oe_highlight"
+                            invisible="1"
+                            help="Copy all lines from the selected estimation"/>
+                    <field name="direct_order" string="Direct Order?"/>
+                    <field name="revised_quotation" string="Revised Quotation?"/>
+                    <field name="lumpsum" string="Lumpsum?"/>
+                    <field name="with_brand" string="Brand?"/>
+                    <field name="with_stamp" string="With Stamp?"/>
+                    <field name="with_unit_price" string="With Unit Price?"/>
+                    <field name="with_uom" string="With UoM?"/>
                     <field name="estimated_value" invisible="not is_estimation_order" readonly="1"/>
-                    <field name="is_estimation_order" invisible="1"/>
+                </xpath>
+                
+                <!-- Ensure order_line name field is visible and editable -->
+                <xpath expr="//field[@name='order_line']//field[@name='name']" position="attributes">
+                    <attribute name="readonly">display_type == 'line_section'</attribute>
+                    <attribute name="placeholder">Click or press enter to add a description</attribute>
                 </xpath>
             </field>
         </record>
