@@ -53,13 +53,23 @@
         'security/ir.model.access.csv',
         'data/fm_amc_estimation_stage_data.xml',
         'data/fm_amc_estimation_config_data.xml',
+        'data/fm_amc_quotation_stage_data.xml',
+        'data/fm_amc_quotation_config_data.xml',
         'data/fm_amc_product_sku_config_data.xml',
+        'data/fm_amc_quotation_sequence_data.xml',
+        'data/amc_quotation_sequence_data.xml',
         'views/product_views.xml',
         'views/fm_amc_product_sku_config_views.xml',
         'views/fm_amc_estimation_config_views.xml',
         'views/fm_amc_estimation_stage_views.xml',
+        'views/fm_amc_quotation_config_views.xml',
+        'views/fm_amc_quotation_stage_views.xml',
         'views/fm_amc_estimation_views.xml',
         'views/fm_amc_estimation_line_views.xml',
+        'views/fm_amc_terms_condition_views.xml',
+        'views/fm_amc_system_type_views.xml',
+        'views/fm_amc_contract_period_views.xml',
+        'views/amc_quotation_views.xml',
         'views/crm_menu_views.xml',
     ],
     'assets': {
@@ -71,6 +81,7 @@
     'installable': True,
     'application': False,
     'auto_install': False,
+    'post_init_hook': 'post_init_hook',
 }
 
 

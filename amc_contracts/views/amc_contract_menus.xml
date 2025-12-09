@@ -20,19 +20,6 @@
                   parent="menu_amc_contracts_root" 
                   sequence="90"/>
 
-        <!-- Configuration Submenu -->
-        <menuitem id="menu_amc_contract_config" 
-                  name="Contract Configuration" 
-                  parent="menu_amc_settings" 
-                  action="action_amc_contract_config" 
-                  sequence="10"/>
-
-        <!-- Stages Submenu -->
-        <menuitem id="menu_amc_contract_stage" 
-                  name="Contract Stages" 
-                  parent="menu_amc_settings" 
-                  action="action_amc_contract_stage" 
-                  sequence="20"/>
     </data>
 </odoo>
 

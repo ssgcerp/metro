@@ -374,6 +374,9 @@ class FMAMCEstimation(models.Model):
             'note': self.note or '',
             'project_id': self.project_id.id if self.project_id else False,
             'estimation_id': self.id,
+            'is_estimation_order': True,  # Automatically check the Estimation checkbox
+            'estimated_hours': self.estimated_hours or 0.0,  # Copy estimated hours
+            'company_id': self.branch_id.id if self.branch_id else False,  # Copy branch/company
         }
         
         # Add contact if available
@@ -391,7 +394,7 @@ class FMAMCEstimation(models.Model):
                 'product_uom_qty': line.product_uom_qty,
                 'product_uom_id': line.product_uom.id if line.product_uom else False,
                 'price_unit': line.price_unit,
-                'tax_id': [(6, 0, line.tax_id.ids)],
+                'tax_ids': [(6, 0, line.tax_id.ids)],
             })
         
         # Link estimation to created quotation

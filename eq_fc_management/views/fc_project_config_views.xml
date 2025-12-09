@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+
     <!-- Project Configuration Form View -->
     <record id="view_fc_project_config_form" model="ir.ui.view">
         <field name="name">fc.project.config.form</field>
@@ -8,31 +9,77 @@
             <form string="Project Configuration">
                 <sheet>
                     <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
-                    
+
                     <div class="oe_title">
                         <h1>
                             <field name="name" placeholder="Project Numbering Configuration"/>
                         </h1>
                     </div>
-                    
+
                     <group>
                         <group string="AMC Project Numbering" col="4">
                             <field name="amc_prefix" placeholder="AMC"/>
                             <field name="amc_suffix" placeholder=""/>
                             <field name="amc_padding"/>
-                        </group>
-                        
+                            </group>
+
                         <group string="Non-AMC Project Numbering" col="4">
                             <field name="non_amc_prefix" placeholder="PROJ"/>
                             <field name="non_amc_suffix" placeholder=""/>
                             <field name="non_amc_padding"/>
-                        </group>
-                        
-                        <group string="Common Sequence" col="4">
-                            <field name="next_number"/>
+                              </group>
+
+                    </group>
+
+               <group string="Common Sequence" col="2">
+    <!-- First line: Next Number field -->
+    <field name="next_number"/>
+    
+    <!-- Add branch code checkbox -->
+    <field name="include_branch_code" widget="boolean_toggle" string="Include Branch Code"/>
+
+    <!-- Add year checkbox -->
+    <field name="include_year" widget="boolean_toggle" string="Include Year"/>
+
+    <!-- Second line: AMC Format Text field -->
+    <field name="amc_format_text"
+           placeholder="{prefix}/{modulecode}/{branchcode}/{nextnumber}/{year}"
+           nolabel="0"/>
+
+    <!-- Third line: Non-AMC Format Text field -->
+    <field name="non_amc_format_text"
+           placeholder="{prefix}-{branchcode}-{nextnumber}-{year}"
+           nolabel="0"/>
+</group>
+
+
+
+
+                    <group string="Format Placeholders &amp; Examples">
+                        <group>
+                            <div class="o_note">
+                                <p><strong>Available placeholders:</strong></p>
+                                <ul>
+                                    <li><code>{prefix}</code> – Uses the configured prefix.</li>
+                                    <li><code>{modulecode}</code> – Uses module code (AMC or PROJ).</li>
+                                    <li><code>{branchcode}</code> – Uses the branch/company code if available.</li>
+                                    <li><code>{nextnumber}</code> – Uses the padded sequence number.</li>
+                                    <li><code>{year}</code> – Uses the project year (start date or today).</li>
+                                    <li><code>{suffix}</code> – Uses the configured suffix.</li>
+                                </ul>
+                                <p><strong>Examples:</strong></p>
+                                <ul>
+                                    <li><code>{prefix}/{modulecode}/{branchcode}/{nextnumber}/{year}</code> → <em>AMC/AMC/ADH/00001/2025</em></li>
+                                    <li><code>{prefix}-{branchcode}-{nextnumber}</code> → <em>PROJ-ADH-00001</em></li>
+                                </ul>
+                                <p>
+                                    If the format text is empty, the default numbering
+                                    (<code>{prefix}{nextnumber}{suffix}</code>) is used.
+                                </p>
+                            </div>
                         </group>
                     </group>
-                    
+
                     <notebook>
                         <page string="Thresholds" name="thresholds">
                             <group>
@@ -47,7 +94,7 @@
                             </group>
                         </page>
                     </notebook>
-                    
+
                     <group>
                         <field name="active"/>
                     </group>
@@ -61,13 +108,15 @@
         <field name="name">fc.project.config.tree</field>
         <field name="model">fc.project.config</field>
         <field name="arch" type="xml">
-                         <list string="Project Configurations">
-                 <field name="name"/>
-                 <field name="active" widget="boolean_toggle"/>
-                 <field name="amc_prefix"/>
-                 <field name="non_amc_prefix"/>
-                 <field name="next_number"/>
-             </list>
+            <list string="Project Configurations">
+                <field name="name"/>
+                <field name="active" widget="boolean_toggle"/>
+                <field name="amc_prefix"/>
+                <field name="non_amc_prefix"/>
+                <field name="next_number"/>
+                <field name="amc_format_text"/>
+                <field name="non_amc_format_text"/>
+            </list>
         </field>
     </record>
 

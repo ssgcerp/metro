@@ -14,12 +14,28 @@ class FCProjectStage(models.Model):
     fold = fields.Boolean(string='Folded in Kanban', default=False, help='Projects in this stage are folded in the kanban view')
     is_default = fields.Boolean(string='Is Default Stage', default=False, help='Default stages that cannot be deleted')
     is_confirmed_stage = fields.Boolean(string='Confirmed Stage', default=False, help='Project code is generated when reaching this stage')
+    is_draft_stage = fields.Boolean(string='Draft Stage', default=False, help='Mark this stage as a draft stage. Used for behaviors that require identifying draft stages.')
+    allow_confirm_action = fields.Boolean(string='Allow Confirm Button', default=False, help='Show the Confirm action button when a project is in this stage.')
+    allow_next_action = fields.Boolean(string='Allow Next Button', default=True, help='Show the Next action button when a project is in this stage.')
+    allow_cancel_action = fields.Boolean(string='Allow Cancel Button', default=False, help='Show the Cancel action button when a project is in this stage.')
+    is_completed_stage = fields.Boolean(string='Completed Stage', default=False, help='Mark this stage as a completed stage.')
+    is_cancel_stage = fields.Boolean(string='Cancellation Stage', default=False, help='Stage representing a cancelled project.')
+    sms_template_id = fields.Many2one('sms.template', string='SMS Template', help='Template to send SMS notifications when project reaches this stage')
     active = fields.Boolean(string='Active', default=True)
     color = fields.Integer(string='Color', default=0, help='Color used in kanban view')
     company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
     
     description = fields.Text(string='Description', help='Description of the stage')
     
+    # Alias fields to comply with expected API names (no behavior change)
+    allow_next_button = fields.Boolean(related='allow_next_action', string='Allow Next Button', store=True, readonly=False)
+    allow_confirm_button = fields.Boolean(related='allow_confirm_action', string='Allow Confirm Button', store=True, readonly=False)
+    allow_cancel_button = fields.Boolean(related='allow_cancel_action', string='Allow Cancel Button', store=True, readonly=False)
+    confirmed_stage = fields.Boolean(related='is_confirmed_stage', string='Confirmed Stage', store=True, readonly=False)
+    completed_stage = fields.Boolean(related='is_completed_stage', string='Completed Stage', store=True, readonly=False)
+    cancellation_stage = fields.Boolean(related='is_cancel_stage', string='Cancellation Stage', store=True, readonly=False)
+    draft_stage = fields.Boolean(related='is_draft_stage', string='Draft Stage', store=True, readonly=False)
+
     _sql_constraints = [
         ('name_uniq', 'unique(name)', 'Stage name must be unique!'),
     ]

@@ -24,6 +24,13 @@
                             <field name="color" widget="color_picker"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="is_confirmed_stage" readonly="is_default"/>
+                            <field name="allow_next_action"/>
+                            <field name="allow_confirm_action"/>
+                            <field name="allow_cancel_action"/>
+                            <field name="is_completed_stage"/>
+                            <field name="is_cancel_stage"/>
+                            <field name="sms_template_id" options="{'no_create': True}"/>
+                            <field name="is_draft_stage"/>
                             <field name="active" widget="boolean_toggle"/>
                         </group>
                         <group>
@@ -50,6 +57,13 @@
                 <field name="color" widget="color_picker"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="is_confirmed_stage" widget="boolean_toggle"/>
+                <field name="allow_next_action" widget="boolean_toggle"/>
+                <field name="allow_confirm_action" widget="boolean_toggle"/>
+                <field name="allow_cancel_action" widget="boolean_toggle"/>
+                <field name="is_completed_stage" widget="boolean_toggle"/>
+                <field name="is_cancel_stage" widget="boolean_toggle"/>
+                <field name="sms_template_id"/>
+                <field name="is_draft_stage" widget="boolean_toggle"/>
                 <field name="is_default"/>
                 <field name="fold" widget="boolean_toggle"/>
                 <field name="active" widget="boolean_toggle"/>

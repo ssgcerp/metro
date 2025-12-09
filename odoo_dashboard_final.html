@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Odoo Project Dashboard Mock – Enhanced</title>
+<style>
+    /* ============================================
+       CSS VARIABLES - Design System
+       ============================================ */
+    :root {
+        /* Colors */
+        --color-primary: #714bdf;
+        --color-primary-hover: #5d3bc4;
+        --color-primary-light: #f0ecff;
+        --color-text-primary: #2c3e50;
+        --color-text-secondary: #555;
+        --color-text-muted: #7f8c8d;
+        --color-success: #27ae60;
+        --color-danger: #e74c3c;
+        --color-warning: #f39c12;
+        --color-info: #3498db;
+        
+        /* Background Colors */
+        --bg-primary: #ffffff;
+        --bg-secondary: #f4f6f9;
+        --bg-hover: #f8f9fa;
+        
+        /* Borders */
+        --border-color: #e2e2e2;
+        --border-color-light: #e3e3e3;
+        --border-radius: 8px;
+        --border-radius-sm: 4px;
+        
+        /* Shadows */
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+        --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.1);
+        
+        /* Spacing */
+        --spacing-xs: 4px;
+        --spacing-sm: 8px;
+        --spacing-md: 16px;
+        --spacing-lg: 24px;
+        --spacing-xl: 32px;
+        --spacing-2xl: 40px;
+        
+        /* Typography */
+        --font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+        --font-size-xs: 12px;
+        --font-size-sm: 14px;
+        --font-size-base: 16px;
+        --font-size-lg: 18px;
+        --font-size-xl: 22px;
+        --font-size-2xl: 24px;
+        
+        /* Transitions */
+        --transition-fast: 0.15s ease;
+        --transition-base: 0.2s ease;
+        --transition-slow: 0.3s ease;
+        
+        /* Layout */
+        --header-height: 56px;
+        --sidebar-width: 250px;
+        --container-max-width: 1400px;
+    }
+
+    /* ============================================
+       BASE STYLES
+       ============================================ */
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: var(--font-family);
+        margin: 0;
+        padding: 0;
+        background: var(--bg-secondary);
+        color: var(--color-text-primary);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        margin: 0;
+        font-weight: 600;
+        line-height: 1.3;
+    }
+
+    /* ============================================
+       HEADER BAR COMPONENT
+       ============================================ */
+    .header-bar {
+        display: flex;
+        background: var(--bg-primary);
+        padding: var(--spacing-md) var(--spacing-xl);
+        border-bottom: 1px solid var(--border-color);
+        align-items: center;
+        box-shadow: var(--shadow-sm);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+    }
+
+    .header-bar .menu-item {
+        margin-right: var(--spacing-lg);
+        font-size: var(--font-size-sm);
+        cursor: pointer;
+        color: var(--color-text-secondary);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: var(--border-radius-sm);
+        transition: all var(--transition-base);
+        white-space: nowrap;
+    }
+
+    .header-bar .menu-item:hover {
+        color: var(--color-primary);
+        background: var(--bg-hover);
+    }
+
+    .header-bar .menu-item.active {
+        color: var(--color-primary);
+        font-weight: 600;
+        background: var(--color-primary-light);
+    }
+
+    /* ============================================
+       PAGE HEADER COMPONENT
+       ============================================ */
+    .page-header {
+        background: var(--bg-primary);
+        padding: var(--spacing-lg) var(--spacing-2xl);
+        border-bottom: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .page-header-content {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-xl);
+        align-items: stretch;
+        justify-content: space-between;
+    }
+
+    .project-info {
+        flex: 1 1 320px;
+    }
+
+    .project-info h2 {
+        font-weight: 600;
+        font-size: var(--font-size-xl);
+        color: var(--color-text-primary);
+        letter-spacing: -0.02em;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .project-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+    }
+
+    .project-action-button {
+        border: none;
+        border-radius: 20px;
+        padding: var(--spacing-xs) var(--spacing-lg);
+        font-size: var(--font-size-sm);
+        font-weight: 600;
+        cursor: pointer;
+        transition: background var(--transition-base), box-shadow var(--transition-base);
+        background: var(--color-primary);
+        color: #fff;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .project-action-button:hover {
+        background: var(--color-primary-hover);
+        box-shadow: var(--shadow-md);
+    }
+
+    .project-stages-wrapper {
+        flex: 1 1 320px;
+        display: flex;
+        justify-content: flex-end;
+        align-items: flex-start;
+    }
+
+    /* ============================================
+       TABS COMPONENT
+       ============================================ */
+    .top-tabs {
+        background: var(--bg-primary);
+        display: flex;
+        padding: var(--spacing-sm) var(--spacing-xl);
+        border-bottom: 1px solid var(--border-color);
+        gap: var(--spacing-xs);
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .top-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .top-tabs a {
+        text-decoration: none;
+        padding: var(--spacing-sm) var(--spacing-md);
+        color: var(--color-text-secondary);
+        border-radius: var(--border-radius-sm);
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        white-space: nowrap;
+        transition: all var(--transition-base);
+        position: relative;
+    }
+
+    .top-tabs a:hover {
+        background: var(--bg-hover);
+        color: var(--color-primary);
+    }
+
+    .top-tabs a.active {
+        background: var(--color-primary);
+        color: var(--bg-primary);
+        font-weight: 600;
+    }
+
+    .top-tabs a.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80%;
+        height: 2px;
+        background: var(--color-primary);
+    }
+
+    /* ============================================
+       TAB CONTENT SECTIONS
+       ============================================ */
+    .tab-content {
+        display: none;
+        animation: fadeIn var(--transition-base);
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* ============================================
+       CONTENT CONTAINER
+       ============================================ */
+    .content-container {
+        padding: var(--spacing-xl) var(--spacing-2xl);
+        max-width: var(--container-max-width);
+        margin: 0 auto;
+    }
+
+    /* ============================================
+       CARD COMPONENT
+       ============================================ */
+    .card {
+        background: var(--bg-primary);
+        border-radius: var(--border-radius);
+        padding: var(--spacing-xl);
+        margin-bottom: var(--spacing-xl);
+        border: 1px solid var(--border-color-light);
+        box-shadow: var(--shadow-sm);
+        transition: all var(--transition-base);
+    }
+
+    .card:hover {
+        box-shadow: var(--shadow-md);
+        border-color: var(--border-color);
+    }
+
+    .card-empty {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        padding: 0;
+    }
+
+    .card-empty:hover {
+        box-shadow: none;
+        border: none;
+    }
+
+    /* ============================================
+       GRID LAYOUTS
+       ============================================ */
+    .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--spacing-xl);
+    }
+
+    /* ============================================
+       SECTION TITLE
+       ============================================ */
+    .section-title {
+        font-size: var(--font-size-base);
+        font-weight: 600;
+        color: var(--color-primary);
+        margin-bottom: var(--spacing-lg);
+        border-bottom: 2px solid var(--color-primary-light);
+        padding-bottom: var(--spacing-sm);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: var(--font-size-sm);
+    }
+
+    /* ============================================
+       DATA ROW COMPONENT
+       ============================================ */
+    .row {
+        margin-bottom: var(--spacing-md);
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+
+    .row:last-child {
+        margin-bottom: 0;
+    }
+
+    .label {
+        font-size: var(--font-size-sm);
+        color: var(--color-text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        font-size: 12px;
+    }
+
+    .value {
+        font-size: var(--font-size-base);
+        font-weight: 600;
+        margin-top: var(--spacing-xs);
+        color: var(--color-text-primary);
+        font-size: var(--font-size-lg);
+    }
+
+    .value.red,
+    .value.negative {
+        color: var(--color-danger);
+    }
+
+    .value.positive {
+        color: var(--color-success);
+    }
+
+    .value.warning {
+        color: var(--color-warning);
+    }
+
+    /* ============================================
+       STATUS COMPONENT
+       ============================================ */
+    .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-xs) var(--spacing-md);
+        background: var(--bg-hover);
+        border-radius: var(--border-radius-sm);
+        font-size: var(--font-size-sm);
+        color: var(--color-text-muted);
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: var(--spacing-xs) var(--spacing-md);
+        border-radius: 20px;
+        font-size: var(--font-size-xs);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* ============================================
+       TABLE COMPONENT
+       ============================================ */
+    .table-container {
+        overflow-x: auto;
+        margin-top: var(--spacing-lg);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--bg-primary);
+        font-size: var(--font-size-sm);
+    }
+
+    thead {
+        background: var(--bg-hover);
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    th {
+        padding: var(--spacing-md) var(--spacing-lg);
+        text-align: left;
+        font-weight: 600;
+        color: var(--color-text-primary);
+        font-size: var(--font-size-sm);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+
+    th.text-center {
+        text-align: center;
+    }
+
+    th.text-right {
+        text-align: right;
+    }
+
+    th.sortable {
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+        padding-right: var(--spacing-xl);
+    }
+
+    th.sortable:hover {
+        background: var(--bg-secondary);
+    }
+
+    th.sortable::after {
+        content: '▼';
+        position: absolute;
+        right: var(--spacing-sm);
+        font-size: 10px;
+        opacity: 0.5;
+        transition: opacity var(--transition-base);
+    }
+
+    th.sortable:hover::after {
+        opacity: 1;
+    }
+
+    td {
+        padding: var(--spacing-md) var(--spacing-lg);
+        border-bottom: 1px solid var(--border-color-light);
+        color: var(--color-text-primary);
+        vertical-align: top;
+    }
+
+    tbody tr {
+        transition: background-color var(--transition-fast);
+    }
+
+    tbody tr:hover {
+        background: var(--bg-hover);
+    }
+
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .table-empty {
+        text-align: center;
+        padding: var(--spacing-2xl);
+        color: var(--color-text-muted);
+    }
+
+    /* Table Checkbox */
+    .table-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--color-primary);
+    }
+
+    /* Grand Total Row */
+    tfoot {
+        background: var(--bg-secondary);
+        border-top: 2px solid var(--border-color);
+        font-weight: 600;
+    }
+
+    tfoot td {
+        padding: var(--spacing-md) var(--spacing-lg);
+        border-bottom: none;
+        color: var(--color-text-primary);
+    }
+
+    .grand-total-label {
+        background: var(--color-text-primary);
+        color: var(--bg-primary);
+        padding: var(--spacing-xs) var(--spacing-md);
+        border-radius: var(--border-radius-sm);
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    /* Info Icon */
+    .info-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--color-success);
+        color: white;
+        font-size: 11px;
+        font-weight: bold;
+        font-style: italic;
+        margin-left: var(--spacing-xs);
+        cursor: help;
+        vertical-align: middle;
+        line-height: 1;
+    }
+
+    /* Number alignment in table */
+    td.text-center {
+        text-align: center;
+    }
+
+    td.text-right {
+        text-align: right;
+    }
+
+    .cell-with-icon {
+        white-space: nowrap;
+        text-align: center;
+    }
+
+    /* ============================================
+       RESPONSIVE DESIGN
+       ============================================ */
+    
+    /* Tablet View */
+    @media (max-width: 1024px) {
+        :root {
+            --spacing-2xl: 32px;
+            --spacing-xl: 24px;
+        }
+
+        .content-container {
+            padding: var(--spacing-xl) var(--spacing-xl);
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-lg);
+        }
+
+        .header-bar {
+            padding: var(--spacing-md) var(--spacing-lg);
+        }
+
+        .page-header {
+            padding: var(--spacing-md) var(--spacing-xl);
+        }
+
+        .project-info h2 {
+            font-size: var(--font-size-lg);
+        }
+
+        .top-tabs {
+            padding: var(--spacing-sm) var(--spacing-lg);
+        }
+
+        th, td {
+            padding: var(--spacing-sm) var(--spacing-md);
+        }
+    }
+
+    /* Mobile View */
+    @media (max-width: 768px) {
+        :root {
+            --spacing-2xl: 24px;
+            --spacing-xl: 20px;
+            --spacing-lg: 16px;
+        }
+
+        .content-container {
+            padding: var(--spacing-lg) var(--spacing-md);
+        }
+
+        .grid-3 {
+            grid-template-columns: 1fr;
+            gap: var(--spacing-md);
+        }
+
+        .header-bar {
+            padding: var(--spacing-sm) var(--spacing-md);
+            gap: var(--spacing-xs);
+        }
+
+        .header-bar .menu-item {
+            margin-right: var(--spacing-md);
+            font-size: var(--font-size-xs);
+        }
+
+        .page-header {
+            padding: var(--spacing-md);
+        }
+
+        .page-header-content {
+            flex-direction: column;
+        }
+
+        .project-stages-wrapper {
+            justify-content: flex-start;
+        }
+
+        .project-info h2 {
+            font-size: var(--font-size-base);
+            line-height: 1.4;
+        }
+
+        .top-tabs {
+            padding: var(--spacing-xs) var(--spacing-md);
+            gap: var(--spacing-xs);
+        }
+
+        .top-tabs a {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: var(--font-size-xs);
+        }
+
+        .card {
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .value {
+            font-size: var(--font-size-base);
+        }
+    }
+
+    /* Small Mobile View */
+    @media (max-width: 480px) {
+        .content-container {
+            padding: var(--spacing-md) var(--spacing-sm);
+        }
+
+        .card {
+            padding: var(--spacing-md);
+        }
+
+        .row {
+            margin-bottom: var(--spacing-sm);
+        }
+
+        th, td {
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: var(--font-size-xs);
+        }
+
+        .table-container {
+            margin-left: calc(-1 * var(--spacing-md));
+            margin-right: calc(-1 * var(--spacing-md));
+            padding: 0 var(--spacing-md);
+        }
+    }
+
+    /* ============================================
+       UTILITY CLASSES
+       ============================================ */
+    .text-center {
+        text-align: center;
+    }
+
+    .text-muted {
+        color: var(--color-text-muted);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: var(--spacing-xl);
+        color: var(--color-text-muted);
+        font-style: italic;
+    }
+
+    /* Print Styles */
+    @media print {
+        .header-bar,
+        .top-tabs {
+            display: none;
+        }
+
+        .card {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+    }
+    /* ============================================
+   PROJECT STAGE BAR
+   ============================================ */
+.project-stages {
+    display: flex;
+    align-items: center;
+    background: var(--bg-primary);
+    padding: 8px 24px;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    overflow-x: auto;
+    justify-content: flex-end;
+    width: 100%;
+    max-width: 100%;
+}
+
+.stage {
+    position: relative;
+    background: var(--bg-hover);
+    color: var(--color-text-secondary);
+    padding: 6px 18px;
+    margin-right: 8px;
+    border-radius: 20px;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.stage.active {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.stage::after {
+    content: '›';
+    position: absolute;
+    right: -10px;
+    color: var(--color-text-muted);
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.stage:last-child::after {
+    content: none;
+}
+
+</style>
+</head>
+<body>
+
+<div class="header-bar">
+    <div class="menu-item active">Dashboard</div>
+    <div class="menu-item">Documents</div>
+    <div class="menu-item">Tasks</div>
+</div>
+
+<div class="page-header">
+    <div class="page-header-content">
+        <div class="project-info">
+            <h2>PRJ# 01479P2319 – Etihad Rail – MBZ Station</h2>
+            <div class="project-actions">
+                <button class="project-action-button">Confirm</button>
+            </div>
+        </div>
+        <div class="project-stages-wrapper">
+            <div class="project-stages">
+                <div class="stage active">Draft</div>
+                <div class="stage">Quote Submitted</div>
+                <div class="stage">Awarded</div>
+                <div class="stage">In Progress</div>
+                <div class="stage">Completed</div>
+                <div class="stage">Closed</div>
+                <div class="stage">Cancelled</div>
+                <div class="stage">Dropped</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="top-tabs">
+    <a href="#" class="tab-link active" data-tab="project-summary">Project Summary</a>
+    <a href="#" class="tab-link" data-tab="settings">Settings</a>
+</div>
+
+<div class="content-container">
+
+    <!-- Project Summary Tab -->
+    <div id="project-summary" class="tab-content active">
+        <!-- Project Overview Card -->
+        <div class="card">
+            <div class="grid-3">
+                <div>
+                    <div class="row">
+                        <span class="label">Date</span>
+                        <div class="value">04/11/2025</div>
+                    </div>
+                    <div class="row">
+                        <span class="label">Customer</span>
+                        <div class="value">Etihad Rail</div>
+                    </div>
+                    <div class="row">
+                        <span class="label">Project Value</span>
+                        <div class="value negative">22,575.00</div>
+                    </div>
+                    <div class="row">
+                        <span class="label">Variation Value</span>
+                        <div class="value">0.00</div>
+                    </div>
+                    <div class="row">
+                        <span class="label">AMC Details</span>
+                        <div class="value">Not Applicable</div>
+                    </div>
+                    <div class="row">
+                        <span class="label">Branch</span>
+                        <div class="value">ABU DHABI</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="row">
+                        <span class="label">Customer Balance</span>
+                        <div class="value">0.00</div>
+                    </div>
+                    <div class="row">
+                        <span class="label">Payment Collected</span>
+                        <div class="value">0.00</div>
+                    </div>
+                    <div class="row">
+                        <span class="label">Project Outstanding</span>
+                        <div class="value negative">22,575.00</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="section-title">Estimated Hours</div>
+                    <div class="row">
+                        <span class="label">Estimated Hours</span>
+                        <div class="value">00:00</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Metrics Cards -->
+        <div class="grid-3">
+            <div class="card">
+                <div class="section-title">Actual Expense</div>
+                <div class="row">
+                    <span class="label">Material Cost</span>
+                    <div class="value">0.00</div>
+                </div>
+                <div class="row">
+                    <span class="label">Expense</span>
+                    <div class="value">0.00</div>
+                </div>
+                <div class="row">
+                    <span class="label">Labour Expense</span>
+                    <div class="value">0.00</div>
+                </div>
+                <div class="row">
+                    <span class="label">Total Expense</span>
+                    <div class="value">0.00</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="section-title">Estimated Expense</div>
+                <div class="row">
+                    <span class="label">Material Cost</span>
+                    <div class="value">5,000.00</div>
+                </div>
+                <div class="row">
+                    <span class="label">Expense</span>
+                    <div class="value">0.00</div>
+                </div>
+                <div class="row">
+                    <span class="label">Labour Expense</span>
+                    <div class="value">0.00</div>
+                </div>
+                <div class="row">
+                    <span class="label">Total Expense</span>
+                    <div class="value">5,000.00</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="section-title">Profit</div>
+                <div class="row">
+                    <span class="label">Profit</span>
+                    <div class="value warning">0.00</div>
+                </div>
+                <div class="row">
+                    <span class="label">Profit (%)</span>
+                    <div class="value warning">0.00</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoice and Status Cards -->
+        <div class="grid-3">
+            <div class="card">
+                <div class="section-title">Invoice</div>
+                <div class="row">
+                    <span class="label">Invoiced</span>
+                    <div class="value">0.00</div>
+                </div>
+                <div class="row">
+                    <span class="label">Balance to be Invoiced</span>
+                    <div class="value negative">22,575.00</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="section-title">Status</div>
+                <div class="empty-state">
+                    <div class="status-indicator">
+                        <span>—</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-empty"></div>
+        </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="settings" class="tab-content">
+        <div class="card">
+            <div class="section-title">Project Settings</div>
+            <div class="grid-3">
+                <div class="card">
+                    <div class="section-title">General Settings</div>
+                    <div class="row">
+                        <span class="label">Project Status</span>
+                        <div class="value">Active</div>
+                    </div>
+                    <div class="row">
+                        <span class="label">Branch</span>
+                        <div class="value">ABU DHABI</div>
+                    </div>
+                    <div class="row">
+                        <span class="label">Currency</span>
+                        <div class="value">AED</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="section-title">Notifications</div>
+                    <div class="row">
+                        <span class="label">Email Alerts</span>
+                        <div class="value">Enabled</div>
+                    </div>
+                    <div class="row">
+                        <span class="label">SMS Alerts</span>
+                        <div class="value">Disabled</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="section-title">Permissions</div>
+                    <div class="row">
+                        <span class="label">Access Level</span>
+                        <div class="value">Full Access</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Tab switching functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabLinks = document.querySelectorAll('.tab-link');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        // Function to switch tabs
+        function switchTab(targetTabId) {
+            // Remove active class from all tabs and contents
+            tabLinks.forEach(link => link.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            // Add active class to clicked tab
+            const activeTab = document.querySelector(`[data-tab="${targetTabId}"]`);
+            if (activeTab) {
+                activeTab.classList.add('active');
+            }
+
+            // Show corresponding content
+            const targetContent = document.getElementById(targetTabId);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        }
+
+        // Add click event listeners to all tab links
+        tabLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetTabId = this.getAttribute('data-tab');
+                
+                if (targetTabId) {
+                    switchTab(targetTabId);
+                    
+                    // Optional: Update URL hash without page reload
+                    history.pushState(null, null, `#${targetTabId}`);
+                }
+            });
+        });
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', function(e) {
+            const hash = window.location.hash.substring(1);
+            if (hash) {
+                switchTab(hash);
+            } else {
+                // Default to first tab if no hash
+                switchTab('project-summary');
+            }
+        });
+
+        // Check for hash on page load
+        if (window.location.hash) {
+            const hash = window.location.hash.substring(1);
+            const tabExists = document.getElementById(hash);
+            if (tabExists) {
+                switchTab(hash);
+            }
+        }
+    });
+</script>
+
+</body>
+</html>

@@ -110,6 +110,9 @@
                 <xpath expr="//group[@name='order_details']" position="inside">
               
                     <field name="is_project_order" string="Project Order?"/>
+                    <field name="project_id" string="Project?" 
+                           domain="[('partner_id', '=', partner_id)]"
+                           options="{'no_create': True}"/>
                     <field name="is_estimation_order" string="Estimation?"/>
                     <field name="estimation_id" string="Estimation?" 
                            domain="[('partner_id', '=', partner_id), ('is_approved', '=', True)]"
@@ -134,6 +137,21 @@
                 <xpath expr="//field[@name='order_line']//field[@name='name']" position="attributes">
                     <attribute name="readonly">display_type == 'line_section'</attribute>
                     <attribute name="placeholder">Click or press enter to add a description</attribute>
+                </xpath>
+                
+                <!-- Add new tab after Order Lines -->
+                <xpath expr="//page[.//field[@name='order_line']]" position="after">
+                    <page string="Additional Details" name="additional_details">
+                        <group>
+                            <field name="subject"/>
+                            <field name="projectconfirm_move"/>
+                            <field name="work_location"/>
+                            <field name="description" placeholder="Enter description here..."/>
+                            <field name="inclusion" placeholder="Enter inclusions here..."/>
+                            <field name="exclusion" placeholder="Enter exclusions here..."/>
+                            <field name="thanks_and_regards" placeholder="Enter closing message here..."/>
+                        </group>
+                    </page>
                 </xpath>
             </field>
         </record>

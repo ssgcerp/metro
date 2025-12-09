@@ -3,3 +3,4 @@
 from . import fc_project_config
 from . import fc_project
 from . import fc_project_stage
+from . import project_dashboard

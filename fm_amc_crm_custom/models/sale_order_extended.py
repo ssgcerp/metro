@@ -50,6 +50,20 @@ class SaleOrder(models.Model):
                                help='Date until which this quotation is valid')
     decline_reason = fields.Text(string='Decline Reason', 
                                 help='Reason for declining the quotation')
+    
+    # Project field (for estimation integration)
+    project_id = fields.Many2one('project.project', string='Project', tracking=True,
+                                help='Related Project',
+                                domain="[('partner_id', '=', partner_id)]")
+    
+    # Additional Details fields
+    subject = fields.Char(string='Subject', help='Subject for the quotation')
+    projectconfirm_move = fields.Char(string='Projectconfirm_move', help='Project confirmation move')
+    work_location = fields.Char(string='Work Location', help='Location where work will be performed')
+    description = fields.Text(string='Description', help='Description of the quotation')
+    inclusion = fields.Text(string='Inclusion', help='Items included in the quotation')
+    exclusion = fields.Text(string='Exclusion', help='Items excluded from the quotation')
+    thanks_and_regards = fields.Text(string='Thanks and Regards', help='Closing message for the quotation')
 
     # Workflow tracking fields
     printed_without_approval = fields.Boolean(string='Printed Without Approval', default=False,

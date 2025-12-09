@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Equdai Project Financial Control',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'category': 'Project',
     'summary': 'Project Financial Control Management with Configuration',
     'description': '''
@@ -19,7 +19,9 @@
     'depends': [
         'base',
         'project',
+        'sms',
         'account',
+        'amc_contracts',
     ],
     'data': [
         'security/ir.model.access.csv',
@@ -27,6 +29,7 @@
         'views/fc_project_config_views.xml',
         'views/fc_project_stage_views.xml',
         'views/fc_project_views.xml',
+        'views/project_dashboard_views.xml',
         'views/fc_project_menus.xml',
         'data/fc_project_config_data.xml',
         'data/fc_project_stage_data.xml',
@@ -34,9 +37,9 @@
     ],
     'assets': {
         'web.assets_backend': [
-            'eq_fc_management/static/src/css/fc_project_custom.css',
         ],
     },
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': False,
     'auto_install': False,

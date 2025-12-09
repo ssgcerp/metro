@@ -8,16 +8,34 @@ import { Menu } from "@web/webclient/menu/menu";
 function applySectionHeaderStyles() {
     const sectionMenuIds = [
         'menu_amc_settings_section_contracts',
-        'menu_amc_settings_section_estimations'
+        'menu_amc_settings_section_estimations',
+        'menu_amc_settings_section_quotations'
     ];
     
     sectionMenuIds.forEach(menuId => {
         const menuItem = document.querySelector(`li[data-menu-id="${menuId}"]`) ||
                         document.querySelector(`a[data-menu-id="${menuId}"]`)?.closest('li');
         
-        if (menuItem && !menuItem.classList.contains('dropdown-header')) {
-            menuItem.classList.add('dropdown-menu_group', 'dropdown-header');
+        if (menuItem) {
+            // Add header classes
+            if (!menuItem.classList.contains('dropdown-header')) {
+                menuItem.classList.add('dropdown-menu_group', 'dropdown-header');
+            }
             menuItem.style.paddingLeft = '20px';
+            menuItem.style.fontWeight = '600';
+            menuItem.style.cursor = 'default';
+            
+            // Make the link non-clickable
+            const link = menuItem.querySelector('a');
+            if (link) {
+                link.style.pointerEvents = 'none';
+                link.style.cursor = 'default';
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                });
+            }
         }
     });
 }

@@ -12,6 +12,10 @@
             <field name="non_amc_suffix"></field>
             <field name="non_amc_padding" eval="5"/>
             <field name="next_number" eval="1"/>
+            <field name="amc_format_text"></field>
+            <field name="non_amc_format_text"></field>
+            <field name="include_branch_code" eval="True"/>
+            <field name="include_year" eval="True"/>
             <field name="profit_warning_threshold" eval="10.0"/>
             <field name="profit_danger_threshold" eval="5.0"/>
             <field name="cost_warning_threshold" eval="10.0"/>

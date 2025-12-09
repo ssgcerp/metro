@@ -2,6 +2,12 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../../14metro"
+		},
+		{
+			"path": "../hr"
 		}
 	],
 	"settings": {}

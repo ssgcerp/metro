@@ -10,6 +10,10 @@
             <field name="company_id" eval="False"/>
             <field name="is_default" eval="True"/>
             <field name="is_confirmed_stage" eval="False"/>
+            <field name="is_draft_stage" eval="True"/>
+            <field name="allow_confirm_action" eval="True"/>
+            <field name="allow_cancel_action" eval="True"/>
+            <field name="is_cancel_stage" eval="False"/>
             <field name="active" eval="True"/>
             <field name="description">Project in draft stage</field>
         </record>
@@ -22,6 +26,10 @@
             <field name="company_id" eval="False"/>
             <field name="is_default" eval="True"/>
             <field name="is_confirmed_stage" eval="False"/>
+            <field name="is_draft_stage" eval="False"/>
+            <field name="allow_confirm_action" eval="True"/>
+            <field name="allow_cancel_action" eval="True"/>
+            <field name="is_cancel_stage" eval="False"/>
             <field name="active" eval="True"/>
             <field name="description">Quote has been submitted</field>
         </record>
@@ -34,6 +42,10 @@
             <field name="company_id" eval="False"/>
             <field name="is_default" eval="True"/>
             <field name="is_confirmed_stage" eval="True"/>
+            <field name="is_draft_stage" eval="False"/>
+            <field name="allow_confirm_action" eval="False"/>
+            <field name="allow_cancel_action" eval="True"/>
+            <field name="is_cancel_stage" eval="False"/>
             <field name="active" eval="True"/>
             <field name="description">Project has been awarded/confirmed</field>
         </record>
@@ -46,6 +58,10 @@
             <field name="company_id" eval="False"/>
             <field name="is_default" eval="True"/>
             <field name="is_confirmed_stage" eval="False"/>
+            <field name="is_draft_stage" eval="False"/>
+            <field name="allow_confirm_action" eval="False"/>
+            <field name="allow_cancel_action" eval="True"/>
+            <field name="is_cancel_stage" eval="False"/>
             <field name="active" eval="True"/>
             <field name="description">Project is in progress</field>
         </record>
@@ -58,6 +74,11 @@
             <field name="company_id" eval="False"/>
             <field name="is_default" eval="True"/>
             <field name="is_confirmed_stage" eval="False"/>
+            <field name="is_draft_stage" eval="False"/>
+            <field name="allow_confirm_action" eval="False"/>
+            <field name="allow_cancel_action" eval="False"/>
+            <field name="is_completed_stage" eval="True"/>
+            <field name="is_cancel_stage" eval="False"/>
             <field name="active" eval="True"/>
             <field name="description">Project has been completed</field>
         </record>
@@ -70,6 +91,10 @@
             <field name="company_id" eval="False"/>
             <field name="is_default" eval="True"/>
             <field name="is_confirmed_stage" eval="False"/>
+            <field name="is_draft_stage" eval="False"/>
+            <field name="allow_confirm_action" eval="False"/>
+            <field name="allow_cancel_action" eval="False"/>
+            <field name="is_cancel_stage" eval="False"/>
             <field name="active" eval="True"/>
             <field name="description">Project has been closed</field>
         </record>
@@ -82,6 +107,10 @@
             <field name="company_id" eval="False"/>
             <field name="is_default" eval="True"/>
             <field name="is_confirmed_stage" eval="False"/>
+            <field name="is_draft_stage" eval="False"/>
+            <field name="allow_confirm_action" eval="False"/>
+            <field name="allow_cancel_action" eval="False"/>
+            <field name="is_cancel_stage" eval="True"/>
             <field name="active" eval="True"/>
             <field name="description">Project has been cancelled</field>
         </record>
@@ -94,6 +123,10 @@
             <field name="company_id" eval="False"/>
             <field name="is_default" eval="True"/>
             <field name="is_confirmed_stage" eval="False"/>
+            <field name="is_draft_stage" eval="False"/>
+            <field name="allow_confirm_action" eval="False"/>
+            <field name="allow_cancel_action" eval="False"/>
+            <field name="is_cancel_stage" eval="False"/>
             <field name="active" eval="True"/>
             <field name="description">Project has been dropped</field>
         </record>

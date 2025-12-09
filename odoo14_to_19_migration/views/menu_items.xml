@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_migration_root"
+              name="Odoo 14 Migration"
+              sequence="100"/>
+
+    <menuitem id="menu_migration_config"
+              name="Migration Configuration"
+              parent="menu_migration_root"
+              action="action_migration_config"
+              sequence="10"/>
+
+    <menuitem id="menu_migration_start"
+              name="Start Migration"
+              parent="menu_migration_root"
+              sequence="20"/>
+
+    <menuitem id="menu_customer_migration"
+              name="Customers"
+              parent="menu_migration_start"
+              action="action_customer_migration_wizard"
+              sequence="10"/>
+
+    <!-- Vendors, Products, Accounting will be added later -->
+</odoo>
