@@ -26,12 +26,18 @@ class CustomerMigrationWizard(models.TransientModel):
     
     quotations_count = fields.Integer(string='Quotations Total Count', default=0, readonly=True)
     quotations_migrated = fields.Integer(string='Quotations Migrated', default=0, readonly=True)
+    quotations_progress = fields.Float(string='Quotations Progress %', compute='_compute_quotations_progress', store=False)
+    quotations_offset = fields.Integer(string='Quotations Offset', default=0, readonly=True, help='Current offset position for batch processing')
     
     sales_orders_count = fields.Integer(string='Sales Orders Total Count', default=0, readonly=True)
     sales_orders_migrated = fields.Integer(string='Sales Orders Migrated', default=0, readonly=True)
     
     invoices_count = fields.Integer(string='Invoices Total Count', default=0, readonly=True)
     invoices_migrated = fields.Integer(string='Invoices Migrated', default=0, readonly=True)
+
+    # Migration state and status
+    is_migrating = fields.Boolean(string='Migration in Progress', default=False, readonly=True)
+    migration_status = fields.Text(string='Migration Status', readonly=True)
     
     # Legacy field for backward compatibility
     customer_items = fields.One2many(
@@ -39,6 +45,14 @@ class CustomerMigrationWizard(models.TransientModel):
         'wizard_id',
         string='Customer Items'
     )
+
+    @api.depends('quotations_count', 'quotations_migrated')
+    def _compute_quotations_progress(self):
+        for record in self:
+            if record.quotations_count:
+                record.quotations_progress = (record.quotations_migrated / record.quotations_count) * 100
+            else:
+                record.quotations_progress = 0.0
     
     def action_check_customers(self):
         """Check customers count"""
@@ -545,156 +559,165 @@ class CustomerMigrationWizard(models.TransientModel):
                 partner_vals['mobile'] = mobile_value
         
         return partner_vals
+
+    def action_refresh_view(self):
+        """Simple view reload helper for the wizard buttons."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': self._name,
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'new',
+            'views': [(False, 'form')],
+        }
     
     def action_migrate_quotations(self):
-        """Migrate quotations from Odoo 14 to Odoo 19"""
+        """Migrate quotations from Odoo 14 to Odoo 19 in batches"""
         self.ensure_one()
         if self.quotations_count == 0:
             raise UserError('No quotations found. Please check data first.')
-        
         if not self.config_id:
             raise UserError('Please select a migration configuration first.')
-        
+
+        batch_size = 30  # requested batch size
+        migrated_total = self.quotations_migrated or 0
+        skipped_total = 0
+        errors_total = 0
+
+        # mark as migrating
+        if not self.is_migrating:
+            self.write({
+                'is_migrating': True,
+                'migration_status': 'Starting quotation migration in batches of %s...' % batch_size,
+            })
+            self.env.cr.commit()
+
         try:
             from ..models.odoo14_api_client import Odoo14APIClient
-            
+
             client = Odoo14APIClient(
                 url=self.config_id.odoo14_url,
                 db=self.config_id.odoo14_database,
                 username=self.config_id.odoo14_username,
                 password=self.config_id.odoo14_password
             )
-            
+
             if not client.authenticate():
                 raise UserError('Failed to authenticate with Odoo 14. Please test the connection first.')
-            
-            # Get all quotations from Odoo 14 with ALL fields (including custom fields)
-            # Get all quotations regardless of state
+
             domain = []
-            
-            # Use standard fields as default
             default_fields = [
-                'name', 'partner_id', 'date_order', 'validity_date', 'amount_total', 
+                'name', 'partner_id', 'date_order', 'validity_date', 'amount_total',
                 'amount_untaxed', 'amount_tax', 'state', 'pricelist_id', 'payment_term_id',
                 'order_line', 'note', 'client_order_ref', 'user_id', 'team_id', 'company_id'
             ]
-            
-            # Try to get all fields dynamically, but don't fail if it doesn't work
+
             fields_to_fetch = default_fields.copy()
             try:
                 all_fields = client.fields_get('sale.order')
                 if all_fields:
-                    # Exclude problematic fields:
-                    # - One2many/Many2many (except order_line which we need)
-                    # - Computed fields that require request context (store=False and computed)
-                    # - Fields that might cause CacheMiss errors
                     problematic_fields = ['due_amount', 'credit', 'debit', 'invoice_ids', 'invoice_count']
                     dynamic_fields = []
                     for f, field_info in all_fields.items():
                         field_type = field_info.get('type', '')
                         field_store = field_info.get('store', True)
-                        # Skip One2many/Many2many except order_line
                         if field_type in ('one2many', 'many2many') and f != 'order_line':
                             continue
-                        # Skip problematic computed fields
                         if f in problematic_fields:
                             continue
-                        # Skip computed fields that are not stored (they might require request context)
-                        if not field_store and field_type not in ('char', 'text', 'integer', 'float', 'boolean', 'date', 'datetime'):
+                        if (not field_store and field_type not in ('char', 'text', 'integer', 'float', 'boolean', 'date', 'datetime')):
                             continue
                         dynamic_fields.append(f)
-                    
-                    # Merge with default fields, removing duplicates
                     fields_to_fetch = list(set(fields_to_fetch + dynamic_fields))
-                    _logger.info("Successfully retrieved %s fields for sale.order migration (excluding problematic computed fields)" % len(fields_to_fetch))
+                    _logger.info("Retrieved %s fields for sale.order migration", len(fields_to_fetch))
             except Exception as e:
-                # If fields_get fails, just use default fields - don't raise error
-                _logger.warning("Could not get all fields for migration using fields_get, using default set: %s" % str(e))
-                # Continue with default_fields
-            
-            quotations = client.search_read('sale.order', domain, 
-                fields_to_fetch, 
-                limit=self.quotations_count, offset=0, order='id')
-            
+                _logger.warning("Could not get all fields for migration using fields_get, using default set: %s", str(e))
+
+            # process only ONE batch per call to avoid timeouts; user can click Continue
+            offset = self.quotations_offset or migrated_total
+
+            quotations = client.search_read(
+                'sale.order',
+                domain,
+                fields_to_fetch,
+                limit=batch_size,
+                offset=offset,
+                order='id'
+            )
+
             if not quotations:
-                raise UserError('No quotations found to migrate.')
-            
-            migrated = 0
-            skipped = 0
-            errors = 0
-            
-            # Migrate quotations one by one with proper transaction handling
-            # Commit after each successful record to avoid cursor closure issues
+                # no more records
+                self.write({
+                    'is_migrating': False,
+                    'migration_status': 'Migration complete! Migrated: %s, Skipped: %s, Errors: %s' % (
+                        migrated_total, skipped_total, errors_total
+                    )
+                })
+                self.env.cr.commit()
+                return {
+                    'type': 'ir.actions.act_window',
+                    'res_model': self._name,
+                    'res_id': self.id,
+                    'view_mode': 'form',
+                    'target': 'new',
+                    'views': [(False, 'form')],
+                }
+
+            batch_migrated = 0
+            batch_skipped = 0
+            batch_errors = 0
+
             for quotation_data in quotations:
                 try:
-                    # Check for duplicates by quotation name
                     quotation_name = quotation_data.get('name', '').strip()
-                    
                     if quotation_name:
-                        existing = self.env['sale.order'].search([
-                            ('name', '=', quotation_name)
-                        ], limit=1)
-                        
+                        existing = self.env['sale.order'].search([('name', '=', quotation_name)], limit=1)
                         if existing:
-                            skipped += 1
-                            _logger.info("Skipping duplicate quotation: %s" % quotation_name)
+                            batch_skipped += 1
                             continue
-                    
-                    # Create quotation with all details
+
                     quotation_vals = self._prepare_quotation_vals(quotation_data, client)
                     quotation = self.env['sale.order'].create(quotation_vals)
-                    
-                    # Create order lines
                     self._create_quotation_lines(quotation, quotation_data, client)
-                    
-                    # Commit after each successful record
+
                     self.env.cr.commit()
-                    migrated += 1
-                    
-                    # Update progress every 10 records
-                    if migrated % 10 == 0:
-                        self.write({'quotations_migrated': migrated})
-                        self.env.cr.commit()
-                        _logger.info("Progress: Migrated %s/%s quotations" % (migrated, len(quotations)))
-                
+                    batch_migrated += 1
                 except Exception as e:
-                    # Rollback transaction on error
                     try:
                         if not self.env.cr.closed:
                             self.env.cr.rollback()
                     except Exception as rollback_error:
-                        _logger.error("Error during rollback: %s" % str(rollback_error))
-                        # Try to get a new cursor if old one is closed
-                        try:
-                            self.env.registry.clear_cache()
-                        except:
-                            pass
-                    
-                    errors += 1
-                    _logger.error("Error migrating quotation %s: %s" % (quotation_data.get('name', 'Unknown'), str(e)))
-                    # Continue with next record
+                        _logger.error("Error during rollback: %s", rollback_error)
+                    batch_errors += 1
+                    _logger.error("Error migrating quotation %s: %s", quotation_data.get('name', 'Unknown'), str(e))
                     continue
-                
-                # Update progress periodically
-                if migrated % 50 == 0:
-                    try:
-                        self.write({'quotations_migrated': migrated})
-                        self.env.cr.commit()
-                    except Exception as e:
-                        _logger.error("Error updating progress: %s" % str(e))
-                        try:
-                            if not self.env.cr.closed:
-                                self.env.cr.rollback()
-                        except:
-                            pass
-            
-            # Final update
-            self.write({'quotations_migrated': migrated})
+
+            migrated_total += batch_migrated
+            skipped_total += batch_skipped
+            errors_total += batch_errors
+            offset += len(quotations)
+
+            progress_pct = (migrated_total / self.quotations_count * 100) if self.quotations_count else 0
+            self.write({
+                'quotations_migrated': migrated_total,
+                'quotations_offset': offset,
+                'migration_status': 'Migrated %s/%s quotations (%.1f%%). Last batch: %s migrated, %s skipped, %s errors.' % (
+                    migrated_total, self.quotations_count, progress_pct, batch_migrated, batch_skipped, batch_errors
+                )
+            })
             self.env.cr.commit()
-            
-            message = 'Migration complete! Migrated: %s, Skipped (duplicates): %s, Errors: %s' % (migrated, skipped, errors)
-            
-            # Reload form to show updated count (keep popup open)
+
+            # if not finished, stay in migrating state; user can click Continue Migration
+            if migrated_total >= self.quotations_count or offset >= self.quotations_count:
+                self.write({
+                    'is_migrating': False,
+                    'migration_status': 'Migration complete! Migrated: %s, Skipped: %s, Errors: %s' % (
+                        migrated_total, skipped_total, errors_total
+                    )
+                })
+                self.env.cr.commit()
+
             return {
                 'type': 'ir.actions.act_window',
                 'res_model': self._name,
@@ -703,10 +726,11 @@ class CustomerMigrationWizard(models.TransientModel):
                 'target': 'new',
                 'views': [(False, 'form')],
             }
+
         except UserError:
             raise
         except Exception as e:
-            _logger.error("Error migrating quotations: %s" % str(e))
+            _logger.error("Error migrating quotations: %s", str(e))
             raise UserError('Error migrating quotations: %s' % str(e))
     
     def _prepare_quotation_vals(self, quotation_data, client):
