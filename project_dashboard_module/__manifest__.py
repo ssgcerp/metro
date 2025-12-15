@@ -41,3 +41,4 @@ This module provides a comprehensive project dashboard with:
     'application': False,
     'auto_install': False,
 }
+

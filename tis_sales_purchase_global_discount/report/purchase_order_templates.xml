@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_purchaseorder_document" inherit_id="purchase.report_purchaseorder_document">
+        <!-- Insert discount rows before tax totals -->
+        <xpath expr="//table[@class='o_total_table table table-borderless']/t" position="before">
+            <tr>
+                <td><strong>Total</strong></td>
+                <td class="text-end">
+                    <span t-field="o.amount_grand"
+                          t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Discount</strong></td>
+                <td class="text-end">
+                    <span t-field="o.amount_discount"
+                          t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Total After Discount</strong></td>
+                <td class="text-end">
+                    <span t-field="o.amount_total_with_discount"
+                          t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                </td>
+            </tr>
+        </xpath>
+    </template>
+</odoo>

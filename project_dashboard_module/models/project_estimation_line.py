@@ -176,3 +176,4 @@ class ProjectChequeDetail(models.Model):
         ('cancelled', 'Cancelled')
     ], string='Status', default='draft')
     notes = fields.Text(string='Notes')
+

@@ -4,3 +4,4 @@ access_project_consumable_line_user,project.consumable.line.user,model_project_c
 access_project_delivery_indent_user,project.delivery.indent.user,model_project_delivery_indent,base.group_user,1,1,1,1
 access_project_inventory_return_user,project.inventory.return.user,model_project_inventory_return,base.group_user,1,1,1,1
 access_project_cheque_detail_user,project.cheque.detail.user,model_project_cheque_detail,base.group_user,1,1,1,1
+
