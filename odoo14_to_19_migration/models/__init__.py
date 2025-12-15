@@ -8,4 +8,5 @@ from . import customer_migration_item
 from . import customer_preview
 from . import quotation_preview
 from . import quotation_line_preview
+from . import employee_preview
 

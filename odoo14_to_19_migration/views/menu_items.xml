@@ -21,5 +21,11 @@
               action="action_customer_migration_wizard"
               sequence="10"/>
 
+    <menuitem id="menu_employee_migration"
+              name="Employees"
+              parent="menu_migration_start"
+              action="action_employee_migration_wizard"
+              sequence="15"/>
+
     <!-- Vendors, Products, Accounting will be added later -->
 </odoo>
