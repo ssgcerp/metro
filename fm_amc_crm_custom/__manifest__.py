@@ -31,6 +31,7 @@
         'views/sale_quotation_config_views.xml',
         'views/sale_order_extended_views.xml',
         'views/crm_menu_views.xml',
+        'views/crm_lead_extended_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

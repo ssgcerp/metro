@@ -177,3 +177,7 @@ class ProjectChequeDetail(models.Model):
     ], string='Status', default='draft')
     notes = fields.Text(string='Notes')
 
+
+
+
+

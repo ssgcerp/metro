@@ -12,7 +12,7 @@ class AMCContract(models.Model):
     _order = 'contract_date desc, id desc'
 
     # Basic Information
-    name = fields.Char(string='Contract', readonly=True, copy=False, index=True, help='Auto-generated contract number')
+    name = fields.Char(string='Contract', copy=False, index=True, help='Contract number (can be imported or auto-generated when confirmed)')
     stage_id = fields.Many2one('amc.contract.stage', string='Status', tracking=True, default=lambda self: self._get_default_stage(), copy=False, required=True)
     
     # Customer Information
@@ -148,10 +148,35 @@ class AMCContract(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        """Set default stage if not provided"""
+        """Set default stage if not provided, allow importing contract name, handle date validation for imports"""
+        today = fields.Date.today()
         for vals in vals_list:
             if 'stage_id' not in vals:
                 vals['stage_id'] = self._get_default_stage()
+            # If name is provided during import/create, use it; otherwise it will be auto-generated when confirmed
+            
+            # Handle contract_date for imports: ensure contract_date is not after start_date to avoid validation errors
+            start_date = vals.get('start_date')
+            contract_date = vals.get('contract_date')
+            
+            if start_date:
+                # Parse date if it's a string (from import)
+                if isinstance(start_date, str):
+                    start_date = fields.Date.from_string(start_date)
+                
+                if contract_date:
+                    # Parse date if it's a string (from import)
+                    if isinstance(contract_date, str):
+                        contract_date = fields.Date.from_string(contract_date)
+                    # If contract_date is after start_date, adjust it to start_date
+                    if contract_date > start_date:
+                        vals['contract_date'] = start_date
+                else:
+                    # If contract_date not provided, use start_date if start_date is in the past,
+                    # otherwise use today (default)
+                    if start_date < today:
+                        vals['contract_date'] = start_date
+                    # else: contract_date defaults to today, which is fine since start_date >= today
         return super(AMCContract, self).create(vals_list)
 
     def write(self, vals):
@@ -184,10 +209,19 @@ class AMCContract(models.Model):
                 branch_code = None
             
             # Fallback: Try to get branch code from res.branch if it exists
+            # Note: res.branch doesn't have company_id field, so we search by name match as fallback
             if not branch_code and 'res.branch' in self.env:
-                branch = self.env['res.branch'].search([('company_id', '=', self.branch_id.id)], limit=1)
-                if branch and branch.code:
-                    branch_code = branch.code.upper()
+                try:
+                    # Try to find branch by matching name (fuzzy match)
+                    branch = self.env['res.branch'].search([
+                        ('name', 'ilike', self.branch_id.name or ''),
+                        ('active', '=', True)
+                    ], limit=1)
+                    if branch and branch.code:
+                        branch_code = branch.code.upper()
+                except Exception:
+                    # If res.branch model doesn't have expected fields, skip this fallback
+                    pass
             
             # Use company name abbreviation as last resort
             if not branch_code and self.branch_id.name:

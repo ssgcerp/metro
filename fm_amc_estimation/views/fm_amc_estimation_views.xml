@@ -81,14 +81,21 @@
                         <notebook>
                             <page string="Project Estimations" name="project_estimations">
                                 <field name="project_line_ids" nolabel="1" 
+                                       widget="section_and_note_one2many"
                                        context="{'default_line_type': 'project'}"
                                        options="{'no_create_edit': False}"
                                        domain="[('line_type', '=', 'project')]">
                                     <list string="Project Estimations" editable="bottom" default_order="sequence">
+                                        <control>
+                                            <create string="Add a line"/>
+                                            <create string="Add a section" context="{'default_display_type': 'line_section'}"/>
+                                            <create string="Add a note" context="{'default_display_type': 'line_note'}"/>
+                                        </control>
                                         <field name="line_type" invisible="1" column_invisible="1" default="project"/>
+                                        <field name="display_type" invisible="1" column_invisible="1"/>
                                         <field name="sequence" widget="handle"/>
                                         <field name="product_id" options="{'no_create': True}"/>
-                                        <field name="name"/>
+                                        <field name="name" widget="section_and_note_text"/>
                                         <field name="product_uom_qty"/>
                                         <field name="product_uom"/>
                                         <field name="price_unit"/>
@@ -101,14 +108,21 @@
                             </page>
                             <page string="Consumable Estimations" name="consumable_estimations">
                                 <field name="consumable_line_ids" nolabel="1" 
+                                       widget="section_and_note_one2many"
                                        context="{'default_line_type': 'consumable'}"
                                        options="{'no_create_edit': False}"
                                        domain="[('line_type', '=', 'consumable')]">
                                     <list string="Consumable Estimations" editable="bottom" default_order="sequence">
+                                        <control>
+                                            <create string="Add a line"/>
+                                            <create string="Add a section" context="{'default_display_type': 'line_section'}"/>
+                                            <create string="Add a note" context="{'default_display_type': 'line_note'}"/>
+                                        </control>
                                         <field name="line_type" invisible="1" column_invisible="1" default="consumable"/>
+                                        <field name="display_type" invisible="1" column_invisible="1"/>
                                         <field name="sequence" widget="handle"/>
                                         <field name="product_id" options="{'no_create': True}"/>
-                                        <field name="name"/>
+                                        <field name="name" widget="section_and_note_text"/>
                                         <field name="product_uom_qty"/>
                                         <field name="product_uom"/>
                                         <field name="price_unit"/>
@@ -121,14 +135,21 @@
                             </page>
                             <page string="Expense" name="expense">
                                 <field name="expense_line_ids" nolabel="1" 
+                                       widget="section_and_note_one2many"
                                        context="{'default_line_type': 'expense'}"
                                        options="{'no_create_edit': False}"
                                        domain="[('line_type', '=', 'expense')]">
                                     <list string="Expense" editable="bottom" default_order="sequence">
+                                        <control>
+                                            <create string="Add a line"/>
+                                            <create string="Add a section" context="{'default_display_type': 'line_section'}"/>
+                                            <create string="Add a note" context="{'default_display_type': 'line_note'}"/>
+                                        </control>
                                         <field name="line_type" invisible="1" column_invisible="1" default="expense"/>
+                                        <field name="display_type" invisible="1" column_invisible="1"/>
                                         <field name="sequence" widget="handle"/>
                                         <field name="product_id" options="{'no_create': True}"/>
-                                        <field name="name"/>
+                                        <field name="name" widget="section_and_note_text"/>
                                         <field name="product_uom_qty"/>
                                         <field name="product_uom"/>
                                         <field name="price_unit"/>

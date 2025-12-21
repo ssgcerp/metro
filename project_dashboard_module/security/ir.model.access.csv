@@ -5,3 +5,7 @@ access_project_delivery_indent_user,project.delivery.indent.user,model_project_d
 access_project_inventory_return_user,project.inventory.return.user,model_project_inventory_return,base.group_user,1,1,1,1
 access_project_cheque_detail_user,project.cheque.detail.user,model_project_cheque_detail,base.group_user,1,1,1,1
 
+
+
+
+

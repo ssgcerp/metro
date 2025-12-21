@@ -5,6 +5,7 @@ from odoo.exceptions import UserError
 import logging
 import json
 import ast
+import base64
 
 _logger = logging.getLogger(__name__)
 
@@ -28,6 +29,12 @@ class CustomerMigrationWizard(models.TransientModel):
     quotations_migrated = fields.Integer(string='Quotations Migrated', default=0, readonly=True)
     quotations_progress = fields.Float(string='Quotations Progress %', compute='_compute_quotations_progress', store=False)
     quotations_offset = fields.Integer(string='Quotations Offset', default=0, readonly=True, help='Current offset position for batch processing')
+    start_quotation_number = fields.Integer(
+        string='Start From Quotation #',
+        default=1,
+        help='1‑based index of the Odoo 14 quotation to start from. '
+             'For example, set 31 to start after the first 30 records.'
+    )
     
     sales_orders_count = fields.Integer(string='Sales Orders Total Count', default=0, readonly=True)
     sales_orders_migrated = fields.Integer(string='Sales Orders Migrated', default=0, readonly=True)
@@ -38,6 +45,10 @@ class CustomerMigrationWizard(models.TransientModel):
     # Migration state and status
     is_migrating = fields.Boolean(string='Migration in Progress', default=False, readonly=True)
     migration_status = fields.Text(string='Migration Status', readonly=True)
+
+    # Logs for exporting skipped and error records
+    quotation_skipped_log = fields.Text(string='Skipped Quotations (CSV)', readonly=True)
+    quotation_error_log = fields.Text(string='Quotation Errors (CSV)', readonly=True)
     
     # Legacy field for backward compatibility
     customer_items = fields.One2many(
@@ -571,6 +582,41 @@ class CustomerMigrationWizard(models.TransientModel):
             'target': 'new',
             'views': [(False, 'form')],
         }
+
+    # -------------------------------------------------------------------------
+    # Export helpers for skipped / error quotations (CSV/Excel-friendly)
+    # -------------------------------------------------------------------------
+
+    def _export_quotation_log(self, log_field, filename):
+        """Internal helper to export a text log field as CSV attachment."""
+        self.ensure_one()
+        data = (getattr(self, log_field) or '').strip()
+        if not data:
+            raise UserError('No data to export.')
+
+        # Ensure we have bytes
+        csv_bytes = data.encode('utf-8')
+        attachment = self.env['ir.attachment'].create({
+            'name': filename,
+            'type': 'binary',
+            'datas': base64.b64encode(csv_bytes),
+            'mimetype': 'text/csv',
+            'res_model': self._name,
+            'res_id': self.id,
+        })
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/web/content/%s?download=1' % attachment.id,
+            'target': 'self',
+        }
+
+    def action_export_quotation_skipped(self):
+        """Download skipped quotations report as CSV (Excel-friendly)."""
+        return self._export_quotation_log('quotation_skipped_log', 'quotation_skipped.csv')
+
+    def action_export_quotation_errors(self):
+        """Download quotation errors report as CSV (Excel-friendly)."""
+        return self._export_quotation_log('quotation_error_log', 'quotation_errors.csv')
     
     def action_migrate_quotations(self):
         """Migrate quotations from Odoo 14 to Odoo 19 in batches"""
@@ -635,7 +681,13 @@ class CustomerMigrationWizard(models.TransientModel):
                 _logger.warning("Could not get all fields for migration using fields_get, using default set: %s", str(e))
 
             # process only ONE batch per call to avoid timeouts; user can click Continue
-            offset = self.quotations_offset or migrated_total
+            # If a manual start number is provided (1‑based), use it when there is no offset yet
+            if self.quotations_offset:
+                offset = self.quotations_offset
+            elif self.start_quotation_number and self.start_quotation_number > 1:
+                offset = self.start_quotation_number - 1
+            else:
+                offset = migrated_total
 
             quotations = client.search_read(
                 'sale.order',
@@ -667,6 +719,8 @@ class CustomerMigrationWizard(models.TransientModel):
             batch_migrated = 0
             batch_skipped = 0
             batch_errors = 0
+            skipped_lines = []
+            error_lines = []
 
             for quotation_data in quotations:
                 try:
@@ -675,10 +729,33 @@ class CustomerMigrationWizard(models.TransientModel):
                         existing = self.env['sale.order'].search([('name', '=', quotation_name)], limit=1)
                         if existing:
                             batch_skipped += 1
+                            skipped_lines.append('%s,"Already exists in Odoo 19"' % (quotation_name.replace('"', '""') or ''))
                             continue
 
                     quotation_vals = self._prepare_quotation_vals(quotation_data, client)
                     quotation = self.env['sale.order'].create(quotation_vals)
+
+                    # Preserve original creation date from Odoo 14 if available
+                    src_create_date = quotation_data.get('create_date')
+                    if src_create_date:
+                        try:
+                            # Force create_date (and align write_date) at SQL level
+                            self.env.cr.execute(
+                                """
+                                UPDATE sale_order
+                                   SET create_date = %s,
+                                       write_date = COALESCE(write_date, %s)
+                                 WHERE id = %s
+                                """,
+                                (src_create_date, src_create_date, quotation.id),
+                            )
+                        except Exception as e:
+                            _logger.warning(
+                                "Could not set original create_date for quotation %s: %s",
+                                quotation.name,
+                                str(e),
+                            )
+
                     self._create_quotation_lines(quotation, quotation_data, client)
 
                     self.env.cr.commit()
@@ -690,13 +767,35 @@ class CustomerMigrationWizard(models.TransientModel):
                     except Exception as rollback_error:
                         _logger.error("Error during rollback: %s", rollback_error)
                     batch_errors += 1
-                    _logger.error("Error migrating quotation %s: %s", quotation_data.get('name', 'Unknown'), str(e))
+                    q_name = quotation_data.get('name', 'Unknown') or ''
+                    err_msg = str(e).replace('"', '""')
+                    error_lines.append('%s,"%s"' % (q_name, err_msg))
+                    _logger.error("Error migrating quotation %s: %s", q_name, str(e))
                     continue
 
             migrated_total += batch_migrated
             skipped_total += batch_skipped
             errors_total += batch_errors
             offset += len(quotations)
+
+            # append to CSV-style logs (with header once)
+            if skipped_lines:
+                header = 'name,reason'
+                existing = (self.quotation_skipped_log or '').strip()
+                if not existing:
+                    new_text = header + '\n' + '\n'.join(skipped_lines)
+                else:
+                    new_text = existing + '\n' + '\n'.join(skipped_lines)
+                self.quotation_skipped_log = new_text
+
+            if error_lines:
+                header = 'name,error'
+                existing = (self.quotation_error_log or '').strip()
+                if not existing:
+                    new_text = header + '\n' + '\n'.join(error_lines)
+                else:
+                    new_text = existing + '\n' + '\n'.join(error_lines)
+                self.quotation_error_log = new_text
 
             progress_pct = (migrated_total / self.quotations_count * 100) if self.quotations_count else 0
             self.write({
@@ -802,6 +901,9 @@ class CustomerMigrationWizard(models.TransientModel):
         # We already checked that partner exists above, so partner.id should be valid
         partner_id_val = partner.id
         
+        # Always set salesperson to Administrator
+        admin_user = self.env.ref('base.user_root')
+        
         quotation_vals = {
             'name': quotation_data.get('name', ''),
             'partner_id': partner_id_val,
@@ -814,6 +916,7 @@ class CustomerMigrationWizard(models.TransientModel):
             'state': 'draft',  # Always create as draft
             'client_order_ref': quotation_data.get('client_order_ref', ''),
             'note': quotation_data.get('note', ''),
+            'user_id': admin_user.id,  # Always set to Administrator
         }
         
         # Override with specific invoice/shipping addresses if provided in quotation data
@@ -865,6 +968,10 @@ class CustomerMigrationWizard(models.TransientModel):
         sale_order_fields = self.env['sale.order']._fields
         for key, value in quotation_data.items():
             if key not in standard_field_names and not key.startswith('__'):
+                # Skip user_id - always use Administrator
+                if key == 'user_id':
+                    continue
+                
                 # Check if field exists in Odoo 19
                 if key in sale_order_fields:
                     field = sale_order_fields[key]

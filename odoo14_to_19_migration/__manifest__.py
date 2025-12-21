@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Odoo 14 to Odoo 19 Invoice & Purchase Migration',
-    'version': '19.0.1.0.3',
+    'version': '19.0.1.3.0',
     'category': 'Migration',
     'summary': 'Migrate invoices and purchase invoices from Odoo 14 to Odoo 19',
     'description': """
@@ -26,15 +26,23 @@ Features:
         'account',
         'purchase',
         'product',
+        'sale',
         'base',
         'web',
         'hr',
+        'mail',
+        'queue_job',
+        'amc_contracts',
+        'fm_amc_estimation',
+        'crm',
     ],
     'external_dependencies': {
-        'python': ['requests'],
+        'python': ['requests', 'openpyxl'],
     },
     'data': [
         'security/ir.model.access.csv',
+        'security/amc_contract_from_existing_wizard_security.xml',
+        'wizard/amc_contract_from_existing_wizard_views.xml',
         'security/employee_preview_security.xml',
         'views/migration_config_views.xml',
         'views/migration_item_views.xml',
@@ -45,12 +53,20 @@ Features:
         'views/employee_preview_views.xml',
         'views/quotation_preview_views.xml',
         'views/invoice_preview_views.xml',
+        'views/quotation_migration_line_views.xml',
+        'views/amc_contract_migration_line_views.xml',
+        'views/estimation_migration_line_views.xml',
+        'views/crm_lead_migration_line_views.xml',
+        'views/branch_company_mapping_views.xml',
         'views/menu_items.xml',
     ],
     'assets': {
         'web.assets_backend': [
             'odoo14_to_19_migration/static/src/js/test_assets.js',
             'odoo14_to_19_migration/static/src/js/migration_auto_continue.js',
+            'odoo14_to_19_migration/static/src/js/quotation_migration_button.js',
+            # Note: migration_notification_listener.js removed due to dependency issues
+            # Notifications work via mail.message in backend
         ],
     },
     'installable': True,

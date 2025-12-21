@@ -1,3 +1,4 @@
 from . import controllers
 from . import models
-from . import tests
+# Tests should not be imported in production mode
+# from . import tests

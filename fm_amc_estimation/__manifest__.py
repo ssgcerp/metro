@@ -48,6 +48,7 @@
         'amc_contracts',
         'product',
         'stock',
+        'account',
     ],
     'data': [
         'security/ir.model.access.csv',

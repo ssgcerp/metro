@@ -129,23 +129,25 @@ class FMAMCEstimation(models.Model):
             stage = self.env['fm.amc.estimation.stage'].search([], order='sequence', limit=1)
         return stage.id if stage else False
 
-    @api.depends('line_ids.price_subtotal', 'line_ids.price_tax', 'line_ids.price_total', 'line_ids.line_type')
+    @api.depends('line_ids.price_subtotal', 'line_ids.price_tax', 'line_ids.price_total', 'line_ids.line_type', 'line_ids.display_type')
     def _compute_amounts(self):
         """Compute total amounts"""
         for estimation in self:
-            estimation.amount_untaxed = sum(estimation.line_ids.mapped('price_subtotal'))
-            estimation.amount_tax = sum(estimation.line_ids.mapped('price_tax'))
-            estimation.amount_total = sum(estimation.line_ids.mapped('price_total'))
+            # Exclude section and note lines from calculations
+            regular_lines = estimation.line_ids.filtered(lambda l: not l.display_type)
+            estimation.amount_untaxed = sum(regular_lines.mapped('price_subtotal'))
+            estimation.amount_tax = sum(regular_lines.mapped('price_tax'))
+            estimation.amount_total = sum(regular_lines.mapped('price_total'))
             
-            # Compute per-tab totals
+            # Compute per-tab totals (excluding section and note lines)
             estimation.project_amount_total = sum(
-                estimation.line_ids.filtered(lambda l: l.line_type == 'project').mapped('price_subtotal')
+                estimation.line_ids.filtered(lambda l: l.line_type == 'project' and not l.display_type).mapped('price_subtotal')
             )
             estimation.consumable_amount_total = sum(
-                estimation.line_ids.filtered(lambda l: l.line_type == 'consumable').mapped('price_subtotal')
+                estimation.line_ids.filtered(lambda l: l.line_type == 'consumable' and not l.display_type).mapped('price_subtotal')
             )
             estimation.expense_amount_total = sum(
-                estimation.line_ids.filtered(lambda l: l.line_type == 'expense').mapped('price_subtotal')
+                estimation.line_ids.filtered(lambda l: l.line_type == 'expense' and not l.display_type).mapped('price_subtotal')
             )
 
     @api.depends('stage_id', 'stage_id.name')
@@ -255,10 +257,19 @@ class FMAMCEstimation(models.Model):
                 branch_code = None
             
             # Fallback: Try to get branch code from res.branch if it exists
+            # Note: res.branch doesn't have company_id field, so we search by name match as fallback
             if not branch_code and 'res.branch' in self.env:
-                branch = self.env['res.branch'].search([('company_id', '=', self.branch_id.id)], limit=1)
-                if branch and branch.code:
-                    branch_code = branch.code.upper()
+                try:
+                    # Try to find branch by matching name (fuzzy match)
+                    branch = self.env['res.branch'].search([
+                        ('name', 'ilike', self.branch_id.name or ''),
+                        ('active', '=', True)
+                    ], limit=1)
+                    if branch and branch.code:
+                        branch_code = branch.code.upper()
+                except Exception:
+                    # If res.branch model doesn't have expected fields, skip this fallback
+                    pass
             
             # Use company name abbreviation as last resort
             if not branch_code and self.branch_id.name:
@@ -385,8 +396,8 @@ class FMAMCEstimation(models.Model):
         
         sale_order = self.env['sale.order'].create(sale_order_vals)
         
-        # Create sale order lines from estimation lines
-        for line in self.line_ids:
+        # Create sale order lines from estimation lines (skip section and note lines)
+        for line in self.line_ids.filtered(lambda l: not l.display_type):
             self.env['sale.order.line'].create({
                 'order_id': sale_order.id,
                 'product_id': line.product_id.id if line.product_id else False,

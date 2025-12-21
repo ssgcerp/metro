@@ -89,3 +89,7 @@ This module provides a comprehensive project dashboard for Odoo 19 with multiple
 - Product reference and brand are automatically populated from the selected product
 - All fields are properly indexed for performance
 
+
+
+
+

@@ -53,6 +53,8 @@
                                 invisible="not is_migrating"/>
                     </group>
                     <group>
+                        <label for="start_quotation_number" string="Start From #:"/>
+                        <field name="start_quotation_number" nolabel="1"/>
                         <label for="quotations_count" string="Total count:"/>
                         <field name="quotations_count" readonly="1" nolabel="1"/>
                         <label for="quotations_migrated" string="Migrated Count:"/>
@@ -69,6 +71,14 @@
                                widget="text" 
                                class="text-info"
                                style="font-weight: bold;"/>
+                        <group>
+                            <button name="action_export_quotation_skipped" string="Download Skipped" type="object"
+                                    class="btn-secondary" icon="fa-file-excel-o"
+                                    invisible="not quotation_skipped_log"/>
+                            <button name="action_export_quotation_errors" string="Download Errors" type="object"
+                                    class="btn-secondary" icon="fa-file-excel-o"
+                                    invisible="not quotation_error_log"/>
+                        </group>
                         <div invisible="not is_migrating" class="alert alert-info mt-2 mb-2">
                             <i class="fa fa-spinner fa-spin"/> 
                             <strong>Migration in progress...</strong> Processing 30 quotations per batch. Use Continue Migration or wait for refresh.

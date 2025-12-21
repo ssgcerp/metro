@@ -9,4 +9,9 @@ from . import customer_preview
 from . import quotation_preview
 from . import quotation_line_preview
 from . import employee_preview
+from . import quotation_migration_line
+from . import branch_company_mapping
+from . import amc_contract_migration_line
+from . import estimation_migration_line
+from . import crm_lead_migration_line
 

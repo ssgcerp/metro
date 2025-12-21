@@ -40,3 +40,7 @@ class ProjectProject(models.Model):
     # Description field for Description tab
     dashboard_description = fields.Html(string='Description', help='Project description and details')
 
+
+
+
+

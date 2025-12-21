@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form View -->
+    <record id="view_branch_company_mapping_form" model="ir.ui.view">
+        <field name="name">odoo14.branch.company.mapping.form</field>
+        <field name="model">odoo14.branch.company.mapping</field>
+        <field name="arch" type="xml">
+            <form string="Branch to Company Mapping">
+                <sheet>
+                    <group>
+                        <field name="odoo19_company_id" required="1"/>
+                        <field name="odoo14_branch_id" required="1"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- List View -->
+    <record id="view_branch_company_mapping_list" model="ir.ui.view">
+        <field name="name">odoo14.branch.company.mapping.list</field>
+        <field name="model">odoo14.branch.company.mapping</field>
+        <field name="arch" type="xml">
+            <list string="Branch to Company Mappings" multi_edit="1">
+                <field name="odoo14_branch_id"/>
+                <field name="odoo19_company_id"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_branch_company_mapping_search" model="ir.ui.view">
+        <field name="name">odoo14.branch.company.mapping.search</field>
+        <field name="model">odoo14.branch.company.mapping</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="odoo14_branch_id"/>
+                <field name="odoo19_company_id"/>
+                <filter name="active" string="Active" domain="[('active', '=', True)]"/>
+                <filter name="inactive" string="Inactive" domain="[('active', '=', False)]"/>
+                <filter name="unmapped" string="Unmapped" domain="[('odoo19_company_id', '=', False)]"/>
+                <separator/>
+                <filter name="group_by_company" string="Company" context="{'group_by': 'odoo19_company_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_branch_company_mapping" model="ir.actions.act_window">
+        <field name="name">Company Mapping</field>
+        <field name="res_model">odoo14.branch.company.mapping</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_branch_company_mapping_search"/>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No branch mappings found
+            </p>
+            <p>
+                Map Odoo 14 branch IDs to Odoo 19 companies. Enter the branch ID from Odoo 14 and select the corresponding company in Odoo 19.
+            </p>
+            <p>
+                This mapping is used during migration to assign migrated data to the correct company.
+            </p>
+        </field>
+    </record>
+</odoo>

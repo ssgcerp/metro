@@ -316,3 +316,13 @@ if project:
 - Financial metrics are computed automatically
 - Color coding for cost overrun and profit based on configurable thresholds
 - Projects can be linked to AMC contracts via `amc_contract_id` field
+
+
+
+
+
+
+
+
+
+
