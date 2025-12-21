@@ -9,6 +9,24 @@ from odoo.http import request
 _logger = logging.getLogger(__name__)
 
 
+def _log_failed_system_type_migration(system_type_name, error_detail):
+    """Log failed system type migration to a file for later processing"""
+    try:
+        log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        
+        log_file = os.path.join(log_dir, 'failed_system_type_migrations.log')
+        
+        with open(log_file, 'a', encoding='utf-8') as f:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"{timestamp} | {system_type_name} | {error_detail[:200]}\n")
+        
+        _logger.info("Failed system type migration logged to: %s", log_file)
+    except Exception as e:
+        _logger.warning("Could not write to failed system type migrations log: %s", str(e))
+
+
 def _log_failed_migration(quotation_number, error_detail):
     """Log failed migration to a file for later processing"""
     try:
@@ -865,6 +883,310 @@ class MigrationCronController(http.Controller):
                     ('Content-Type', 'application/json; charset=utf-8'),
                 ]
             )
+
+    @http.route('/migration/process_one_system_type', type='http', auth='public', methods=['GET'], csrf=False)
+    def process_one_system_type(self, **kwargs):
+        """Process one system type from the queue synchronously"""
+        try:
+            db = kwargs.get('db')
+            if not db:
+                return request.make_response(
+                    'ERROR: Database not specified. Use: /migration/process_one_system_type?db=your_database_name\n',
+                    headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                )
+            
+            from odoo.api import Environment
+            from odoo import sql_db
+            try:
+                db_conn = sql_db.db_connect(db)
+                cr = db_conn.cursor()
+            except Exception as reg_error:
+                return request.make_response(
+                    f'ERROR: Database "{db}" not found: {str(reg_error)}\n',
+                    headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                )
+            
+            try:
+                env = Environment(cr, 1, {})
+                MigrationSystemType = env['amc.system.type.migration.line']
+                
+                # Find queued migration
+                system_type_to_process = MigrationSystemType.search([
+                    ('status', '=', 'queued')
+                ], limit=1, order='id asc')
+                
+                if not system_type_to_process:
+                    return request.make_response(
+                        'No system types to migrate\nMigrating Now: None\n',
+                        headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                    )
+                
+                system_type_name = system_type_to_process.uploaded_system_type_name
+                _logger.info("🔄 Starting migration for system type %s", system_type_name)
+                
+                # Set status to migrating first
+                system_type_to_process.write({
+                    'status': 'migrating',
+                    'status_message': 'Starting migration...',
+                })
+                cr.commit()
+                
+                try:
+                    # Set status back to pending_migration (action_migrate requires it)
+                    system_type_to_process.write({
+                        'status': 'pending_migration',
+                    })
+                    cr.commit()
+                    
+                    # Call action_migrate
+                    system_type_to_process.action_migrate()
+                    cr.commit()
+                    _logger.info("✅ Successfully migrated system type %s", system_type_name)
+                    return request.make_response(
+                        f'Migrating Now: {system_type_name} - DONE\n',
+                        headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                    )
+                except Exception as e:
+                    error_msg = str(e)
+                    _logger.error("❌ Error migrating system type %s: %s", system_type_name, error_msg)
+                    _log_failed_system_type_migration(system_type_name, error_msg)
+                    system_type_to_process.write({
+                        'status': 'error',
+                        'status_message': f'Migration failed: {error_msg[:200]}',
+                        'error_message': error_msg[:500],
+                    })
+                    cr.commit()
+                    return request.make_response(
+                        f'Migrating Now: {system_type_name} - ERROR\n',
+                        headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                    )
+            finally:
+                cr.close()
+        except Exception as e:
+            _logger.error("Error in process_one_system_type: %s", str(e), exc_info=True)
+            return request.make_response(
+                f'ERROR: {str(e)}\n',
+                headers=[('Content-Type', 'text/plain; charset=utf-8')]
+            )
+
+    @http.route('/migration/status_system_type', type='http', auth='public', methods=['GET'], csrf=False)
+    def get_system_type_status(self, **kwargs):
+        """Get system type migration status"""
+        try:
+            db = kwargs.get('db')
+            if not db:
+                import json
+                return request.make_response(
+                    json.dumps({'error': 'Database not specified. Use: /migration/status_system_type?db=your_database_name'}),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            
+            from odoo.api import Environment
+            from odoo import sql_db
+            try:
+                db_conn = sql_db.db_connect(db)
+                cr = db_conn.cursor()
+            except Exception as reg_error:
+                import json
+                return request.make_response(
+                    json.dumps({'error': f'Database "{db}" not found: {str(reg_error)}'}),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            
+            try:
+                env = Environment(cr, 1, {})
+                MigrationSystemType = env['amc.system.type.migration.line']
+                
+                total_queued = MigrationSystemType.search_count([('status', '=', 'queued')])
+                total_migrated = MigrationSystemType.search_count([('status', '=', 'migrated')])
+                total_errors = MigrationSystemType.search_count([('status', '=', 'error')])
+                
+                currently_migrating = MigrationSystemType.search([
+                    ('status', '=', 'migrating')
+                ], limit=1, order='write_date desc')
+                
+                migrating_now = currently_migrating.uploaded_system_type_name if currently_migrating else 'None'
+                
+                status_data = {
+                    'total_queued': total_queued,
+                    'total_migrated': total_migrated,
+                    'total_errors': total_errors,
+                    'migrating_now': migrating_now,
+                }
+                
+                import json
+                return request.make_response(
+                    json.dumps(status_data, indent=2),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            finally:
+                cr.close()
+        except Exception as e:
+            _logger.error("Error in system type migration status: %s", str(e), exc_info=True)
+            import json
+            return request.make_response(
+                json.dumps({'error': str(e)}),
+                headers=[('Content-Type', 'application/json; charset=utf-8')]
+            )
+
+    @http.route('/migration/process_one_project', type='http', auth='public', methods=['GET'], csrf=False)
+    def process_one_project(self, **kwargs):
+        """Process one project from the queue synchronously"""
+        try:
+            db = kwargs.get('db')
+            if not db:
+                return request.make_response(
+                    'ERROR: Database not specified. Use: /migration/process_one_project?db=your_database_name\n',
+                    headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                )
+            
+            from odoo.api import Environment
+            from odoo import sql_db
+            try:
+                db_conn = sql_db.db_connect(db)
+                cr = db_conn.cursor()
+            except Exception as reg_error:
+                return request.make_response(
+                    f'ERROR: Database "{db}" not found: {str(reg_error)}\n',
+                    headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                )
+            
+            try:
+                env = Environment(cr, 1, {})
+                MigrationProject = env['project.migration.line']
+                
+                # Find queued migration
+                project_to_process = MigrationProject.search([
+                    ('status', '=', 'queued')
+                ], limit=1, order='id asc')
+                
+                if not project_to_process:
+                    return request.make_response(
+                        'No projects to migrate\nMigrating Now: None\n',
+                        headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                    )
+                
+                project_code = project_to_process.project_code
+                _logger.info("🔄 Starting migration for project %s", project_code)
+                
+                # Set status to migrating first
+                project_to_process.write({
+                    'status': 'migrating',
+                    'status_message': 'Starting migration...',
+                })
+                cr.commit()
+                
+                try:
+                    # Call action_migrate
+                    project_to_process.action_migrate()
+                    cr.commit()
+                    _logger.info("✅ Successfully migrated project %s", project_code)
+                    return request.make_response(
+                        f'Migrating Now: {project_code} - DONE\n',
+                        headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                    )
+                except Exception as e:
+                    error_msg = str(e)
+                    _logger.error("❌ Error migrating project %s: %s", project_code, error_msg)
+                    _log_failed_project_migration(project_code, error_msg)
+                    project_to_process.write({
+                        'status': 'error',
+                        'status_message': f'Migration failed: {error_msg[:200]}',
+                        'error_message': error_msg[:500],
+                    })
+                    cr.commit()
+                    return request.make_response(
+                        f'Migrating Now: {project_code} - ERROR\n',
+                        headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                    )
+            finally:
+                cr.close()
+        except Exception as e:
+            _logger.error("Error in process_one_project: %s", str(e), exc_info=True)
+            return request.make_response(
+                f'ERROR: {str(e)}\n',
+                headers=[('Content-Type', 'text/plain; charset=utf-8')]
+            )
+
+    @http.route('/migration/status_project', type='http', auth='public', methods=['GET'], csrf=False)
+    def get_project_status(self, **kwargs):
+        """Get project migration status"""
+        try:
+            db = kwargs.get('db')
+            if not db:
+                import json
+                return request.make_response(
+                    json.dumps({'error': 'Database not specified. Use: /migration/status_project?db=your_database_name'}),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            
+            from odoo.api import Environment
+            from odoo import sql_db
+            try:
+                db_conn = sql_db.db_connect(db)
+                cr = db_conn.cursor()
+            except Exception as reg_error:
+                import json
+                return request.make_response(
+                    json.dumps({'error': f'Database "{db}" not found: {str(reg_error)}'}),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            
+            try:
+                env = Environment(cr, 1, {})
+                MigrationProject = env['project.migration.line']
+                
+                total_queued = MigrationProject.search_count([('status', '=', 'queued')])
+                total_migrated = MigrationProject.search_count([('status', '=', 'migrated')])
+                total_errors = MigrationProject.search_count([('status', '=', 'error')])
+                
+                currently_migrating = MigrationProject.search([
+                    ('status', '=', 'migrating')
+                ], limit=1, order='write_date desc')
+                
+                migrating_now = currently_migrating.project_code if currently_migrating else 'None'
+                
+                status_data = {
+                    'total_queued': total_queued,
+                    'total_migrated': total_migrated,
+                    'total_errors': total_errors,
+                    'migrating_now': migrating_now,
+                }
+                
+                import json
+                return request.make_response(
+                    json.dumps(status_data, indent=2),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            finally:
+                cr.close()
+        except Exception as e:
+            _logger.error("Error in project migration status: %s", str(e), exc_info=True)
+            import json
+            return request.make_response(
+                json.dumps({'error': str(e)}),
+                headers=[('Content-Type', 'application/json; charset=utf-8')]
+            )
+
+
+def _log_failed_project_migration(project_code, error_detail):
+    """Log failed project migration to a file for later processing"""
+    try:
+        # Get log directory (use module directory/logs)
+        module_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        log_dir = os.path.join(module_dir, 'logs')
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        
+        log_file = os.path.join(log_dir, 'failed_project_migrations.log')
+        
+        with open(log_file, 'a', encoding='utf-8') as f:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"{timestamp} | {project_code} | {error_detail[:200]}\n")
+        
+        _logger.info("Failed project migration logged to: %s", log_file)
+    except Exception as e:
+        _logger.warning("Could not write to failed project migrations log: %s", str(e))
 
 
 def _log_failed_estimation_migration(estimation_number, error_detail):

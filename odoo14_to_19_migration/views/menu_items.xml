@@ -67,6 +67,18 @@
               action="action_trigger_queue_job_runner_amc_menu"
               sequence="20"/>
 
+    <menuitem id="menu_migration_amc_system_types"
+              name="AMC System Types"
+              parent="menu_migration_amc_contracts"
+              action="action_migration_amc_system_type"
+              sequence="25"/>
+
+    <menuitem id="menu_migration_amc_system_types_upload_excel"
+              name="Upload Excel"
+              parent="menu_migration_amc_contracts"
+              action="action_amc_system_type_upload_wizard"
+              sequence="30"/>
+
     <!-- Estimations - Separate Top Level Menu -->
     <menuitem id="menu_migration_estimations"
               name="Estimations"
@@ -90,6 +102,24 @@
               parent="menu_migration_estimations"
               action="action_estimation_trigger_queue_job_runner_menu"
               sequence="20"/>
+
+    <!-- Projects - Separate Top Level Menu -->
+    <menuitem id="menu_migration_projects"
+              name="Projects"
+              parent="menu_migration_root"
+              sequence="22"/>
+
+    <menuitem id="menu_migration_projects_list"
+              name="Projects"
+              parent="menu_migration_projects"
+              action="action_project_migration"
+              sequence="10"/>
+
+    <menuitem id="menu_migration_projects_upload_excel"
+              name="Upload Excel"
+              parent="menu_migration_projects"
+              action="action_project_upload_wizard"
+              sequence="15"/>
 
     <!-- CRM Leads - Separate Top Level Menu -->
     <menuitem id="menu_migration_crm_leads"

@@ -7,7 +7,7 @@ from odoo.exceptions import UserError
 class ProjectFC(models.Model):
     _inherit = 'project.project'
 
-    project_code = fields.Char(string='Project Code', readonly=True, copy=False, default='DRAFT',
+    project_code = fields.Char(string='Project Code', copy=False, default='DRAFT',
                                help='Auto-generated project code')
     amc_contract_id = fields.Many2one(
         'amc.contract',
@@ -55,6 +55,8 @@ class ProjectFC(models.Model):
     
     currency_id = fields.Many2one('res.currency', string='Currency', required=True, default=lambda self: self.env.company.currency_id)
     is_confirmed = fields.Boolean(string='Confirmed', default=False, tracking=True)
+    is_amc = fields.Boolean(string='Is Amc', default=False, help='Indicates if this is an AMC project')
+    is_amc_project = fields.Boolean(string='Is AMC Project', default=False, help='Indicates if this is an AMC project')
 
     @api.onchange('partner_id', 'company_id')
     def _onchange_amc_contract(self):

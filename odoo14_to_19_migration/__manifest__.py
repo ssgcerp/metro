@@ -35,6 +35,7 @@ Features:
         'amc_contracts',
         'fm_amc_estimation',
         'crm',
+        'eq_fc_management',
     ],
     'external_dependencies': {
         'python': ['requests', 'openpyxl'],
@@ -57,6 +58,8 @@ Features:
         'views/amc_contract_migration_line_views.xml',
         'views/estimation_migration_line_views.xml',
         'views/crm_lead_migration_line_views.xml',
+        'views/amc_system_type_migration_line_views.xml',
+        'views/project_migration_line_views.xml',
         'views/branch_company_mapping_views.xml',
         'views/menu_items.xml',
     ],

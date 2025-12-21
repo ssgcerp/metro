@@ -22,7 +22,7 @@
             <field name="inherit_id" ref="project.view_project"/>
             <field name="arch" type="xml">
                 <xpath expr="//field[@name='name']" position="after">
-                    <field name="project_code" string="Project Number"/>
+                    <field name="project_code" string="Project code"/>
                     <field name="stage_id" string="Project Stage"/>
                 </xpath>
                 <xpath expr="//field[@name='stage_id']" position="after">
