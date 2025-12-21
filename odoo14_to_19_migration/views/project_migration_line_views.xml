@@ -11,7 +11,8 @@
                 </group>
                 <div class="alert alert-info" role="alert">
                     <strong>Expected Excel columns:</strong><br/>
-                    Project Code, Name, Project Manager, Customer, Sales Man, Is Amc, Status, Company, Is AMC Project
+                    Project Code, Name, Project Manager, Customer, Sales Man, Is Amc, Status, Company, Is AMC Project<br/>
+                    <strong>Note:</strong> Projects will be imported to the Migration list. Use "Migrate Selected" to queue them, then run the PowerShell script to create actual projects.
                 </div>
                 <group invisible="not error_report_file">
                     <div class="alert alert-warning" role="alert">

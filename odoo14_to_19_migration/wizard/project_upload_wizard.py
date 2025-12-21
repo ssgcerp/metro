@@ -205,7 +205,7 @@ class ProjectUploadWizard(models.TransientModel):
                 'tag': 'display_notification',
                 'params': {
                     'title': 'Excel Parsed Successfully',
-                    'message': f'Found {len(projects_data)} project(s). Click "Proceed" to import directly to Projects.',
+                    'message': f'Found {len(projects_data)} project(s). Click "Proceed" to import to Project Migration list.',
                     'type': 'success',
                     'sticky': False,
                 }
@@ -217,7 +217,7 @@ class ProjectUploadWizard(models.TransientModel):
             raise UserError('Error uploading Excel file: %s' % str(e))
     
     def action_proceed_import(self):
-        """Import projects from parsed Excel data to both Migration Lines and Projects"""
+        """Import projects from parsed Excel data to Migration Lines only (not Projects)"""
         self.ensure_one()
         
         if not self.projects_data_json:
@@ -232,29 +232,23 @@ class ProjectUploadWizard(models.TransientModel):
         if not projects_data:
             raise UserError('No project data found in parsed Excel file.')
         
-        _logger.info(f"Starting import of {len(projects_data)} projects to both Migration Lines and Projects")
+        _logger.info(f"Starting import of {len(projects_data)} projects to Migration Lines")
         
-        ProjectModel = self.env['project.project']
         MigrationLineModel = self.env['project.migration.line']
         created_count = 0
+        updated_count = 0
         skipped_count = 0
         errors = []
-        error_details_list = []
-        created_project_ids = []
-        created_migration_line_ids = []
         
-        # Check which projects already exist in both models
+        # Check which migration lines already exist
         project_codes = [p.get('project_code') for p in projects_data if p.get('project_code')]
         if not project_codes:
             raise UserError('No valid project codes found in Excel data.')
         
-        existing_projects = ProjectModel.search([('project_code', 'in', project_codes)])
-        existing_codes = set(existing_projects.mapped('project_code'))
-        
         existing_migration_lines = MigrationLineModel.search([('project_code', 'in', project_codes)])
-        existing_migration_codes = set(existing_migration_lines.mapped('project_code'))
+        existing_codes = set(existing_migration_lines.mapped('project_code'))
         
-        _logger.info(f"Found {len(existing_codes)} existing projects and {len(existing_migration_codes)} existing migration lines out of {len(project_codes)} total")
+        _logger.info(f"Found {len(existing_codes)} existing migration lines out of {len(project_codes)} total")
         
         processed_count = 0
         skip_values = ['project code', 'project_code', 'code', 'draft', 'status', 'customer']
@@ -273,320 +267,65 @@ class ProjectUploadWizard(models.TransientModel):
             
             processed_count += 1
             
-            # Prepare data for migration line (always create/update this)
-            customer_name = project_data.get('customer_name')
-            status_name = project_data.get('status_name')
-            project_exists = project_code in existing_codes
-            
-            # Try to create/update project if it doesn't exist
-            project = None
-            project_error = None
-            
-            # Use savepoint to handle transaction errors
-            savepoint_name = f'project_import_{idx}'
-            savepoint_created = False
             try:
-                # Check if transaction is already aborted
-                try:
-                    self.env.cr.execute('SELECT 1')
-                except Exception:
-                    # Transaction is aborted, rollback everything
-                    _logger.error(f"Transaction aborted before processing project {project_code}, rolling back all changes")
-                    self.env.cr.rollback()
-                    raise UserError('Transaction was aborted due to previous errors. Please try again with a smaller batch or fix the errors in your Excel file.')
+                existing_line = MigrationLineModel.search([
+                    ('project_code', '=', project_code)
+                ], limit=1)
                 
-                self.env.cr.execute(f'SAVEPOINT {savepoint_name}')
-                savepoint_created = True
-                
-                if project_exists:
-                    # Project already exists, use cached result
-                    project = None
-                    for existing_project in existing_projects:
-                        if existing_project.project_code == project_code:
-                            project = existing_project
-                            break
-                    if not project:
-                        _logger.warning(f"Project {project_code} marked as existing but not found in cache")
-                    skipped_count += 1
-                    _logger.info(f"Project {project_code} already exists in Projects")
+                if existing_line:
+                    # Update existing migration line
+                    existing_line.write({
+                        'name': project_data.get('name'),
+                        'project_manager_name': project_data.get('project_manager_name'),
+                        'customer_name': project_data.get('customer_name'),
+                        'sales_man_name': project_data.get('sales_man_name'),
+                        'is_amc': project_data.get('is_amc'),
+                        'status_name': project_data.get('status_name'),
+                        'company_name': project_data.get('company_name'),
+                        'is_amc_project': project_data.get('is_amc_project'),
+                        'status': 'pending_migration',  # Reset to pending if updating
+                        'status_message': 'Updated from Excel upload',
+                        'error_message': False,  # Clear any previous errors
+                    })
+                    updated_count += 1
+                    _logger.info(f"Updated migration line for project {project_code}")
                 else:
-                    # Try to create the project
-                    try:
-                        # Find customer by name
-                        customer = False
-                        if customer_name:
-                            customer = self.env['res.partner'].search([
-                                ('name', '=', customer_name)
-                            ], limit=1)
-                            
-                            if not customer:
-                                customer = self.env['res.partner'].search([
-                                    ('name', 'ilike', customer_name)
-                                ], limit=1)
-                            
-                            if not customer:
-                                project_error = f'Customer "{customer_name}" not found'
-                                _logger.warning(f"Customer not found: {customer_name} for project {project_code}")
-                        else:
-                            project_error = 'Customer name is required'
-                            _logger.warning(f"Customer name missing for project {project_code}")
-                        
-                        if not project_error:
-                            # Find company by name
-                            company = False
-                            company_name = project_data.get('company_name')
-                            if company_name:
-                                company = self.env['res.company'].search([
-                                    ('name', 'ilike', company_name)
-                                ], limit=1)
-                            
-                            if not company:
-                                company = self.env.company
-                            
-                            # Find project manager (from Employees/Users)
-                            project_manager = False
-                            project_manager_name = project_data.get('project_manager_name')
-                            if project_manager_name:
-                                # Try to find by employee name
-                                employee = self.env['hr.employee'].search([
-                                    ('name', '=', project_manager_name)
-                                ], limit=1)
-                                
-                                if not employee:
-                                    employee = self.env['hr.employee'].search([
-                                        ('name', 'ilike', project_manager_name)
-                                    ], limit=1)
-                                
-                                if employee and employee.user_id:
-                                    project_manager = employee.user_id
-                                else:
-                                    # Try to find by user name
-                                    project_manager = self.env['res.users'].search([
-                                        ('name', '=', project_manager_name)
-                                    ], limit=1)
-                                    
-                                    if not project_manager:
-                                        project_manager = self.env['res.users'].search([
-                                            ('name', 'ilike', project_manager_name)
-                                        ], limit=1)
-                            
-                            # Find sales man (from Employees/Users)
-                            sales_man = False
-                            sales_man_name = project_data.get('sales_man_name')
-                            if sales_man_name:
-                                # Try to find by employee name
-                                employee = self.env['hr.employee'].search([
-                                    ('name', '=', sales_man_name)
-                                ], limit=1)
-                                
-                                if not employee:
-                                    employee = self.env['hr.employee'].search([
-                                        ('name', 'ilike', sales_man_name)
-                                    ], limit=1)
-                                
-                                if employee and employee.user_id:
-                                    sales_man = employee.user_id
-                                else:
-                                    # Try to find by user name
-                                    sales_man = self.env['res.users'].search([
-                                        ('name', '=', sales_man_name)
-                                    ], limit=1)
-                                    
-                                    if not sales_man:
-                                        sales_man = self.env['res.users'].search([
-                                            ('name', 'ilike', sales_man_name)
-                                        ], limit=1)
-                            
-                            # Find stage by status name
-                            stage = False
-                            if status_name:
-                                stage = self.env['fc.project.stage'].search([
-                                    ('name', '=', status_name)
-                                ], limit=1)
-                            
-                            if not stage:
-                                # Get default stage
-                                stage = self.env['fc.project.stage'].search([
-                                    ('is_draft_stage', '=', True),
-                                    ('active', '=', True)
-                                ], limit=1)
-                                
-                                if not stage:
-                                    stage = self.env['fc.project.stage'].search([
-                                        ('sequence', '=', 10),
-                                        ('active', '=', True)
-                                    ], limit=1)
-                            
-                            # Parse boolean fields
-                            is_amc = False
-                            is_amc_val = project_data.get('is_amc')
-                            if is_amc_val:
-                                is_amc_str = str(is_amc_val).strip().lower()
-                                is_amc = is_amc_str in ('true', 'yes', '1', 'y')
-                            
-                            is_amc_project = False
-                            is_amc_project_val = project_data.get('is_amc_project')
-                            if is_amc_project_val:
-                                is_amc_project_str = str(is_amc_project_val).strip().lower()
-                                is_amc_project = is_amc_project_str in ('true', 'yes', '1', 'y')
-                            
-                            # Prepare project values
-                            project_vals = {
-                                'name': project_data.get('name') or project_code,
-                                'project_code': project_code,
-                                'partner_id': customer.id if customer else False,
-                                'company_id': company.id,
-                                'user_id': project_manager.id if project_manager else False,
-                                'stage_id': stage.id if stage else False,
-                                'is_amc': is_amc,
-                                'is_amc_project': is_amc_project,
-                            }
-                            
-                            # Create Project
-                            project = ProjectModel.create(project_vals)
-                            created_project_ids.append(project.id)
-                            created_count += 1
-                            _logger.info(f"Created project {project_code}")
-                    
-                    except Exception as e:
-                        project_error = str(e)
-                        _logger.error(f"Error creating project {project_code}: {project_error}", exc_info=True)
-                        # Rollback to savepoint on error
-                        if savepoint_created:
-                            try:
-                                self.env.cr.execute(f'ROLLBACK TO SAVEPOINT {savepoint_name}')
-                            except Exception as rollback_error:
-                                _logger.error(f"Error rolling back to savepoint: {rollback_error}")
-                                self.env.cr.rollback()
-                                raise UserError(f'Transaction error for project {project_code}: {rollback_error}. Please try again.')
-                
-                # Always create/update Migration Line
-                try:
-                    existing_line = MigrationLineModel.search([
-                        ('project_code', '=', project_code)
-                    ], limit=1)
-                    
-                    if existing_line:
-                        # Update existing migration line
-                        update_vals = {
-                            'name': project_data.get('name'),
-                            'project_manager_name': project_data.get('project_manager_name'),
-                            'customer_name': customer_name,
-                            'sales_man_name': project_data.get('sales_man_name'),
-                            'is_amc': project_data.get('is_amc'),
-                            'status_name': status_name,
-                            'company_name': project_data.get('company_name'),
-                            'is_amc_project': project_data.get('is_amc_project'),
-                        }
-                        if project:
-                            update_vals.update({
-                                'status': 'migrated',
-                                'status_message': 'Imported directly from Excel via Upload Wizard',
-                                'odoo19_project_id': project.id,
-                                'migration_date': fields.Datetime.now(),
-                            })
-                        elif project_error:
-                            update_vals.update({
-                                'status': 'error',
-                                'status_message': f'Project creation failed: {project_error}',
-                                'error_message': project_error,
-                            })
-                        existing_line.write(update_vals)
-                        _logger.info(f"Updated migration line for project {project_code}")
-                    else:
-                        # Create new migration line
-                        migration_line_vals = {
-                            'project_code': project_code,
-                            'name': project_data.get('name'),
-                            'project_manager_name': project_data.get('project_manager_name'),
-                            'customer_name': customer_name,
-                            'sales_man_name': project_data.get('sales_man_name'),
-                            'is_amc': project_data.get('is_amc'),
-                            'status_name': status_name,
-                            'company_name': project_data.get('company_name'),
-                            'is_amc_project': project_data.get('is_amc_project'),
-                        }
-                        if project:
-                            migration_line_vals.update({
-                                'status': 'migrated',
-                                'status_message': 'Imported directly from Excel via Upload Wizard',
-                                'odoo19_project_id': project.id,
-                                'migration_date': fields.Datetime.now(),
-                            })
-                        elif project_error:
-                            migration_line_vals.update({
-                                'status': 'error',
-                                'status_message': f'Project creation failed: {project_error}',
-                                'error_message': project_error,
-                            })
-                        else:
-                            migration_line_vals.update({
-                                'status': 'pending_migration',
-                                'status_message': 'Awaiting project creation',
-                            })
-                        migration_line = MigrationLineModel.create(migration_line_vals)
-                        created_migration_line_ids.append(migration_line.id)
-                        _logger.info(f"Created migration line for project {project_code}")
-                
-                except Exception as e:
-                    _logger.error(f"Error creating/updating migration line for {project_code}: {str(e)}", exc_info=True)
-                    if project_error:
-                        errors.append(f'Project {project_code}: {project_error} (Migration line also failed: {str(e)})')
-                    else:
-                        errors.append(f'Project {project_code}: Migration line failed: {str(e)}')
-                    # Rollback to savepoint on error
-                    if savepoint_created:
-                        try:
-                            self.env.cr.execute(f'ROLLBACK TO SAVEPOINT {savepoint_name}')
-                        except Exception as rollback_error:
-                            _logger.error(f"Error rolling back to savepoint: {rollback_error}")
-                            self.env.cr.rollback()
-                            raise UserError(f'Transaction error for project {project_code} migration line: {rollback_error}. Please try again.')
-                    continue
-                
-                # Release savepoint on success
-                if savepoint_created:
-                    try:
-                        self.env.cr.execute(f'RELEASE SAVEPOINT {savepoint_name}')
-                    except Exception as release_error:
-                        _logger.error(f"Error releasing savepoint: {release_error}")
-                        self.env.cr.rollback()
-                        raise UserError(f'Transaction error releasing savepoint for project {project_code}: {release_error}. Please try again.')
+                    # Create new migration line
+                    migration_line_vals = {
+                        'project_code': project_code,
+                        'name': project_data.get('name'),
+                        'project_manager_name': project_data.get('project_manager_name'),
+                        'customer_name': project_data.get('customer_name'),
+                        'sales_man_name': project_data.get('sales_man_name'),
+                        'is_amc': project_data.get('is_amc'),
+                        'status_name': project_data.get('status_name'),
+                        'company_name': project_data.get('company_name'),
+                        'is_amc_project': project_data.get('is_amc_project'),
+                        'status': 'pending_migration',
+                        'status_message': 'Uploaded from Excel - ready for migration',
+                    }
+                    migration_line = MigrationLineModel.create(migration_line_vals)
+                    created_count += 1
+                    _logger.info(f"Created migration line for project {project_code}")
                 
             except Exception as e:
-                # Outer exception handler for savepoint errors
-                _logger.error(f"Error in savepoint block for {project_code}: {str(e)}", exc_info=True)
-                if savepoint_created:
-                    try:
-                        self.env.cr.execute(f'ROLLBACK TO SAVEPOINT {savepoint_name}')
-                    except Exception as rollback_error:
-                        _logger.error(f"Error rolling back to savepoint in outer handler: {rollback_error}")
-                        self.env.cr.rollback()
-                        raise UserError(f'Transaction corrupted after error with project {project_code}. All changes rolled back. Please try again.')
-                errors.append(f'Project {project_code}: {str(e)}')
+                error_msg = str(e)
+                _logger.error(f"Error creating/updating migration line for {project_code}: {error_msg}", exc_info=True)
+                errors.append(f'Project {project_code}: {error_msg}')
                 continue
-            
-            # Track errors with details
-            if project_error and not project_exists:
-                error_msg = f'Project {project_code}: {project_error}'
-                errors.append(error_msg)
-                error_details_list.append({
-                    'project': project_code,
-                    'customer': customer_name or 'N/A',
-                })
             
             # Commit more frequently to avoid transaction issues
             if idx % 50 == 0:
                 try:
                     self.env.cr.commit()
-                    _logger.info(f"Progress: Created {created_count}/{len(projects_data)} projects and {len(created_migration_line_ids)} migration lines (committed at row {idx})")
+                    _logger.info(f"Progress: Created {created_count}, Updated {updated_count} migration lines (committed at row {idx})")
                 except Exception as commit_error:
                     _logger.error(f"Error committing at row {idx}: {commit_error}")
                     self.env.cr.rollback()
-                    raise UserError(f'Error committing batch at row {idx}: {commit_error}. Processed {created_count} projects so far.')
+                    raise UserError(f'Error committing batch at row {idx}: {commit_error}. Processed {created_count + updated_count} migration lines so far.')
         
         self.env.cr.commit()
-        _logger.info(f"Import completed: {processed_count} processed, {created_count} projects created, {len(created_migration_line_ids)} migration lines created, {skipped_count} skipped, {len(errors)} errors")
+        _logger.info(f"Import completed: {processed_count} processed, {created_count} created, {updated_count} updated, {len(errors)} errors")
         
         # If no projects were processed at all, something is wrong
         if processed_count == 0:
@@ -598,121 +337,43 @@ class ProjectUploadWizard(models.TransientModel):
             for error in errors[:10]:  # Log first 10 errors
                 _logger.warning(f"  - {error}")
         
-        # Generate error report Excel file if there are errors
-        error_report_data = None
-        error_report_filename = None
-        if error_details_list and OPENPYXL_AVAILABLE and Workbook:
-            try:
-                wb = Workbook()
-                ws = wb.active
-                ws.title = "Error Report"
-                
-                # Write headers
-                ws['A1'] = 'Project Code'
-                ws['B1'] = 'Customer'
-                
-                # Make headers bold
-                from openpyxl.styles import Font
-                header_font = Font(bold=True)
-                ws['A1'].font = header_font
-                ws['B1'].font = header_font
-                
-                # Write error data
-                for idx, error_detail in enumerate(error_details_list, start=2):
-                    ws[f'A{idx}'] = error_detail['project']
-                    ws[f'B{idx}'] = error_detail['customer']
-                
-                # Auto-adjust column widths
-                ws.column_dimensions['A'].width = 30
-                ws.column_dimensions['B'].width = 50
-                
-                # Save to BytesIO
-                output = io.BytesIO()
-                wb.save(output)
-                output.seek(0)
-                
-                error_report_data = base64.b64encode(output.getvalue())
-                from datetime import datetime
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                error_report_filename = f'Project_Import_Errors_{timestamp}.xlsx'
-                
-                # Store in wizard record
-                self.error_report_file = error_report_data
-                self.error_report_filename = error_report_filename
-                
-                _logger.info(f"Generated error report with {len(error_details_list)} errors")
-            except Exception as e:
-                _logger.error(f"Error generating error report: {str(e)}", exc_info=True)
-        
         # Prepare summary message
+        notification_title = 'Import Successful'
+        notification_msg = f'Successfully imported {created_count + updated_count} project(s) to Project Migration list'
         if created_count > 0:
-            notification_title = 'Import Successful'
-            notification_msg = f'Successfully created {created_count} project(s) in Projects'
-            if len(created_migration_line_ids) > 0:
-                notification_msg += f' and {len(created_migration_line_ids)} migration line(s) in Project Migration'
-            if skipped_count > 0:
-                notification_msg += f'\nSkipped {skipped_count} project(s) (already exist)'
-            if errors:
-                notification_msg += f'\n{len(errors)} error(s) occurred'
-            notification_type = 'success' if not errors else 'warning'
-        else:
-            notification_title = 'Import Failed'
-            notification_msg = f'No projects were created. '
-            if skipped_count > 0:
-                notification_msg += f'{skipped_count} already exist. '
-            if errors:
-                notification_msg += f'{len(errors)} error(s) occurred.'
-                error_preview = '\n'.join(errors[:5])
-                if len(errors) > 5:
-                    error_preview += f'\n... and {len(errors) - 5} more (check server logs)'
-                notification_msg += f'\n\nErrors:\n{error_preview}'
-            else:
-                notification_msg += 'Please check the data.'
-            notification_type = 'danger'
+            notification_msg += f'\n  - Created: {created_count} new migration line(s)'
+        if updated_count > 0:
+            notification_msg += f'\n  - Updated: {updated_count} existing migration line(s)'
+        if errors:
+            notification_msg += f'\n  - Errors: {len(errors)} error(s) occurred'
         
-        # Return action to view projects or show errors with download option
-        if created_count > 0:
-            # Success - show created projects
-            action = {
+        # Return action to view migration lines - use the action reference
+        try:
+            action = self.env.ref('odoo14_to_19_migration.action_project_migration').read()[0]
+            if project_codes:
+                # Filter to show imported projects
+                action['domain'] = [('project_code', 'in', project_codes)]
+            action['name'] = f'Project Migration - {created_count + updated_count} Imported'
+            action['target'] = 'current'
+            
+            # Add notification
+            action['context'] = {
+                'default_status': 'pending_migration',
+                'search_default_pending': 1,  # Show pending filter by default
+            }
+            
+            return action
+        except Exception as e:
+            _logger.error(f"Error getting action reference: {str(e)}", exc_info=True)
+            # Fallback: return basic action
+            return {
                 'type': 'ir.actions.act_window',
-                'name': f'Projects - {created_count} Imported',
-                'res_model': 'project.project',
+                'name': f'Project Migration - {created_count + updated_count} Imported',
+                'res_model': 'project.migration.line',
                 'view_mode': 'list,form',
-                'domain': [('id', 'in', created_project_ids)],
+                'domain': [('project_code', 'in', project_codes)] if project_codes else [],
                 'target': 'current',
             }
-            if error_details_list and error_report_filename:
-                action['context'] = {
-                    'error_report_available': True,
-                    'error_report_filename': error_report_filename,
-                }
-            return action
-        else:
-            # No projects created - show error notification with download option
-            if errors:
-                error_preview = '\n'.join(errors[:10])
-                if len(errors) > 10:
-                    error_preview += f'\n... and {len(errors) - 10} more errors'
-                full_message = f'{notification_msg}\n\nError Details:\n{error_preview}'
-                
-                if error_report_filename:
-                    full_message += f'\n\nError report Excel file has been generated and is available for download.'
-            else:
-                full_message = notification_msg
-            
-            # Return wizard form with error report download button
-            if error_report_filename:
-                return {
-                    'type': 'ir.actions.act_window',
-                    'name': 'Import Completed - Errors Found',
-                    'res_model': 'project.upload.wizard',
-                    'view_mode': 'form',
-                    'res_id': self.id,
-                    'target': 'new',
-                    'context': {'error_report_available': True},
-                }
-            else:
-                raise UserError(f'{notification_title}\n\n{full_message}')
     
     def action_download_error_report(self):
         """Download the error report Excel file"""

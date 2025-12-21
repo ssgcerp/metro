@@ -53,6 +53,11 @@ try {
         
         Write-Status "  ✅ Initial status retrieved" "Green"
         Write-Status ""
+        Write-Status "Current Status:" "Yellow"
+        Write-Status "  Total Queued: $totalQueued" "Cyan"
+        Write-Status "  Total Migrated: $totalMigrated" "Green"
+        Write-Status "  Total Errors: $totalErrors" "Red"
+        Write-Status ""
         
         if ($totalQueued -eq 0) {
             Write-Status "✅ No projects in queue. Nothing to process." "Green"

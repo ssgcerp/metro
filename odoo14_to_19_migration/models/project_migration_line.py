@@ -323,26 +323,38 @@ class ProjectMigrationLine(models.Model):
                 is_amc_project_str = str(self.is_amc_project).strip().lower()
                 is_amc_project = is_amc_project_str in ('true', 'yes', '1', 'y')
             
-            # Prepare project values
-            project_vals = {
-                'name': self.name or self.project_code,
-                'project_code': self.project_code,
-                'partner_id': customer.id if customer else False,
-                'company_id': company.id,
-                'user_id': project_manager.id if project_manager else False,
-                'stage_id': stage.id if stage else False,
-                'is_amc': is_amc,
-                'is_amc_project': is_amc_project,
-            }
+            # Check if project with this project_code already exists
+            existing_project = self.env['project.project'].search([
+                ('project_code', '=', self.project_code)
+            ], limit=1)
             
-            # Create project
-            project = self.env['project.project'].create(project_vals)
-            _logger.info("Created project %s (ID: %s)", project.name, project.id)
+            if existing_project:
+                # Project already exists, skip creation
+                _logger.info("Project %s already exists (ID: %s), skipping creation", self.project_code, existing_project.id)
+                project = existing_project
+                status_message = f'Project already exists in Odoo 19 - skipped creation'
+            else:
+                # Prepare project values
+                project_vals = {
+                    'name': self.name or self.project_code,
+                    'project_code': self.project_code,
+                    'partner_id': customer.id if customer else False,
+                    'company_id': company.id,
+                    'user_id': project_manager.id if project_manager else False,
+                    'stage_id': stage.id if stage else False,
+                    'is_amc': is_amc,
+                    'is_amc_project': is_amc_project,
+                }
+                
+                # Create project
+                project = self.env['project.project'].create(project_vals)
+                _logger.info("Created project %s (ID: %s)", project.name, project.id)
+                status_message = f'Successfully migrated to Odoo 19'
             
             # Update status
             self.write({
                 'status': 'migrated',
-                'status_message': f'Successfully migrated to Odoo 19',
+                'status_message': status_message,
                 'odoo19_project_id': project.id,
                 'migration_date': fields.Datetime.now(),
             })

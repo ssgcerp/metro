@@ -5,7 +5,7 @@
 # List persists and grows as projects are processed
 
 # Configuration - Change these if needed
-ODOO_URL="http://localhost:8079"
+ODOO_URL="https://metro.equdaierp.com/"
 DATABASE="metrodb"  # Change this to your database name
 PROCESSING_DELAY=2  # Seconds to wait between processing each project
 
@@ -120,6 +120,11 @@ TOTAL_ERRORS=$(parse_json_number "$STATUS_JSON" "total_errors")
 MIGRATING_NOW=$(parse_json "$STATUS_JSON" "migrating_now")
 
 write_status "  ✅ Initial status retrieved" "Green"
+echo ""
+write_status "Current Status:" "Yellow"
+write_status "  Total Queued: $TOTAL_QUEUED" "Cyan"
+write_status "  Total Migrated: $TOTAL_MIGRATED" "Green"
+write_status "  Total Errors: $TOTAL_ERRORS" "Red"
 echo ""
 
 if [ "$TOTAL_QUEUED" = "0" ] || [ -z "$TOTAL_QUEUED" ]; then
