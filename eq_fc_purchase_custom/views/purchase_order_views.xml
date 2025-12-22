@@ -29,6 +29,11 @@
                     <field name="attention_note" placeholder="Enter attention note here..."/>
                 </xpath>
                 
+                <!-- Add RFQ Stage statusbar widget in header -->
+                <xpath expr="//header//field[@name='state']" position="after">
+                    <field name="rfq_stage_id" widget="statusbar" readonly="1"/>
+                </xpath>
+                
                 <!-- Hide fields that will be moved to Other Information tab -->
                 <xpath expr="//field[@name='fiscal_position_id']" position="after">
                     <field name="internal_notes" invisible="1"/>
