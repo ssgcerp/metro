@@ -103,6 +103,30 @@
               action="action_estimation_trigger_queue_job_runner_menu"
               sequence="20"/>
 
+    <!-- RFQ (Purchase Orders) - Separate Top Level Menu -->
+    <menuitem id="menu_migration_rfq"
+              name="RFQ"
+              parent="menu_migration_root"
+              sequence="25"/>
+
+    <menuitem id="menu_migration_rfq_list"
+              name="RFQ"
+              parent="menu_migration_rfq"
+              action="action_migration_rfq"
+              sequence="10"/>
+
+    <menuitem id="menu_migration_rfq_upload_excel"
+              name="Upload Excel"
+              parent="menu_migration_rfq"
+              action="action_rfq_upload_wizard"
+              sequence="15"/>
+
+    <menuitem id="menu_migration_rfq_process_queue_jobs"
+              name="Process Queue Jobs Now"
+              parent="menu_migration_rfq"
+              action="action_rfq_trigger_queue_job_runner_menu"
+              sequence="20"/>
+
     <!-- Projects - Separate Top Level Menu -->
     <menuitem id="menu_migration_projects"
               name="Projects"

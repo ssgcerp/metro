@@ -45,6 +45,24 @@ def _log_failed_migration(quotation_number, error_detail):
     except Exception as e:
         _logger.warning("Could not write to failed migrations log: %s", str(e))
 
+
+def _log_failed_rfq_migration(rfq_number, error_detail):
+    """Log failed RFQ migration to a file for later processing"""
+    try:
+        log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        
+        log_file = os.path.join(log_dir, 'failed_rfq_migrations.log')
+        
+        with open(log_file, 'a', encoding='utf-8') as f:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"{timestamp} | {rfq_number} | {error_detail[:200]}\n")
+        
+        _logger.info("Failed RFQ migration logged to: %s", log_file)
+    except Exception as e:
+        _logger.warning("Could not write to failed RFQ migrations log: %s", str(e))
+
 # Log when controller is loaded
 _logger.info("=" * 50)
 _logger.info("MigrationCronController: Module loading...")
@@ -884,6 +902,316 @@ class MigrationCronController(http.Controller):
                 ]
             )
 
+    @http.route('/migration/process_one_rfq', type='http', auth='public', methods=['GET'], csrf=False)
+    def process_one_rfq(self, **kwargs):
+        """
+        Process one RFQ from the queue.
+        Can be called repeatedly like a cron job.
+        
+        Returns simple text response with status.
+        
+        Usage: /migration/process_one_rfq?db=your_database_name
+        """
+        _logger.info("=" * 50)
+        _logger.info("process_one_rfq ROUTE CALLED!")
+        _logger.info("URL: %s", request.httprequest.url if hasattr(request, 'httprequest') and request.httprequest else 'N/A')
+        _logger.info("kwargs: %s", kwargs)
+        _logger.info("=" * 50)
+        try:
+            # Get database from query parameter
+            db = kwargs.get('db')
+            
+            # Fallback: parse from URL if not in kwargs
+            if not db and hasattr(request, 'httprequest') and request.httprequest:
+                from urllib.parse import parse_qs, urlparse
+                try:
+                    parsed = urlparse(request.httprequest.url)
+                    query_params = parse_qs(parsed.query)
+                    if 'db' in query_params:
+                        db = query_params['db'][0]
+                except:
+                    pass
+            
+            if not db:
+                return request.make_response(
+                    'ERROR: Database not specified. Use: /migration/process_one_rfq?db=your_database_name\n',
+                    headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                )
+            
+            # Create environment with specified database
+            from odoo.api import Environment
+            from odoo import sql_db
+            try:
+                db_conn = sql_db.db_connect(db)
+                cr = db_conn.cursor()
+            except Exception as reg_error:
+                return request.make_response(
+                    f'ERROR: Database "{db}" not found: {str(reg_error)}\n',
+                    headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                )
+            
+            try:
+                env = Environment(cr, 1, {})  # Use user 1 (admin)
+                
+                # Get RFQ migration model
+                MigrationRFQ = env['rfq.migration.line']
+            
+                # Count total queued
+                total_queued = MigrationRFQ.search_count([
+                    ('status', '=', 'queued')
+                ])
+                _logger.info("Total queued RFQs: %s (status='queued')", total_queued)
+                
+                # Check for stuck migrations (migrating for more than 30 seconds)
+                from datetime import timedelta
+                stuck_threshold = fields.Datetime.now() - timedelta(seconds=30)
+                
+                # Find ALL migrating records
+                all_migrating = MigrationRFQ.search([
+                    ('status', '=', 'migrating')
+                ])
+                
+                # Reset stuck migrations back to error
+                stuck_count = 0
+                for migrating_record in all_migrating:
+                    if migrating_record.write_date and migrating_record.write_date < stuck_threshold:
+                        stuck_seconds = int((fields.Datetime.now() - migrating_record.write_date).total_seconds())
+                        _logger.warning("Found stuck RFQ migration: %s (stuck for %s seconds), resetting to error", 
+                                      migrating_record.uploaded_rfq_number,
+                                      stuck_seconds)
+                        migrating_record.write({
+                            'status': 'error',
+                            'status_message': 'Migration stuck - reset to error',
+                            'error_message': f'Migration was stuck in migrating status for {stuck_seconds} seconds. Last update: {migrating_record.write_date}',
+                        })
+                        stuck_count += 1
+                
+                if stuck_count > 0:
+                    cr.commit()
+                    _logger.warning("Reset %s stuck RFQ migration(s) to error status", stuck_count)
+                
+                # Find currently migrating (recent ones, not stuck)
+                currently_migrating = MigrationRFQ.search([
+                    ('status', '=', 'migrating'),
+                    ('write_date', '>=', stuck_threshold)
+                ], limit=1, order='write_date desc')
+                
+                migrating_rfq = 'None'
+                
+                # If nothing is migrating, get the first queued one and process it SYNCHRONOUSLY
+                rfq_to_process = None
+                if not currently_migrating:
+                    rfq_to_process = MigrationRFQ.search([
+                        ('status', '=', 'queued')
+                    ], limit=1, order='id asc')
+                    
+                    if rfq_to_process:
+                        rfq_number = rfq_to_process.uploaded_rfq_number
+                        _logger.info("Processing RFQ: %s", rfq_number)
+                        
+                        try:
+                            # Check if RFQ already exists
+                            existing_rfq = env['purchase.order'].search([
+                                ('name', '=', rfq_number)
+                            ], limit=1)
+                            
+                            if existing_rfq:
+                                rfq_to_process.write({
+                                    'status': 'migrated',
+                                    'status_message': 'Already migrated (existed in system)',
+                                    'odoo19_rfq_id': existing_rfq.id,
+                                    'in_system_rfq_number': existing_rfq.name,
+                                    'migration_date': fields.Datetime.now(),
+                                    'error_message': False,
+                                })
+                                cr.commit()
+                                migrating_rfq = f"{rfq_number} - DONE (already existed)"
+                                _logger.info("✅ RFQ %s marked as migrated (already existed)", rfq_number)
+                            else:
+                                # Process migration
+                                result = rfq_to_process.action_migrate()
+                                cr.commit()
+                                
+                                # Refresh to get actual status
+                                rfq_to_process.invalidate_recordset(['status', 'error_message', 'status_message'])
+                                rfq_to_process = env['rfq.migration.line'].browse(rfq_to_process.id)
+                                
+                                if rfq_to_process.status == 'migrated':
+                                    migrating_rfq = f"{rfq_number} - DONE"
+                                    _logger.info("✅ RFQ %s migrated successfully", rfq_number)
+                                elif rfq_to_process.status == 'error':
+                                    error_detail = rfq_to_process.error_message or rfq_to_process.status_message or 'Unknown error'
+                                    migrating_rfq = f"{rfq_number} - ERROR"
+                                    _logger.warning("❌ RFQ %s failed: %s", rfq_number, error_detail[:100])
+                                    _log_failed_rfq_migration(rfq_number, error_detail)
+                                else:
+                                    migrating_rfq = f"{rfq_number} - in progress"
+                        except Exception as migrate_error:
+                            error_msg = str(migrate_error)
+                            _logger.error("Failed to migrate RFQ %s: %s", rfq_number, error_msg, exc_info=True)
+                            
+                            # Check if RFQ was actually created
+                            verify_rfq = env['purchase.order'].search([
+                                ('name', '=', rfq_number)
+                            ], limit=1)
+                            
+                            if verify_rfq:
+                                _logger.info("RFQ %s was created despite exception, updating status to migrated", rfq_number)
+                                rfq_to_process.write({
+                                    'status': 'migrated',
+                                    'status_message': 'Successfully migrated (created despite exception)',
+                                    'odoo19_rfq_id': verify_rfq.id,
+                                    'in_system_rfq_number': verify_rfq.name,
+                                    'migration_date': fields.Datetime.now(),
+                                    'error_message': False,
+                                })
+                                cr.commit()
+                                migrating_rfq = f"{rfq_number} - DONE"
+                            else:
+                                # Real error - log it
+                                try:
+                                    rfq_to_process.write({
+                                        'status': 'error',
+                                        'status_message': f'Migration error: {error_msg[:100]}',
+                                        'error_message': error_msg[:500],
+                                    })
+                                    cr.commit()
+                                except:
+                                    try:
+                                        cr.execute(
+                                            "UPDATE rfq_migration_line SET status='error', status_message=%s, error_message=%s WHERE id=%s",
+                                            (f'Migration error: {error_msg[:100]}', error_msg[:500], rfq_to_process.id)
+                                        )
+                                        cr.commit()
+                                    except:
+                                        pass
+                                
+                                migrating_rfq = f"{rfq_number} - ERROR"
+                                _log_failed_rfq_migration(rfq_number, error_msg)
+                elif currently_migrating:
+                    migrating_rfq = f"{currently_migrating.uploaded_rfq_number} (in progress)"
+                
+                # Re-count queued at the end
+                total_queued = MigrationRFQ.search_count([
+                    ('status', '=', 'queued')
+                ])
+                _logger.info("Final queued count: %s (status='queued')", total_queued)
+                
+                # Build response
+                response_lines = [
+                    f"Total Queued: {total_queued}",
+                    f"Migrating Now: {migrating_rfq}",
+                    "DONE"
+                ]
+                
+                return request.make_response(
+                    '\n'.join(response_lines),
+                    headers=[
+                        ('Content-Type', 'text/plain; charset=utf-8'),
+                    ]
+                )
+            finally:
+                cr.close()
+            
+        except Exception as e:
+            _logger.error("Error in RFQ migration cron controller: %s", str(e), exc_info=True)
+            return request.make_response(
+                f"ERROR: {str(e)}\n",
+                headers=[
+                    ('Content-Type', 'text/plain; charset=utf-8'),
+                ]
+            )
+
+    @http.route('/migration/status_rfq', type='http', auth='public', methods=['GET'], csrf=False)
+    def get_rfq_status(self, **kwargs):
+        """
+        Get current RFQ migration status without processing.
+        Returns JSON with detailed status.
+        
+        Usage: /migration/status_rfq?db=your_database_name
+        """
+        try:
+            db = kwargs.get('db')
+            
+            if not db and hasattr(request, 'httprequest') and request.httprequest:
+                from urllib.parse import parse_qs, urlparse
+                try:
+                    parsed = urlparse(request.httprequest.url)
+                    query_params = parse_qs(parsed.query)
+                    if 'db' in query_params:
+                        db = query_params['db'][0]
+                except:
+                    pass
+            
+            if not db:
+                import json
+                return request.make_response(
+                    json.dumps({'error': 'Database not specified. Use: /migration/status_rfq?db=your_database_name'}),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            
+            from odoo.api import Environment
+            from odoo import sql_db
+            try:
+                db_conn = sql_db.db_connect(db)
+                cr = db_conn.cursor()
+            except Exception as reg_error:
+                import json
+                return request.make_response(
+                    json.dumps({'error': f'Database "{db}" not found: {str(reg_error)}'}),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            
+            try:
+                env = Environment(cr, 1, {})
+                
+                MigrationRFQ = env['rfq.migration.line']
+                
+                total_queued = MigrationRFQ.search_count([
+                    ('status', '=', 'queued')
+                ])
+                
+                currently_migrating = MigrationRFQ.search([
+                    ('status', '=', 'migrating')
+                ], limit=1, order='write_date desc')
+                
+                migrating_rfq = currently_migrating.uploaded_rfq_number if currently_migrating else None
+                
+                total_migrated = MigrationRFQ.search_count([
+                    ('status', '=', 'migrated')
+                ])
+                
+                total_errors = MigrationRFQ.search_count([
+                    ('status', '=', 'error')
+                ])
+                
+                import json
+                status_data = {
+                    'total_queued': total_queued,
+                    'migrating_now': migrating_rfq,
+                    'total_migrated': total_migrated,
+                    'total_errors': total_errors,
+                }
+                
+                return request.make_response(
+                    json.dumps(status_data, indent=2),
+                    headers=[
+                        ('Content-Type', 'application/json; charset=utf-8'),
+                    ]
+                )
+            finally:
+                cr.close()
+            
+        except Exception as e:
+            _logger.error("Error in RFQ migration status: %s", str(e), exc_info=True)
+            import json
+            return request.make_response(
+                json.dumps({'error': str(e)}),
+                headers=[
+                    ('Content-Type', 'application/json; charset=utf-8'),
+                ]
+            )
+
     @http.route('/migration/process_one_system_type', type='http', auth='public', methods=['GET'], csrf=False)
     def process_one_system_type(self, **kwargs):
         """Process one system type from the queue synchronously"""
@@ -1187,6 +1515,24 @@ def _log_failed_project_migration(project_code, error_detail):
         _logger.info("Failed project migration logged to: %s", log_file)
     except Exception as e:
         _logger.warning("Could not write to failed project migrations log: %s", str(e))
+
+
+def _log_failed_rfq_migration(rfq_number, error_detail):
+    """Log failed RFQ migration to a file for later processing"""
+    try:
+        log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        
+        log_file = os.path.join(log_dir, 'failed_rfq_migrations.log')
+        
+        with open(log_file, 'a', encoding='utf-8') as f:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"{timestamp} | {rfq_number} | {error_detail[:200]}\n")
+        
+        _logger.info("Failed RFQ migration logged to: %s", log_file)
+    except Exception as e:
+        _logger.warning("Could not write to failed RFQ migrations log: %s", str(e))
 
 
 def _log_failed_estimation_migration(estimation_number, error_detail):

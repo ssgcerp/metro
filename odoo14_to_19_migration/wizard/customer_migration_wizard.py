@@ -6,6 +6,7 @@ import logging
 import json
 import ast
 import base64
+import uuid
 
 _logger = logging.getLogger(__name__)
 
@@ -1355,4 +1356,632 @@ class CustomerMigrationWizard(models.TransientModel):
         """Initialize default customer migration items"""
         res = super().default_get(fields_list)
         return res
+    
+    def _prepare_rfq_vals(self, rfq_data, client):
+        """Prepare RFQ (purchase order) values for creation"""
+        # Get or create partner (vendor) - REQUIRED for RFQ
+        partner = False
+        partner_id = rfq_data.get('partner_id')
+        if partner_id:
+            partner_id_val = partner_id[0] if isinstance(partner_id, list) else partner_id
+            if partner_id_val:
+                partner = self.env['res.partner'].search([('id', '=', partner_id_val)], limit=1)
+                if not partner:
+                    # Try to get partner from Odoo 14
+                    try:
+                        partner_data = client.search_read(
+                            'res.partner',
+                            [('id', '=', partner_id_val)],
+                            ['name', 'email', 'phone', 'is_company'],
+                            limit=1
+                        )
+                        if partner_data:
+                            partner = self.env['res.partner'].create({
+                                'name': partner_data[0].get('name', 'Unknown Vendor'),
+                                'email': partner_data[0].get('email', False),
+                                'phone': partner_data[0].get('phone', False),
+                                'is_company': partner_data[0].get('is_company', True),
+                                'supplier_rank': 1,  # Mark as supplier
+                            })
+                    except Exception as e:
+                        _logger.warning("Could not get/create partner %s: %s", partner_id_val, str(e))
+        
+        if not partner:
+            raise UserError('Partner (vendor) is required for RFQ')
+        
+        # Get currency - Try to map from Odoo 14, fallback to AED, then company currency
+        currency = False
+        if rfq_data.get('currency_id'):
+            currency_id = rfq_data['currency_id']
+            currency_id_val = currency_id[0] if isinstance(currency_id, list) else currency_id
+            currency_name = currency_id[1] if isinstance(currency_id, list) and len(currency_id) > 1 else ''
+            
+            if currency_id_val:
+                # First try to find by ID
+                currency = self.env['res.currency'].browse(currency_id_val)
+                if not currency.exists():
+                    currency = False
+                
+                # If not found by ID, try to get from Odoo 14 and find by name/code
+                if not currency:
+                    try:
+                        currency_data = client.search_read(
+                            'res.currency',
+                            [('id', '=', currency_id_val)],
+                            ['name', 'symbol'],
+                            limit=1
+                        )
+                        if currency_data:
+                            currency_name_from_14 = currency_data[0].get('name', '') or currency_name
+                            currency_symbol = currency_data[0].get('symbol', '')
+                            
+                            # Try to find by name (e.g., "AED")
+                            if currency_name_from_14:
+                                currency = self.env['res.currency'].search([
+                                    ('name', '=', currency_name_from_14)
+                                ], limit=1)
+                            
+                            # If not found by name, try by symbol
+                            if not currency and currency_symbol:
+                                currency = self.env['res.currency'].search([
+                                    ('symbol', '=', currency_symbol)
+                                ], limit=1)
+                    except Exception as e:
+                        _logger.warning("Could not get currency %s from Odoo 14: %s", currency_id_val, str(e))
+        
+        # Fallback: Try AED first, then company currency
+        if not currency:
+            currency = self.env['res.currency'].search([('name', '=', 'AED')], limit=1)
+            if currency:
+                _logger.info("✅ Using AED currency (fallback)")
+        
+        if not currency:
+            currency = self.env.company.currency_id
+            _logger.warning("⚠️ Currency not found, using company currency: %s", currency.name)
+        else:
+            _logger.info("✅ Mapped currency: %s (ID: %s)", currency.name, currency.id)
+        
+        # Get company - Check branch_id first (maps to company in Odoo 19), then company_id
+        company = self.env.company
+        branch_id = rfq_data.get('branch_id')
+        if branch_id:
+            # Map branch_id from Odoo 14 to company_id in Odoo 19
+            branch_id_val = branch_id[0] if isinstance(branch_id, list) else branch_id
+            if branch_id_val:
+                mapping_model = self.env['odoo14.branch.company.mapping']
+                company = mapping_model.get_company_for_branch(branch_id_val)
+                if company:
+                    _logger.info("✅ Mapped branch_id %s to company: %s (ID: %s)", 
+                               branch_id_val, company.name, company.id)
+                else:
+                    _logger.warning("⚠️ Branch ID %s not mapped to any company, using default company", branch_id_val)
+                    company = self.env.company
+        
+        # Fallback to company_id if branch_id not found or not mapped
+        if company == self.env.company and rfq_data.get('company_id'):
+            company_id = rfq_data['company_id']
+            company_id_val = company_id[0] if isinstance(company_id, list) else company_id
+            if company_id_val:
+                company_found = self.env['res.company'].browse(company_id_val)
+                if company_found.exists():
+                    company = company_found
+                    _logger.info("✅ Using company_id: %s (ID: %s)", company.name, company.id)
+        
+        # Get picking type (default to Receipts)
+        picking_type = self.env['stock.picking.type'].search([
+            ('code', '=', 'incoming'),
+            ('company_id', '=', company.id)
+        ], limit=1)
+        if rfq_data.get('picking_type_id'):
+            picking_type_id = rfq_data['picking_type_id']
+            picking_type_id_val = picking_type_id[0] if isinstance(picking_type_id, list) else picking_type_id
+            if picking_type_id_val:
+                picking_type_found = self.env['stock.picking.type'].browse(picking_type_id_val)
+                if picking_type_found.exists():
+                    picking_type = picking_type_found
+        
+        # Map user_id (purchaser/buyer) - IMPORTANT: Must map from user list
+        purchaser = False
+        user_id = rfq_data.get('user_id')
+        if user_id:
+            user_id_val = user_id[0] if isinstance(user_id, list) else user_id
+            user_name = user_id[1] if isinstance(user_id, list) and len(user_id) > 1 else ''
+            
+            if user_id_val:
+                # First try to find by ID
+                try:
+                    purchaser = self.env['res.users'].browse(user_id_val)
+                    if not purchaser.exists() or not purchaser.active:
+                        purchaser = False
+                except:
+                    purchaser = False
+                
+                # If not found by ID, try to get from Odoo 14 and find by login/name
+                if not purchaser:
+                    try:
+                        user_data = client.search_read(
+                            'res.users',
+                            [('id', '=', user_id_val)],
+                            ['login', 'name', 'email'],
+                            limit=1
+                        )
+                        if user_data:
+                            user_info = user_data[0]
+                            login = user_info.get('login', '')
+                            name = user_info.get('name', '') or user_name
+                            
+                            # Try to find by login first (most reliable)
+                            if login:
+                                purchaser = self.env['res.users'].search([
+                                    ('login', '=', login),
+                                    ('active', '=', True)
+                                ], limit=1)
+                                if purchaser:
+                                    _logger.info("✅ Found purchaser by login '%s' for RFQ %s", login, rfq_data.get('name', 'Unknown'))
+                            
+                            # If not found by login, try by name
+                            if not purchaser and name:
+                                purchaser = self.env['res.users'].search([
+                                    ('name', '=', name),
+                                    ('active', '=', True)
+                                ], limit=1)
+                                if purchaser:
+                                    _logger.info("✅ Found purchaser by name '%s' for RFQ %s", name, rfq_data.get('name', 'Unknown'))
+                            
+                            # If still not found, try by email
+                            if not purchaser and user_info.get('email'):
+                                purchaser = self.env['res.users'].search([
+                                    ('email', '=', user_info.get('email')),
+                                    ('active', '=', True)
+                                ], limit=1)
+                                if purchaser:
+                                    _logger.info("✅ Found purchaser by email '%s' for RFQ %s", user_info.get('email'), rfq_data.get('name', 'Unknown'))
+                    except Exception as e:
+                        _logger.warning("Could not get user %s from Odoo 14: %s", user_id_val, str(e))
+        
+        # Fallback to Administrator if purchaser not found
+        if not purchaser:
+            purchaser = self.env.ref('base.user_root')
+            _logger.warning("⚠️ Purchaser not found for RFQ %s, using Administrator", rfq_data.get('name', 'Unknown'))
+        else:
+            _logger.info("✅ Mapped purchaser '%s' (ID: %s) for RFQ %s", purchaser.name, purchaser.id, rfq_data.get('name', 'Unknown'))
+        
+        # Map incoterm
+        incoterm = False
+        if rfq_data.get('incoterm_id'):
+            incoterm_id = rfq_data['incoterm_id']
+            incoterm_id_val = incoterm_id[0] if isinstance(incoterm_id, list) else incoterm_id
+            if incoterm_id_val:
+                incoterm = self.env['account.incoterms'].browse(incoterm_id_val)
+                if not incoterm.exists():
+                    incoterm = False
+        
+        # Map payment terms
+        payment_term = False
+        if rfq_data.get('payment_term_id'):
+            payment_term_id = rfq_data['payment_term_id']
+            payment_term_id_val = payment_term_id[0] if isinstance(payment_term_id, list) else payment_term_id
+            if payment_term_id_val:
+                payment_term = self.env['account.payment.term'].browse(payment_term_id_val)
+                if not payment_term.exists():
+                    payment_term = False
+        
+        # Map fiscal position
+        fiscal_position = False
+        if rfq_data.get('fiscal_position_id'):
+            fiscal_position_id = rfq_data['fiscal_position_id']
+            fiscal_position_id_val = fiscal_position_id[0] if isinstance(fiscal_position_id, list) else fiscal_position_id
+            if fiscal_position_id_val:
+                fiscal_position = self.env['account.fiscal.position'].browse(fiscal_position_id_val)
+                if not fiscal_position.exists():
+                    fiscal_position = False
+        
+        # Prepare RFQ values
+        rfq_vals = {
+            'name': rfq_data.get('name', ''),
+            'partner_id': partner.id,
+            'date_order': rfq_data.get('date_order', False),
+            'date_planned': rfq_data.get('date_planned') or rfq_data.get('date_order', False),
+            'state': 'draft',  # Always create as draft
+            'currency_id': currency.id,
+            'company_id': company.id,
+            'picking_type_id': picking_type.id if picking_type else False,
+            'user_id': purchaser.id,
+            'note': rfq_data.get('notes', '') or rfq_data.get('note', ''),  # Odoo 19 uses 'note' (singular)
+            'origin': rfq_data.get('origin', ''),
+        }
+        
+        # Add standard Odoo fields
+        if incoterm:
+            rfq_vals['incoterm_id'] = incoterm.id
+        
+        if payment_term:
+            rfq_vals['payment_term_id'] = payment_term.id
+        
+        if fiscal_position:
+            rfq_vals['fiscal_position_id'] = fiscal_position.id
+        
+        # Map custom fields from eq_fc_purchase_custom
+        purchase_order_fields = self.env['purchase.order']._fields
+        
+        # Log what we're trying to set
+        _logger.info("🔧 Mapping custom fields for RFQ %s", rfq_data.get('name', 'Unknown'))
+        _logger.debug("Available fields in rfq_data: %s", list(rfq_data.keys()))
+        
+        # Header fields - Always set if field exists in model, even if empty/False
+        if 'attention' in purchase_order_fields:
+            attention_val = rfq_data.get('attention', '') or ''
+            rfq_vals['attention'] = attention_val
+            _logger.info("  ✅ Set attention: '%s'", attention_val)
+        
+        if 'delivery_address' in purchase_order_fields:
+            delivery_addr = rfq_data.get('delivery_address', '') or ''
+            rfq_vals['delivery_address'] = delivery_addr
+            _logger.info("  ✅ Set delivery_address: '%s'", delivery_addr)
+        
+        if 'attention_mobile_number' in purchase_order_fields:
+            mobile_num = rfq_data.get('attention_mobile_number', '') or ''
+            rfq_vals['attention_mobile_number'] = mobile_num
+            _logger.info("  ✅ Set attention_mobile_number: '%s'", mobile_num)
+        
+        if 'is_with_stamp' in purchase_order_fields:
+            is_with_stamp = bool(rfq_data.get('is_with_stamp', False))
+            rfq_vals['is_with_stamp'] = is_with_stamp
+            _logger.info("  ✅ Set is_with_stamp: %s", is_with_stamp)
+        
+        if 'is_wo_header' in purchase_order_fields:
+            is_wo_header = bool(rfq_data.get('is_wo_header', False))
+            rfq_vals['is_wo_header'] = is_wo_header
+            _logger.info("  ✅ Set is_wo_header: %s", is_wo_header)
+        
+        if 'is_lumpsum' in purchase_order_fields:
+            is_lumpsum = bool(rfq_data.get('is_lumpsum', False))
+            rfq_vals['is_lumpsum'] = is_lumpsum
+            _logger.info("  ✅ Set is_lumpsum: %s", is_lumpsum)
+        
+        if 'attention_note' in purchase_order_fields:
+            attention_note_val = rfq_data.get('attention_note', '') or ''
+            rfq_vals['attention_note'] = attention_note_val
+            _logger.info("  ✅ Set attention_note: '%s'", attention_note_val[:50] if attention_note_val else '')
+        
+        if 'ask_confirmation' in purchase_order_fields:
+            ask_confirmation = bool(rfq_data.get('ask_confirmation', False))
+            rfq_vals['ask_confirmation'] = ask_confirmation
+            _logger.info("  ✅ Set ask_confirmation: %s", ask_confirmation)
+        
+        # Receipt and Delivery
+        if 'receipt_date' in purchase_order_fields:
+            receipt_date_val = rfq_data.get('receipt_date', False)
+            if receipt_date_val:
+                rfq_vals['receipt_date'] = receipt_date_val
+                _logger.info("  ✅ Set receipt_date: %s", receipt_date_val)
+        
+        if 'deliver_to' in purchase_order_fields:
+            deliver_to_id = rfq_data.get('deliver_to')
+            if deliver_to_id:
+                deliver_to_id_val = deliver_to_id[0] if isinstance(deliver_to_id, list) else deliver_to_id
+                if deliver_to_id_val:
+                    location = self.env['stock.location'].browse(deliver_to_id_val)
+                    if location.exists():
+                        rfq_vals['deliver_to'] = location.id
+                        _logger.info("  ✅ Set deliver_to: %s (ID: %s)", location.name, location.id)
+        
+        # Other Information Fields
+        if 'verified_by' in purchase_order_fields:
+            verified_by_val = rfq_data.get('verified_by', '') or ''
+            rfq_vals['verified_by'] = verified_by_val
+            _logger.info("  ✅ Set verified_by: '%s'", verified_by_val)
+        
+        if 'approved_by' in purchase_order_fields:
+            approved_by_val = rfq_data.get('approved_by', '') or ''
+            rfq_vals['approved_by'] = approved_by_val
+            _logger.info("  ✅ Set approved_by: '%s'", approved_by_val)
+        
+        # Project Code - Check both project_code and project_id from Odoo 14
+        if 'project_code' in purchase_order_fields:
+            project_id = rfq_data.get('project_code') or rfq_data.get('project_id')
+            if project_id:
+                project_id_val = project_id[0] if isinstance(project_id, list) else project_id
+                if project_id_val:
+                    project = self.env['project.project'].browse(project_id_val)
+                    if project.exists():
+                        rfq_vals['project_code'] = project.id
+                        # Project name is computed from project_code, but set it if field exists
+                        if 'project' in purchase_order_fields:
+                            rfq_vals['project'] = project.name
+                        _logger.info("  ✅ Set project_code: %s (ID: %s), project name: %s", 
+                                   project.name, project.id, project.name)
+        
+        if 'order_contact' in purchase_order_fields:
+            order_contact_val = rfq_data.get('order_contact', '') or ''
+            rfq_vals['order_contact'] = order_contact_val
+            _logger.info("  ✅ Set order_contact: '%s'", order_contact_val)
+        
+        if 'contact_no' in purchase_order_fields:
+            contact_no_val = rfq_data.get('contact_no', '') or ''
+            rfq_vals['contact_no'] = contact_no_val
+            _logger.info("  ✅ Set contact_no: '%s'", contact_no_val)
+        
+        if 'supplier_quote_ref' in purchase_order_fields:
+            supplier_quote_ref_val = rfq_data.get('supplier_quote_ref', '') or ''
+            rfq_vals['supplier_quote_ref'] = supplier_quote_ref_val
+            _logger.info("  ✅ Set supplier_quote_ref: '%s'", supplier_quote_ref_val)
+        
+        if 'internal_notes' in purchase_order_fields:
+            internal_notes_val = rfq_data.get('internal_notes', '') or ''
+            rfq_vals['internal_notes'] = internal_notes_val
+            _logger.info("  ✅ Set internal_notes: '%s'", internal_notes_val[:50] if internal_notes_val else '')
+        
+        # Sale Order Reference (computed field in Odoo 14, but try to get it)
+        if 'sale_order_reference' in purchase_order_fields:
+            sale_order_ref = rfq_data.get('sale_order_reference', '') or ''
+            # Note: sale_order_reference is computed in Odoo 14, so it might not be stored
+            # We'll set it if available, but it will be recomputed in Odoo 19 anyway
+            if sale_order_ref:
+                rfq_vals['sale_order_reference'] = sale_order_ref
+                _logger.info("  ✅ Set sale_order_reference: '%s'", sale_order_ref)
+        
+        return rfq_vals
+    
+    def _create_rfq_lines(self, rfq, line_info, client):
+        """Create purchase order lines for RFQ"""
+        _logger.info("=" * 80)
+        _logger.info("🔧 CREATING RFQ LINE")
+        _logger.info("=" * 80)
+        _logger.info("📋 Line info received: %s", line_info)
+        try:
+            # Get product
+            product = False
+            if line_info.get('product_id'):
+                _logger.info("🔍 Looking for product_id: %s", line_info.get('product_id'))
+                product_id = line_info['product_id']
+                product_id_val = product_id[0] if isinstance(product_id, list) else product_id
+                if product_id_val:
+                    product = self.env['product.product'].browse(product_id_val)
+                    if not product.exists():
+                        # Try to get from Odoo 14 and find/create in Odoo 19
+                        try:
+                            product_data = client.search_read(
+                                'product.product',
+                                [('id', '=', product_id_val)],
+                                ['name', 'default_code', 'barcode', 'list_price', 'type'],
+                                limit=1
+                            )
+                            if product_data:
+                                # Try to find by default_code or barcode
+                                default_code = product_data[0].get('default_code', '')
+                                barcode = product_data[0].get('barcode', '')
+                                
+                                if default_code:
+                                    product = self.env['product.product'].search([
+                                        ('default_code', '=', default_code)
+                                    ], limit=1)
+                                
+                                if not product and barcode:
+                                    product = self.env['product.product'].search([
+                                        ('barcode', '=', barcode)
+                                    ], limit=1)
+                                
+                                # If still not found, create it
+                                if not product:
+                                    product_name = product_data[0].get('name', 'Product')
+                                    product_type = product_data[0].get('type', 'consu')
+                                    
+                                    # Validate product type - check what's actually available in Odoo 19
+                                    try:
+                                        # Get the selection field values for type
+                                        product_template_model = self.env['product.template']
+                                        type_field = product_template_model._fields.get('type')
+                                        if type_field and hasattr(type_field, 'selection'):
+                                            valid_types = [v[0] for v in type_field.selection]
+                                            if product_type not in valid_types:
+                                                # Default to first valid type if current type is invalid
+                                                product_type = valid_types[0] if valid_types else 'consu'
+                                                _logger.warning("Product type '%s' not valid in Odoo 19, using '%s' instead" % (
+                                                    product_data[0].get('type', 'unknown'), product_type
+                                                ))
+                                    except Exception as e:
+                                        # If we can't check, default to 'consu'
+                                        if product_type not in ('consu', 'service', 'product'):
+                                            product_type = 'consu'
+                                        _logger.warning("Could not validate product type, using '%s': %s" % (product_type, str(e)))
+                                    
+                                    # Create product template first (type is on template, not product)
+                                    template_vals = {
+                                        'name': product_name,
+                                        'default_code': default_code,
+                                        'list_price': product_data[0].get('list_price', 0.0),
+                                        'type': product_type,
+                                        'purchase_ok': True,
+                                    }
+                                    try:
+                                        product_template = self.env['product.template'].create(template_vals)
+                                        # Get the product variant
+                                        product = product_template.product_variant_id
+                                        
+                                        # Set barcode on product variant (not template)
+                                        if barcode:
+                                            try:
+                                                product.barcode = barcode
+                                            except Exception as barcode_error:
+                                                _logger.warning("Could not set barcode %s on product %s: %s", 
+                                                               barcode, product.id, str(barcode_error))
+                                        
+                                        _logger.info("  ✅ Created product template and variant: %s (ID: %s)", product.name, product.id)
+                                    except Exception as e:
+                                        _logger.error("Error creating product template for %s: %s" % (
+                                            product_name, str(e)
+                                        ))
+                                        product = False
+                        except Exception as e:
+                            _logger.warning("Could not get/create product %s: %s", product_id_val, str(e))
+            
+            # Get UoM - Check both product_uom and product_uom_id (Odoo 19 uses product_uom_id)
+            uom = False
+            # Try product_uom_id first (Odoo 19 standard)
+            if line_info.get('product_uom_id'):
+                uom_id = line_info['product_uom_id']
+                uom_id_val = uom_id[0] if isinstance(uom_id, list) else uom_id
+                if uom_id_val:
+                    uom = self.env['uom.uom'].browse(uom_id_val)
+                    if not uom.exists():
+                        uom = False
+            # Fallback to product_uom (Odoo 14 field name)
+            if not uom and line_info.get('product_uom'):
+                uom_id = line_info['product_uom']
+                uom_id_val = uom_id[0] if isinstance(uom_id, list) else uom_id
+                if uom_id_val:
+                    uom = self.env['uom.uom'].browse(uom_id_val)
+                    if not uom.exists():
+                        uom = False
+            
+            # If still no UoM, use product's default UoM or default to Units
+            if not uom:
+                if product and hasattr(product, 'uom_id') and product.uom_id:
+                    uom = product.uom_id
+                    _logger.info("  📦 Using product's default UoM: %s", uom.name)
+                else:
+                    uom = self.env['uom.uom'].search([('name', '=', 'Units')], limit=1)
+                    if not uom:
+                        # Try to get default UoM from product template
+                        uom = self.env['uom.uom'].search([], limit=1)
+                    if uom:
+                        _logger.info("  📦 Using default UoM: %s", uom.name)
+            
+            # Prepare line values - CRITICAL: Must include order_id
+            # In Odoo 19, purchase.order.line uses product_uom_id (not product_uom)
+            line_vals = {
+                'order_id': rfq.id,
+                'name': line_info.get('name', '') or (product.name if product else 'Line'),
+                'product_qty': line_info.get('product_qty', 1.0),
+                'product_uom_id': uom.id if uom else False,  # FIXED: Use product_uom_id for Odoo 19
+                'price_unit': line_info.get('price_unit', 0.0),
+                'date_planned': line_info.get('date_planned') or rfq.date_planned or rfq.date_order,
+            }
+            
+            # CRITICAL: product_id is required for purchase.order.line in Odoo 19
+            if product:
+                line_vals['product_id'] = product.id
+            else:
+                # If no product, try to create a fallback service product
+                _logger.warning("⚠️ No product found for line, attempting to create fallback service product")
+                try:
+                    # Create a simple service product as fallback
+                    fallback_name = line_info.get('name', 'Line Item') or 'Line Item'
+                    # Use a unique default_code to avoid duplicates
+                    fallback_code = f"MIGRATED_{uuid.uuid4().hex[:8]}"
+                    
+                    fallback_template = self.env['product.template'].create({
+                        'name': fallback_name[:200],  # Limit length
+                        'default_code': fallback_code,
+                        'type': 'service',  # Service products don't need inventory
+                        'purchase_ok': True,
+                        'sale_ok': False,
+                    })
+                    product = fallback_template.product_variant_id
+                    line_vals['product_id'] = product.id
+                    _logger.info("✅ Created fallback service product: %s (ID: %s)", product.name, product.id)
+                except Exception as fallback_error:
+                    _logger.error("❌ Failed to create fallback product: %s", str(fallback_error))
+                    # Last resort: try without product_id (might fail, but worth trying)
+                    if not line_vals.get('name'):
+                        line_vals['name'] = 'Line Item'
+                    _logger.warning("⚠️ Attempting to create line without product_id (may fail)")
+            
+            # Map taxes
+            if line_info.get('taxes_id'):
+                tax_ids = line_info['taxes_id']
+                if isinstance(tax_ids, (list, tuple)):
+                    # Filter valid tax IDs
+                    valid_tax_ids = []
+                    for tax_id in tax_ids:
+                        tax_id_val = tax_id[0] if isinstance(tax_id, list) else tax_id
+                        if tax_id_val:
+                            tax = self.env['account.tax'].browse(tax_id_val)
+                            if tax.exists():
+                                valid_tax_ids.append(tax.id)
+                    if valid_tax_ids:
+                        line_vals['taxes_id'] = [(6, 0, valid_tax_ids)]
+            
+            # Map custom fields from eq_fc_purchase_custom
+            purchase_order_line_fields = self.env['purchase.order.line']._fields
+            
+            if 'brand_id' in purchase_order_line_fields and line_info.get('brand_id'):
+                brand_id = line_info.get('brand_id')
+                brand_id_val = brand_id[0] if isinstance(brand_id, list) else brand_id
+                if brand_id_val:
+                    brand = self.env['product.brand'].browse(brand_id_val)
+                    if brand.exists():
+                        line_vals['brand_id'] = brand.id
+            
+            if 'project_id' in purchase_order_line_fields and line_info.get('project_id'):
+                project_id = line_info.get('project_id')
+                project_id_val = project_id[0] if isinstance(project_id, list) else project_id
+                if project_id_val:
+                    project = self.env['project.project'].browse(project_id_val)
+                    if project.exists():
+                        line_vals['project_id'] = project.id
+            
+            if 'customer_id' in purchase_order_line_fields and line_info.get('customer_id'):
+                customer_id = line_info.get('customer_id')
+                customer_id_val = customer_id[0] if isinstance(customer_id, list) else customer_id
+                if customer_id_val:
+                    customer = self.env['res.partner'].browse(customer_id_val)
+                    if customer.exists():
+                        line_vals['customer_id'] = customer.id
+            
+            if line_info.get('sequence'):
+                line_vals['sequence'] = line_info.get('sequence')
+            
+            # Create the line - Try two methods
+            _logger.info("📝 Creating line with values: %s", line_vals)
+            
+            # Method 1: Create directly using env
+            try:
+                rfq_line = self.env['purchase.order.line'].create(line_vals)
+                _logger.info("✅ SUCCESS! Created RFQ line ID %s: %s (Qty: %s, Price: %s, Product: %s)", 
+                            rfq_line.id,
+                            rfq_line.name[:50] if rfq_line.name else 'No name', 
+                            rfq_line.product_qty, 
+                            rfq_line.price_unit,
+                            rfq_line.product_id.name if rfq_line.product_id else 'No product')
+                
+                # Verify the line was created and linked to RFQ
+                if rfq_line.order_id.id != rfq.id:
+                    _logger.error("❌ CRITICAL: Created line has wrong order_id! Expected %s, got %s", 
+                                rfq.id, rfq_line.order_id.id)
+                    raise ValueError(f"Line order_id mismatch: expected {rfq.id}, got {rfq_line.order_id.id}")
+                
+                # Commit after each line to ensure it's saved
+                self.env.cr.commit()
+                _logger.info("✅ Line committed to database")
+                
+                # Invalidate cache to ensure RFQ sees the new line
+                rfq.invalidate_recordset(['order_line'])
+                _logger.info("✅ RFQ cache invalidated")
+                _logger.info("=" * 80)
+                
+            except Exception as create_error:
+                _logger.error("❌ Method 1 failed: %s", str(create_error))
+                # Method 2: Try creating via RFQ's order_line field
+                try:
+                    _logger.info("🔄 Trying alternative method: Creating via RFQ.order_line...")
+                    # Remove order_id from vals since we're creating via RFQ
+                    line_vals_alt = {k: v for k, v in line_vals.items() if k != 'order_id'}
+                    rfq_line = rfq.order_line.create(line_vals_alt)
+                    _logger.info("✅ SUCCESS! Created RFQ line via alternative method ID %s", rfq_line.id)
+                    self.env.cr.commit()
+                    rfq.invalidate_recordset(['order_line'])
+                    _logger.info("=" * 80)
+                except Exception as alt_error:
+                    _logger.error("❌ Alternative method also failed: %s", str(alt_error))
+                    raise  # Re-raise the original error
+            
+        except Exception as e:
+            _logger.error("=" * 80)
+            _logger.error("❌ FAILED to create RFQ line!")
+            _logger.error("❌ Error: %s", str(e))
+            _logger.error("❌ Line values attempted: %s", line_vals)
+            _logger.error("=" * 80)
+            raise
 

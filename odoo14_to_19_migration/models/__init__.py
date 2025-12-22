@@ -16,4 +16,5 @@ from . import estimation_migration_line
 from . import crm_lead_migration_line
 from . import amc_system_type_migration_line
 from . import project_migration_line
+from . import rfq_migration_line
 

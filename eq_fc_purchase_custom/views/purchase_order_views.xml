@@ -44,16 +44,14 @@
                     <field name="billing_status" invisible="1"/>
                 </xpath>
                 
-                <!-- Add Brand field to order lines -->
-                <xpath expr="//field[@name='order_line']//field[@name='product_id']" position="before">
-                    <field name="brand_id" optional="show"/>
+                <!-- Make Received Quantity and Billed Quantity always visible in order_line list -->
+                <xpath expr="//field[@name='order_line']//field[@name='qty_received']" position="attributes">
+                    <attribute name="column_invisible">0</attribute>
+                    <attribute name="string">Received Quantity</attribute>
                 </xpath>
-                
-                <!-- Add project and customer fields to order lines (invisible by default) -->
-                <xpath expr="//field[@name='order_line']//field[@name='name']" position="after">
-                    <field name="project_id" invisible="1"/>
-                    <field name="customer_id" invisible="1"/>
-                    <!-- project_orderline_id field removed as project.project.orderline model doesn't exist in Odoo 19 -->
+                <xpath expr="//field[@name='order_line']//field[@name='qty_invoiced']" position="attributes">
+                    <attribute name="column_invisible">0</attribute>
+                    <attribute name="string">Billed Quantity</attribute>
                 </xpath>
                 
                 <!-- Add tabs: Products, Projects, DO Details, Other Information -->
