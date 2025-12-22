@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_eq_partner_merge_wizard_user,eq.partner.merge.wizard.user,model_eq_partner_merge_wizard,base.group_user,1,1,1,1
+
