@@ -134,6 +134,7 @@ class PurchaseOrderLine(models.Model):
     _inherit = 'purchase.order.line'
 
     brand_id = fields.Many2one('product.brand', string='Brand', help="Product brand")
+    brand_variant_id = fields.Many2one('product.brand.variant', string='Brand Variant', help="Product brand variant")
     project_id = fields.Many2one('project.project', string="Project", help="Related project")
     customer_id = fields.Many2one('res.partner', string="Customer", help="Customer for this line")
     # Note: project.project.orderline model doesn't exist in Odoo 19, so this field is removed
@@ -141,21 +142,45 @@ class PurchaseOrderLine(models.Model):
     
     @api.onchange('product_id')
     def _onchange_product_id_custom(self):
-        """Set brand_id when product changes"""
+        """Set brand_id and brand_variant_id when product changes"""
         res = super()._onchange_product_id() if hasattr(super(), '_onchange_product_id') else {}
-        if self.product_id and hasattr(self.product_id, 'brand_id') and self.product_id.brand_id:
-            # Check if product.brand model exists
-            if 'product.brand' in self.env:
-                self.brand_id = self.product_id.brand_id.id
+        if self.product_id:
+            # Set brand_id
+            if hasattr(self.product_id, 'brand_id') and self.product_id.brand_id:
+                # Check if product.brand model exists
+                if 'product.brand' in self.env:
+                    self.brand_id = self.product_id.brand_id.id
+            
+            # Set brand_variant_id if product has this field
+            if hasattr(self.product_id, 'brand_variant_id') and self.product_id.brand_variant_id:
+                # Check if product.brand.variant model exists
+                if 'product.brand.variant' in self.env:
+                    self.brand_variant_id = self.product_id.brand_variant_id.id
         return res
     
     @api.onchange('brand_id')
     def _onchange_brand_id(self):
         """Filter products by brand"""
-        if self.brand_id and not self.product_id:
+        if self.brand_id:
             # Check if product.brand model exists and product has brand_id field
             if 'product.brand' in self.env and hasattr(self.env['product.product'], 'brand_id'):
                 return {'domain': {'product_id': [('brand_id', '=', self.brand_id.id)]}}
+        # Return empty dict to let Odoo use default domain
+        return {}
+    
+    @api.onchange('brand_variant_id')
+    def _onchange_brand_variant_id(self):
+        """Filter products by brand variant and set brand_id"""
+        if self.brand_variant_id:
+            # Set brand_id from brand_variant if available
+            if hasattr(self.brand_variant_id, 'brand_id') and self.brand_variant_id.brand_id:
+                if 'product.brand' in self.env:
+                    self.brand_id = self.brand_variant_id.brand_id.id
+            
+            # Filter products by brand_variant_id if product has this field
+            if 'product.brand.variant' in self.env and hasattr(self.env['product.product'], 'brand_variant_id'):
+                return {'domain': {'product_id': [('brand_variant_id', '=', self.brand_variant_id.id)]}}
+        # Return empty dict to let Odoo use default domain
         return {}
 
 
