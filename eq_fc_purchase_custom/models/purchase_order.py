@@ -45,6 +45,36 @@ class PurchaseOrder(models.Model):
     # Delivery Order Lines (for DO Details tab)
     delivery_order_line_ids = fields.One2many('purchase.delivery.order.line', 'purchase_order_id', string="Delivery Order Lines")
     
+    # RFQ Stage
+    rfq_stage_id = fields.Many2one('eq.fc.rfq.stage', string='RFQ Stage', 
+                                   default=lambda self: self._get_default_rfq_stage(),
+                                   tracking=True, copy=False,
+                                   domain="[('active', '=', True)]",
+                                   help="Current stage of the RFQ workflow")
+    
+    def _get_default_rfq_stage(self):
+        """Get default RFQ stage (Draft)"""
+        stage = self.env['eq.fc.rfq.stage'].search([
+            ('name', '=', 'Draft'),
+            ('active', '=', True)
+        ], limit=1)
+        if not stage:
+            # Fallback to first stage by sequence
+            stage = self.env['eq.fc.rfq.stage'].search([
+                ('active', '=', True)
+            ], order='sequence asc', limit=1)
+        return stage.id if stage else False
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Set default RFQ stage on creation"""
+        for vals in vals_list:
+            if 'rfq_stage_id' not in vals or not vals.get('rfq_stage_id'):
+                default_stage = self._get_default_rfq_stage()
+                if default_stage:
+                    vals['rfq_stage_id'] = default_stage
+        return super().create(vals_list)
+    
     @api.depends('project_code')
     def _compute_project_name(self):
         """Compute project name from project_code"""
@@ -115,18 +145,77 @@ class PurchaseOrder(models.Model):
         else:
             self.project = False
     
-    def action_approve_quotation(self):
-        """Approve quotation and set approved_by"""
-        self.write({
-            'approved_by': self.env.user.name,
-        })
-        return super().button_approve() if hasattr(super(), 'button_approve') else True
     
     def button_confirm(self):
-        """Override to set verified_by on confirmation"""
+        """Override to set verified_by on confirmation and update RFQ stage"""
         result = super().button_confirm()
-        if not self.verified_by:
-            self.verified_by = self.env.user.name
+        for order in self:
+            if not order.verified_by:
+                order.verified_by = self.env.user.name
+            # Update RFQ stage when confirming
+            if order.state == 'purchase':
+                stage = self.env['eq.fc.rfq.stage'].search([
+                    ('name', '=', 'Purchase Order'),
+                    ('active', '=', True)
+                ], limit=1)
+                if not stage:
+                    # Fallback to "Approved" stage if "Purchase Order" doesn't exist
+                    stage = self.env['eq.fc.rfq.stage'].search([
+                        ('name', '=', 'Approved'),
+                        ('active', '=', True)
+                    ], limit=1)
+                if stage:
+                    order.rfq_stage_id = stage.id
+        return result
+    
+    def action_rfq_send(self):
+        """Override to update RFQ stage when sending RFQ"""
+        result = super().action_rfq_send()
+        for order in self:
+            if order.state == 'sent':
+                stage = self.env['eq.fc.rfq.stage'].search([
+                    ('name', '=', 'RFQ Sent'),
+                    ('active', '=', True)
+                ], limit=1)
+                if stage:
+                    order.rfq_stage_id = stage.id
+        return result
+    
+    def button_approve(self):
+        """Override to update RFQ stage when approving and set approved_by"""
+        result = super().button_approve()
+        for order in self:
+            if not order.approved_by:
+                order.approved_by = self.env.user.name
+            # Update RFQ stage based on state
+            if order.state == 'to approve':
+                stage = self.env['eq.fc.rfq.stage'].search([
+                    ('name', '=', 'Pending For Approval'),
+                    ('active', '=', True)
+                ], limit=1)
+                if stage:
+                    order.rfq_stage_id = stage.id
+            elif order.state == 'purchase':
+                # If approved and confirmed, move to Approved stage
+                stage = self.env['eq.fc.rfq.stage'].search([
+                    ('name', '=', 'Approved'),
+                    ('active', '=', True)
+                ], limit=1)
+                if stage:
+                    order.rfq_stage_id = stage.id
+        return result
+    
+    def button_draft(self):
+        """Override to update RFQ stage when resetting to draft"""
+        result = super().button_draft()
+        for order in self:
+            if order.state == 'draft':
+                stage = self.env['eq.fc.rfq.stage'].search([
+                    ('name', '=', 'Draft'),
+                    ('active', '=', True)
+                ], limit=1)
+                if stage:
+                    order.rfq_stage_id = stage.id
         return result
 
 
