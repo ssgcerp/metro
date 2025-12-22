@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- EQ FC RFQ Config Form View -->
+        <record id="view_eq_fc_rfq_config_form" model="ir.ui.view">
+            <field name="name">eq.fc.rfq.config.form</field>
+            <field name="model">eq.fc.rfq.config</field>
+            <field name="arch" type="xml">
+                <form string="RFQ Configuration">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="active"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="RFQ Number Format" name="rfq_number_format">
+                                <div class="oe_title">
+                                    <h1>RFQ Number Format Configuration</h1>
+                                    <p>Configure how RFQ numbers are generated.</p>
+                                </div>
+                                
+                                <group>
+                                    <group>
+                                        <field name="prefix" placeholder="e.g., RFQ"/>
+                                        <field name="module_code" placeholder="e.g., RFQ"/>
+                                        <field name="separator" placeholder="e.g., /"/>
+                                        <field name="padding_digits" placeholder="e.g., 4"/>
+                                        <field name="next_number" placeholder="Leave empty for auto"/>
+                                    </group>
+                                    <group>
+                                        <field name="use_branch_code"/>
+                                        <field name="use_year"/>
+                                    </group>
+                                </group>
+                                
+                                <group>
+                                    <group>
+                                        <field name="format_text" 
+                                               placeholder="e.g., {prefix}/{modulecode}/{branchcode}/{nextnumber}/{year}"/>
+                                    </group>
+                                </group>
+                                <div class="alert alert-info" role="alert" style="margin-top: 10px;">
+                                    <strong>Available Placeholders (case-insensitive):</strong><br/>
+                                    <ul style="margin-top: 5px;">
+                                        <li><code>{prefix}</code> - Prefix value (e.g., RFQ)</li>
+                                        <li><code>{modulecode}</code> - Module code (e.g., RFQ)</li>
+                                        <li><code>{branchcode}</code> - Branch code (e.g., FUJ)</li>
+                                        <li><code>{nextnumber}</code> - Sequential number (padded based on Padding Digits, e.g., 0001, 1213)</li>
+                                        <li><code>{year}</code> - Year (e.g., 2025)</li>
+                                    </ul>
+                                    <br/>
+                                    <strong>Format Text Priority:</strong><br/>
+                                    1. If "Format Text" is set, it will be used<br/>
+                                    2. If empty, the standard format will be used based on checkboxes above<br/>
+                                    <br/>
+                                    <strong>Example Format:</strong><br/>
+                                    <code>{prefix}/{modulecode}/{branchcode}/{nextnumber}/{year}</code><br/>
+                                    Result: <strong>RFQ/RFQ/FUJ/1213/2025</strong>
+                                </div>
+                                
+                                <div class="alert alert-info" role="alert">
+                                    <strong>Format Example:</strong><br/>
+                                    If Prefix = "RFQ", Module Code = "RFQ", Branch Code = "FUJ", 
+                                    Sequential = "1213", Year = "2025", Separator = "/"<br/>
+                                    Result: <strong>RFQ/RFQ/FUJ/1213/2025</strong><br/>
+                                    <br/>
+                                    <strong>Using Custom Format:</strong><br/>
+                                    Format Text: <code>{prefix}/{modulecode}/{branchcode}/{nextnumber}/{year}</code><br/>
+                                    Result: <strong>RFQ/RFQ/FUJ/1213/2025</strong>
+                                </div>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- EQ FC RFQ Config List View -->
+        <record id="view_eq_fc_rfq_config_tree" model="ir.ui.view">
+            <field name="name">eq.fc.rfq.config.list</field>
+            <field name="model">eq.fc.rfq.config</field>
+            <field name="arch" type="xml">
+                <list string="RFQ Configurations">
+                    <field name="name"/>
+                    <field name="prefix"/>
+                    <field name="module_code"/>
+                    <field name="use_branch_code"/>
+                    <field name="use_year"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- EQ FC RFQ Config Action -->
+        <record id="action_eq_fc_rfq_config" model="ir.actions.act_window">
+            <field name="name">RFQ Configuration</field>
+            <field name="res_model">eq.fc.rfq.config</field>
+            <field name="view_mode">list,form</field>
+            <field name="limit">1</field>
+            <field name="context">{'search_default_active': 1}</field>
+        </record>
+    </data>
+</odoo>
+

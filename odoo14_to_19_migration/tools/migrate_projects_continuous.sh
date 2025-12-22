@@ -5,7 +5,7 @@
 # List persists and grows as projects are processed
 
 # Configuration - Change these if needed
-ODOO_URL="https://metro.equdaierp.com/"
+ODOO_URL="http://localhost:8079"
 DATABASE="metrodb"  # Change this to your database name
 PROCESSING_DELAY=2  # Seconds to wait between processing each project
 

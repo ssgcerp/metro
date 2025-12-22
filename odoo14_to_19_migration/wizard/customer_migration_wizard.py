@@ -901,8 +901,65 @@ class CustomerMigrationWizard(models.TransientModel):
         # We already checked that partner exists above, so partner.id should be valid
         partner_id_val = partner.id
         
-        # Always set salesperson to Administrator
-        admin_user = self.env.ref('base.user_root')
+        # Map salesperson (user_id) from Odoo 14 to Odoo 19
+        salesperson = False
+        user_id = quotation_data.get('user_id')
+        if user_id:
+            user_id_val = user_id[0] if isinstance(user_id, list) else user_id
+            user_name = user_id[1] if isinstance(user_id, list) and len(user_id) > 1 else ''
+            
+            if user_id_val:
+                # First try to find by ID
+                try:
+                    salesperson = self.env['res.users'].browse(user_id_val)
+                    if not salesperson.exists() or not salesperson.active:
+                        salesperson = False
+                except:
+                    salesperson = False
+                
+                # If not found by ID, try to get from Odoo 14 and find by login or name
+                if not salesperson:
+                    try:
+                        user_data = client.search_read(
+                            'res.users',
+                            [('id', '=', user_id_val)],
+                            ['login', 'name', 'email'],
+                            limit=1
+                        )
+                        if user_data:
+                            user_info = user_data[0]
+                            login = user_info.get('login', '')
+                            name = user_info.get('name', '') or user_name
+                            
+                            # Try to find by login first
+                            if login:
+                                salesperson = self.env['res.users'].search([
+                                    ('login', '=', login),
+                                    ('active', '=', True)
+                                ], limit=1)
+                            
+                            # If not found by login, try by name
+                            if not salesperson and name:
+                                salesperson = self.env['res.users'].search([
+                                    ('name', '=', name),
+                                    ('active', '=', True)
+                                ], limit=1)
+                            
+                            # If still not found, try by email
+                            if not salesperson and user_info.get('email'):
+                                salesperson = self.env['res.users'].search([
+                                    ('email', '=', user_info.get('email')),
+                                    ('active', '=', True)
+                                ], limit=1)
+                    except Exception as e:
+                        _logger.warning("Could not get user %s from Odoo 14: %s", user_id_val, str(e))
+        
+        # Fallback to Administrator if salesperson not found
+        if not salesperson:
+            salesperson = self.env.ref('base.user_root')
+            _logger.info("Salesperson not found, using Administrator for quotation %s", quotation_data.get('name', 'Unknown'))
+        else:
+            _logger.info("Mapped salesperson %s (ID: %s) for quotation %s", salesperson.name, salesperson.id, quotation_data.get('name', 'Unknown'))
         
         quotation_vals = {
             'name': quotation_data.get('name', ''),
@@ -916,7 +973,7 @@ class CustomerMigrationWizard(models.TransientModel):
             'state': 'draft',  # Always create as draft
             'client_order_ref': quotation_data.get('client_order_ref', ''),
             'note': quotation_data.get('note', ''),
-            'user_id': admin_user.id,  # Always set to Administrator
+            'user_id': salesperson.id,  # Map salesperson from Odoo 14
         }
         
         # Override with specific invoice/shipping addresses if provided in quotation data
@@ -968,7 +1025,7 @@ class CustomerMigrationWizard(models.TransientModel):
         sale_order_fields = self.env['sale.order']._fields
         for key, value in quotation_data.items():
             if key not in standard_field_names and not key.startswith('__'):
-                # Skip user_id - always use Administrator
+                # Skip user_id - already mapped above
                 if key == 'user_id':
                     continue
                 

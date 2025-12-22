@@ -150,6 +150,21 @@ else:
         </field>
     </record>
 
+    <!-- Server Action for Start Queued Migration - appears in Action menu (requires selection) -->
+    <record id="action_server_start_queued" model="ir.actions.server">
+        <field name="name">Start Queued Migration</field>
+        <field name="model_id" ref="model_eq_migration_quotation"/>
+        <field name="binding_model_id" ref="model_eq_migration_quotation"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    action = records.action_start_queued_migration()
+else:
+    raise UserError("Please select at least one queued quotation to start migration")
+        </field>
+    </record>
+
     <!-- Server Action to Trigger Queue Job Runner - appears in Action menu (always visible) -->
     <record id="action_server_trigger_queue_job_runner" model="ir.actions.server">
         <field name="name">Process Queue Jobs Now</field>

@@ -9,7 +9,7 @@ from datetime import datetime
 _logger = logging.getLogger(__name__)
 
 
-def _log_failed_migration(quotation_number, error_detail):
+def _log_failed_quotation_migration(quotation_number, error_detail):
     """Log failed migration to a file for later processing"""
     try:
         # Get log directory (use module directory/logs)
@@ -18,13 +18,13 @@ def _log_failed_migration(quotation_number, error_detail):
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
         
-        log_file = os.path.join(log_dir, 'failed_migrations.log')
+        log_file = os.path.join(log_dir, 'failed_quotation_migrations.log')
         
         with open(log_file, 'a', encoding='utf-8') as f:
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             f.write(f"{timestamp} | {quotation_number} | {error_detail[:200]}\n")
         
-        _logger.info("Failed migration logged to: %s", log_file)
+        _logger.info("Failed quotation migration logged to: %s", log_file)
     except Exception as e:
         _logger.warning("Could not write to failed migrations log: %s", str(e))
 
@@ -346,9 +346,140 @@ class QuotationMigrationLine(models.Model):
     
     def action_bulk_migrate(self):
         """Bulk migrate selected quotations sequentially using Queue Jobs"""
-        pending = self.filtered(lambda l: l.status == 'pending_migration')
-        if not pending:
-            raise UserError('No quotations with "Pending Migration" status selected')
+        # Wrap entire method to ensure we never leave records in 'error' status
+        try:
+            pending = self.filtered(lambda l: l.status == 'pending_migration')
+            if not pending:
+                raise UserError('No quotations with "Pending Migration" status selected')
+            
+            # Comprehensive check if queue_job is available
+            is_available, reason = _check_queue_job_available(self.env)
+            if not is_available:
+                raise UserError(
+                    f'Queue Job module is not properly available.\n\n'
+                    f'Reason: {reason}\n\n'
+                    f'Please:\n'
+                    f'1. Install "queue_job" module from Apps menu (if not installed)\n'
+                    f'2. Upgrade "odoo14_to_19_migration" module (Apps → Search → Upgrade)\n'
+                    f'3. Fully restart Odoo server\n'
+                    f'4. Try again'
+                )
+            
+            # Get IDs of pending records
+            pending_ids = pending.ids
+            
+            if not pending_ids:
+                raise UserError('No quotations with "Pending Migration" status selected')
+            
+            # Mark all records as "queued" - user will start the migration process separately
+            # Use fresh recordset to ensure we're working with the latest data
+            fresh_pending = self.env['eq.migration.quotation'].browse(pending_ids)
+            for record in fresh_pending:
+                record.write({
+                    'status': 'queued',
+                    'status_message': 'Queued for migration - waiting to be processed',
+                    'error_message': False,  # Clear any previous error messages
+                })
+            self.env.cr.commit()
+            _logger.info("✅ Marked %s quotations as 'queued' (ready for processing)", len(fresh_pending))
+        
+            # Return success notification
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Quotations Queued',
+                    'message': f'{len(pending_ids)} quotations have been queued. Use "Process Queue Jobs Now" to start the migration process.',
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+        except UserError as ue:
+            # For UserError, try to keep status as queued if possible
+            # Only revert if we haven't set status to queued yet
+            if 'fresh_pending' in locals() and fresh_pending:
+                try:
+                    # Check if status was already set to queued
+                    current_status = fresh_pending[0].status if fresh_pending else None
+                    if current_status != 'queued':
+                        # Status wasn't set yet, so this is an early error - re-raise
+                        raise
+                    else:
+                        # Status is already queued, keep it and show warning
+                        fresh_pending.write({
+                            'status': 'queued',
+                            'status_message': f'Queued - validation issue: {str(ue)[:200]}',
+                            'error_message': str(ue),
+                        })
+                        self.env.cr.commit()
+                        # Show warning instead of error
+                        return {
+                            'type': 'ir.actions.client',
+                            'tag': 'display_notification',
+                            'params': {
+                                'title': 'Quotations Queued (with warnings)',
+                                'message': f'{len(fresh_pending)} quotations queued, but there were some issues. Check status messages for details.',
+                                'type': 'warning',
+                                'sticky': False,
+                            }
+                        }
+                except:
+                    # If we can't update, just re-raise the original error
+                    raise ue
+            else:
+                # No fresh_pending yet, re-raise the error
+                raise ue
+        except Exception as e:
+            # Catch any unexpected errors - try to keep status as queued
+            error_msg = str(e)
+            error_type = type(e).__name__
+            _logger.warning("Unexpected error in action_bulk_migrate (%s): %s", error_type, error_msg, exc_info=True)
+            
+            # Try to ensure status stays as queued
+            try:
+                if 'pending_ids' in locals() and pending_ids:
+                    fresh_pending = self.env['eq.migration.quotation'].browse(pending_ids)
+                    # Set or keep status as queued
+                    fresh_pending.write({
+                        'status': 'queued',  # Keep as queued, don't revert
+                        'status_message': f'Queued - unexpected error occurred: {error_msg[:200]}',
+                        'error_message': error_msg[:500],
+                    })
+                    self.env.cr.commit()
+                    
+                    # Return success notification anyway
+                    return {
+                        'type': 'ir.actions.client',
+                        'tag': 'display_notification',
+                        'params': {
+                            'title': 'Quotations Queued',
+                            'message': f'{len(pending_ids)} quotations have been queued. There were some issues during enqueueing - check status messages for details.',
+                            'type': 'warning',
+                            'sticky': False,
+                        }
+                    }
+            except Exception as revert_error:
+                _logger.error("Failed to set status after unexpected error: %s", str(revert_error))
+            
+            # If we can't set status, still don't raise error - let user see what happened
+            # But log it as a warning, not an error
+            _logger.warning("Could not set queued status, but continuing anyway")
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Action Completed',
+                    'message': f'Action completed, but there were some issues. Please check the quotation records.',
+                    'type': 'warning',
+                    'sticky': False,
+                }
+            }
+    
+    def action_start_queued_migration(self):
+        """Start processing queued quotations - enqueue the first job to start sequential migration"""
+        queued = self.filtered(lambda l: l.status == 'queued')
+        if not queued:
+            raise UserError('No quotations with "Queued" status selected')
         
         # Comprehensive check if queue_job is available
         is_available, reason = _check_queue_job_available(self.env)
@@ -363,44 +494,44 @@ class QuotationMigrationLine(models.Model):
                 f'4. Try again'
             )
         
-        # Get IDs of pending records
-        pending_ids = pending.ids
+        # Get IDs of queued records
+        queued_ids = queued.ids
         
-        if not pending_ids:
-            raise UserError('No quotations with "Pending Migration" status selected')
-        
-        # Mark all records as "queued" before enqueueing
-        for record in pending:
-            record.write({
-                'status': 'queued',
-                'status_message': 'Queued for migration - waiting to start...',
-            })
-        self.env.cr.commit()
-        _logger.info("✅ Marked %s quotations as 'queued'", len(pending))
+        if not queued_ids:
+            raise UserError('No quotations with "Queued" status selected')
         
         # Start sequential migration by enqueueing the first job
-        # The job will automatically trigger the next one after completion
         try:
-            # Use the first record from pending to call with_delay
-            # The method will receive all record_ids as parameter
-            first_record = self.browse(pending_ids[0])
+            first_record = self.browse(queued_ids[0])
+            if not first_record.exists():
+                raise UserError(f'Record {queued_ids[0]} no longer exists')
             
-            # Call with_delay and then the method
-            # In Odoo 19, queue_job automatically handles methods called via with_delay()
-            # No @job decorator needed
-            first_record.with_delay()._migrate_sequential(pending_ids, 0)
+            # Enqueue the first job - it will automatically process the rest sequentially
+            job = first_record.with_delay()._migrate_sequential(queued_ids, 0)
             
-            _logger.info("✅ Started sequential migration for %s quotations", len(pending_ids))
+            _logger.info("✅ Started sequential migration for %s queued quotations (job UUID: %s)", 
+                        len(queued_ids), getattr(job, 'uuid', 'N/A'))
+            
+            # Update status message
+            queued.write({
+                'status_message': 'Migration process started - job enqueued',
+            })
+            self.env.cr.commit()
+            
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Migration Started',
+                    'message': f'Started processing {len(queued_ids)} queued quotations. Migration will continue sequentially.',
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
             
         except AttributeError as e:
             error_msg = str(e)
             _logger.error("Queue Job AttributeError: %s", error_msg, exc_info=True)
-            # Revert status back to pending_migration on error
-            pending.write({
-                'status': 'pending_migration',
-                'status_message': 'Failed to queue - ' + error_msg,
-            })
-            self.env.cr.commit()
             raise UserError(
                 f'Queue Job error: {error_msg}\n\n'
                 f'This usually means queue_job module is not properly loaded.\n'
@@ -413,37 +544,19 @@ class QuotationMigrationLine(models.Model):
         except Exception as e:
             error_msg = str(e)
             error_type = type(e).__name__
-            _logger.error("Queue Job error (%s): %s", error_type, error_msg, exc_info=True)
-            # Revert status back to pending_migration on error
-            pending.write({
-                'status': 'pending_migration',
-                'status_message': 'Failed to queue - ' + error_msg,
-            })
-            self.env.cr.commit()
+            _logger.error("Error starting queued migration (%s): %s", error_type, error_msg, exc_info=True)
             raise UserError(
                 f'Error starting migration: {error_msg}\n\n'
                 f'Error type: {error_type}\n'
                 f'Please check Odoo logs for more details.'
             )
-        
-        # Return success notification
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': 'Bulk Migration Started',
-                'message': f'Queued {len(pending_ids)} quotations for sequential migration. You will receive notifications as each completes.',
-                'type': 'success',
-                'sticky': False,
-            }
-        }
     
     def action_migrate(self):
         """Migrate this quotation from Odoo 14 to Odoo 19"""
         self.ensure_one()
         
-        if self.status != 'pending_migration':
-            raise UserError('Can only migrate quotations with "Pending Migration" status')
+        if self.status not in ('pending_migration', 'queued'):
+            raise UserError('Can only migrate quotations with "Pending Migration" or "Queued" status')
         
         if not self.config_id:
             raise UserError('Migration configuration is required')
@@ -499,6 +612,7 @@ class QuotationMigrationLine(models.Model):
             ]
             
             # Safe stored fields only - NEVER include computed accounting fields
+            # Start with minimal safe fields
             fields_to_fetch = [
                 'id', 'name', 'partner_id', 'date_order', 'validity_date', 'amount_total',
                 'amount_untaxed', 'amount_tax', 'state', 'pricelist_id', 'payment_term_id',
@@ -506,17 +620,42 @@ class QuotationMigrationLine(models.Model):
                 'create_date', 'write_date', 'write_uid', 'create_uid'
             ]
             
+            # Initialize estimation_fields list (will be populated if fields exist and are verified)
+            estimation_fields = []
+            estimation_field_names = ['estimation_id', 'crm_estimation_id', 'estimation', 'crm_estimation']
+            
             # Try to add more stored fields, but be very careful
+            # NOTE: We do NOT add estimation fields here - they are handled separately after verification
             try:
                 all_fields = client.fields_get('sale.order')
                 if all_fields:
                     dynamic_fields = []
+                    # Check if estimation fields exist - but DON'T add them yet
+                    # We'll verify they can actually be read before adding them
+                    for est_field in estimation_field_names:
+                        if est_field in all_fields:
+                            field_info = all_fields[est_field]
+                            field_store = field_info.get('store', True)
+                            field_type = field_info.get('type', '')
+                            # Only mark for potential addition if it's a stored many2one field
+                            # But we won't add it until we verify it can be read
+                            if field_store and field_type == 'many2one':
+                                estimation_fields.append(est_field)
+                                _logger.debug("Found potential estimation field in fields_get: %s", est_field)
+                    
+                    if not estimation_fields:
+                        _logger.info("No estimation fields found in Odoo 14 sale.order model")
+                    
+                    # Add other dynamic fields
                     for f, field_info in all_fields.items():
                         # Skip excluded fields
                         if f in excluded_fields:
                             continue
                         # Skip if already in fields_to_fetch
                         if f in fields_to_fetch:
+                            continue
+                        # Skip estimation fields (already handled above)
+                        if f in ['estimation_id', 'crm_estimation_id', 'estimation', 'crm_estimation']:
                             continue
                         field_type = field_info.get('type', '')
                         field_store = field_info.get('store', True)
@@ -534,6 +673,18 @@ class QuotationMigrationLine(models.Model):
                 _logger.warning("Could not get all fields: %s", str(e))
                 # Continue with safe default fields only
             
+            # CRITICAL: Always remove estimation fields BEFORE any search_read call
+            # fields_get() might report fields that don't actually exist or can't be read
+            # Since we know these fields cause errors in Odoo 14, we'll remove them unconditionally
+            # and only try to read them separately if needed for estimation linking
+            
+            # Remove ALL estimation fields from fields_to_fetch - they cause errors in Odoo 14
+            fields_to_fetch = [f for f in fields_to_fetch if f not in estimation_field_names]
+            _logger.info("Removed all estimation fields from fields_to_fetch to prevent XML-RPC errors")
+            
+            # Note: We'll check for estimation_id separately after fetching the quotation
+            # by looking at the quotation data structure, not by requesting the field directly
+            
             # Get full quotation data with safe fields only
             # CRITICAL: Always use explicit field list, NEVER empty list []
             # This prevents Odoo from trying to read computed accounting fields
@@ -542,6 +693,7 @@ class QuotationMigrationLine(models.Model):
                 'amount_untaxed', 'amount_tax', 'state', 'pricelist_id', 'payment_term_id',
                 'order_line', 'note', 'client_order_ref', 'user_id', 'team_id', 'company_id', 
                 'create_date', 'write_date'
+                # Note: estimation fields are NOT included in minimal_safe_fields as they may not exist in Odoo 14
             ]
             
             try:
@@ -553,21 +705,149 @@ class QuotationMigrationLine(models.Model):
                     limit=1
                 )
             except Exception as e:
-                _logger.warning("Error fetching quotation with expanded fields: %s. Using minimal safe fields.", str(e))
-                # Fallback: use minimal safe fields only (guaranteed to work)
-                full_quotation = client.search_read(
-                    'sale.order',
-                    [('id', '=', quotation_data['id'])],
-                    minimal_safe_fields,  # Minimal guaranteed-safe fields
-                    limit=1
-                )
+                error_msg = str(e)
+                _logger.warning("Error fetching quotation with expanded fields: %s. Trying to fix and retry.", error_msg)
+                
+                # Check for "Invalid field" errors - extract field name from error
+                problematic_fields = []
+                if 'Invalid field' in error_msg:
+                    # Try to extract field name from error message
+                    import re
+                    match = re.search(r"Invalid field ['\"]([^'\"]+)['\"]", error_msg)
+                    if match:
+                        problematic_field = match.group(1)
+                        problematic_fields.append(problematic_field)
+                        _logger.info("Detected invalid field: %s", problematic_field)
+                
+                # Also check for estimation-related errors
+                if 'estimation' in error_msg.lower() or 'crm_estimation' in error_msg.lower():
+                    problematic_fields.extend(['estimation_id', 'crm_estimation_id', 'estimation', 'crm_estimation'])
+                    _logger.info("Removing estimation fields that don't exist in Odoo 14")
+                
+                # Remove problematic fields from fields_to_fetch and try again
+                if problematic_fields:
+                    safe_fields = [f for f in fields_to_fetch if f not in problematic_fields]
+                    try:
+                        full_quotation = client.search_read(
+                            'sale.order',
+                            [('id', '=', quotation_data['id'])],
+                            safe_fields,
+                            limit=1
+                        )
+                        _logger.info("Successfully fetched quotation with safe fields (removed problematic fields: %s)", problematic_fields)
+                    except Exception as e2:
+                        _logger.warning("Error with safe fields: %s. Using minimal safe fields.", str(e2))
+                        # Final fallback: use minimal safe fields only (guaranteed to work)
+                        full_quotation = client.search_read(
+                            'sale.order',
+                            [('id', '=', quotation_data['id'])],
+                            minimal_safe_fields,  # Minimal guaranteed-safe fields
+                            limit=1
+                        )
+                else:
+                    # Fallback: use minimal safe fields only (guaranteed to work)
+                    full_quotation = client.search_read(
+                        'sale.order',
+                        [('id', '=', quotation_data['id'])],
+                        minimal_safe_fields,  # Minimal guaranteed-safe fields
+                        limit=1
+                    )
             
             if not full_quotation:
                 raise UserError('Could not fetch full quotation data')
             
             quotation_data = full_quotation[0]
             
-            # Check if quotation already exists in Odoo 19 BEFORE migrating
+            # Try to get estimation_id separately using direct read() call
+            # This might work even if search_read fails with the field
+            estimation_id = None
+            quotation_odoo14_id = quotation_data.get('id')
+            if quotation_odoo14_id:
+                try:
+                    # Try to read estimation_id directly from the sale.order record
+                    estimation_fields_to_try = ['estimation_id', 'crm_estimation_id', 'estimation', 'crm_estimation']
+                    for est_field in estimation_fields_to_try:
+                        try:
+                            estimation_read = client.read('sale.order', [quotation_odoo14_id], [est_field])
+                            if estimation_read and len(estimation_read) > 0:
+                                est_value = estimation_read[0].get(est_field)
+                                if est_value:
+                                    estimation_id = est_value
+                                    _logger.info("✅ Found estimation_id %s using field %s for quotation %s", 
+                                               estimation_id, est_field, self.uploaded_quotation_number)
+                                    break
+                        except Exception as e:
+                            error_msg = str(e).lower()
+                            # If field doesn't exist, that's fine - try next field
+                            if 'invalid field' in error_msg or "doesn't exist" in error_msg:
+                                _logger.debug("Field %s doesn't exist in Odoo 14: %s", est_field, str(e))
+                            else:
+                                _logger.debug("Could not read field %s: %s", est_field, str(e))
+                            continue
+                except Exception as e:
+                    _logger.debug("Could not read estimation fields directly: %s", str(e))
+            
+            # Also check if estimation_id is in the quotation_data (might have been included)
+            if not estimation_id:
+                if 'estimation_id' in quotation_data:
+                    estimation_id = quotation_data.get('estimation_id')
+                elif 'crm_estimation_id' in quotation_data:
+                    estimation_id = quotation_data.get('crm_estimation_id')
+            
+            # Fallback: Try to find estimation by matching quotation name pattern
+            # Some Odoo 14 systems link quotations to estimations by name pattern
+            # e.g., quotation "MFS/AUH/RW/01844/2025 R1" might link to estimation "MSF/AUH/EST/2025/1884"
+            if not estimation_id:
+                try:
+                    quotation_name = self.uploaded_quotation_number
+                    # Try to find estimation by similar name pattern
+                    import re
+                    # Extract parts from quotation name
+                    # Example: "MFS/AUH/RW/01844/2025 R1" -> try "MSF/AUH/EST/2025/1884"
+                    # Remove revision suffix (R1, R2, etc.)
+                    quotation_name_clean = re.sub(r'\s+R\d+$', '', quotation_name)
+                    parts = re.split(r'[/\s]', quotation_name_clean)
+                    
+                    if len(parts) >= 5:
+                        # Format: MFS/AUH/RW/01844/2025
+                        prefix = parts[0]  # MFS
+                        branch = parts[1]  # AUH
+                        number = parts[3]   # 01844
+                        year = parts[4]     # 2025
+                        
+                        # Try to construct estimation number patterns
+                        # Pattern variations based on common naming conventions
+                        possible_estimation_patterns = []
+                        
+                        # Try: MSF/AUH/EST/2025/1884 (remove leading zeros, change prefix)
+                        number_no_zeros = number.lstrip('0') or '0'
+                        possible_estimation_patterns.append(f"MSF/{branch}/EST/{year}/{number_no_zeros}")
+                        
+                        # Try: MFS/AUH/EST/2025/1884 (keep prefix, remove leading zeros)
+                        possible_estimation_patterns.append(f"{prefix}/{branch}/EST/{year}/{number_no_zeros}")
+                        
+                        # Try: MSF/AUH/EST/2025/01844 (keep leading zeros, change prefix)
+                        possible_estimation_patterns.append(f"MSF/{branch}/EST/{year}/{number}")
+                        
+                        # Try: MFS/AUH/EST/2025/01844 (keep both)
+                        possible_estimation_patterns.append(f"{prefix}/{branch}/EST/{year}/{number}")
+                        
+                        # Also try reversing number digits or other variations if needed
+                        # Search for estimation in Odoo 19 by these patterns
+                        for pattern in possible_estimation_patterns:
+                            estimation_19 = self.env['fm.amc.estimation'].search([
+                                ('name', '=', pattern)
+                            ], limit=1)
+                            if estimation_19:
+                                _logger.info("✅ Found estimation %s by name pattern matching for quotation %s", 
+                                           pattern, quotation_name)
+                                # We'll link it later after creating the quotation
+                                estimation_id = 'pattern_matched_' + str(estimation_19.id)
+                                break
+                except Exception as e:
+                    _logger.debug("Could not try pattern matching for estimation: %s", str(e))
+            
+            # Check if quotation already exists in Odoo 19 BEFORE migrating (duplicate prevention)
             existing_quotation = self.env['sale.order'].search([
                 ('name', '=', self.uploaded_quotation_number)
             ], limit=1)
@@ -592,6 +872,19 @@ class QuotationMigrationLine(models.Model):
                     'target': 'current',
                 }
             
+            # Check for duplicate customer (if partner_id exists)
+            partner_id = quotation_data.get('partner_id')
+            if partner_id:
+                partner_id_val = partner_id[0] if isinstance(partner_id, list) else partner_id
+                if partner_id_val:
+                    # Check if partner exists in Odoo 19
+                    existing_partner = self.env['res.partner'].search([
+                        ('id', '=', partner_id_val)
+                    ], limit=1)
+                    if not existing_partner:
+                        # Partner doesn't exist - will be created during migration
+                        pass
+            
             # Update status to migrating
             self.write({
                 'status': 'migrating',
@@ -602,6 +895,67 @@ class QuotationMigrationLine(models.Model):
             # Migrate using wizard's helper methods
             try:
                 quotation_vals = wizard._prepare_quotation_vals(quotation_data, client)
+                
+                # Link estimation if we found one
+                if estimation_id:
+                    estimation_id_val = estimation_id[0] if isinstance(estimation_id, list) else estimation_id
+                    if estimation_id_val:
+                        try:
+                            # Try to get estimation from Odoo 14
+                            estimation_data_14 = client.search_read(
+                                'crm.estimation',
+                                [('id', '=', estimation_id_val)],
+                                ['name'],
+                                limit=1
+                            )
+                            if not estimation_data_14:
+                                # Try alternative model names
+                                for model_name in ['fm.amc.estimation', 'estimation.estimation']:
+                                    try:
+                                        estimation_data_14 = client.search_read(
+                                            model_name,
+                                            [('id', '=', estimation_id_val)],
+                                            ['name'],
+                                            limit=1
+                                        )
+                                        if estimation_data_14:
+                                            break
+                                    except:
+                                        continue
+                            
+                            if estimation_data_14:
+                                estimation_number = estimation_data_14[0].get('name')
+                                if estimation_number:
+                                    # Find estimation in Odoo 19 by number
+                                    estimation_19 = self.env['fm.amc.estimation'].search([
+                                        ('name', '=', estimation_number)
+                                    ], limit=1)
+                                    
+                                    if estimation_19:
+                                        # Set estimation checkbox and estimation_id
+                                        # Check if sale.order has is_estimation field (checkbox)
+                                        sale_order_fields = self.env['sale.order']._fields
+                                        if 'is_estimation' in sale_order_fields:
+                                            quotation_vals['is_estimation'] = True
+                                            _logger.info("Set is_estimation checkbox to True for quotation %s", self.uploaded_quotation_number)
+                                        
+                                        # Set estimation_id if field exists (many2one field)
+                                        if 'estimation_id' in sale_order_fields:
+                                            quotation_vals['estimation_id'] = estimation_19.id
+                                            _logger.info("Set estimation_id to %s (%s) for quotation %s", 
+                                                       estimation_19.id, estimation_number, self.uploaded_quotation_number)
+                                        
+                                        _logger.info("✅ Successfully linked estimation %s (ID: %s) to quotation %s", 
+                                                   estimation_number, estimation_19.id, self.uploaded_quotation_number)
+                                    else:
+                                        _logger.warning("Estimation %s not found in Odoo 19 for quotation %s", estimation_number, self.uploaded_quotation_number)
+                                else:
+                                    _logger.warning("Estimation number not found in Odoo 14 data for quotation %s", self.uploaded_quotation_number)
+                            else:
+                                _logger.warning("Estimation data not found in Odoo 14 for ID %s (quotation %s)", estimation_id_val, self.uploaded_quotation_number)
+                        except Exception as e:
+                            _logger.warning("Could not link estimation to quotation %s: %s", self.uploaded_quotation_number, str(e))
+                
                 quotation = self.env['sale.order'].create(quotation_vals)
                 
                 # Preserve original creation date
@@ -652,7 +1006,7 @@ class QuotationMigrationLine(models.Model):
                 })
                 self.env.cr.commit()
                 # Log failed migration for later processing
-                _log_failed_migration(self.uploaded_quotation_number, error_msg)
+                _log_failed_quotation_migration(self.uploaded_quotation_number, error_msg)
                 raise UserError('Migration failed: %s' % error_msg)
                 
         except UserError:
@@ -667,7 +1021,7 @@ class QuotationMigrationLine(models.Model):
             })
             self.env.cr.commit()
             # Log failed migration for later processing
-            _log_failed_migration(self.uploaded_quotation_number, error_msg)
+            _log_failed_quotation_migration(self.uploaded_quotation_number, error_msg)
             raise UserError('Error migrating quotation: %s' % str(e))
     
     def _migrate_sequential(self, record_ids, current_index):
@@ -808,12 +1162,34 @@ class QuotationMigrationLine(models.Model):
                 'create_date', 'write_date', 'write_uid', 'create_uid'
             ]
             
+            # Initialize estimation_fields list (for reference only - we won't use them)
+            estimation_fields = []
+            estimation_field_names = ['estimation_id', 'crm_estimation_id', 'estimation', 'crm_estimation']
+            
             try:
                 all_fields = client.fields_get('sale.order')
                 if all_fields:
                     dynamic_fields = []
+                    # Check if estimation fields exist - but DON'T add them
+                    # We know they cause errors in Odoo 14, so we'll never fetch them
+                    for est_field in estimation_field_names:
+                        if est_field in all_fields:
+                            field_info = all_fields[est_field]
+                            field_store = field_info.get('store', True)
+                            field_type = field_info.get('type', '')
+                            if field_store and field_type == 'many2one':
+                                estimation_fields.append(est_field)
+                                _logger.debug("Found potential estimation field in fields_get: %s (but won't fetch it)", est_field)
+                    
+                    if not estimation_fields:
+                        _logger.info("No estimation fields found in Odoo 14 sale.order model")
+                    
+                    # Add other dynamic fields
                     for f, field_info in all_fields.items():
                         if f in excluded_fields or f in fields_to_fetch:
+                            continue
+                        # Skip estimation fields (we never fetch them)
+                        if f in estimation_field_names:
                             continue
                         field_type = field_info.get('type', '')
                         field_store = field_info.get('store', True)
@@ -827,11 +1203,17 @@ class QuotationMigrationLine(models.Model):
             except Exception as e:
                 _logger.warning("Could not get all fields: %s", str(e))
             
+            # CRITICAL: Always remove estimation fields BEFORE any search_read call
+            # These fields cause XML-RPC errors in Odoo 14, so we remove them unconditionally
+            fields_to_fetch = [f for f in fields_to_fetch if f not in estimation_field_names]
+            _logger.info("Removed all estimation fields from fields_to_fetch to prevent XML-RPC errors")
+            
             minimal_safe_fields = [
                 'id', 'name', 'partner_id', 'date_order', 'validity_date', 'amount_total',
                 'amount_untaxed', 'amount_tax', 'state', 'pricelist_id', 'payment_term_id',
                 'order_line', 'note', 'client_order_ref', 'user_id', 'team_id', 'company_id', 
                 'create_date', 'write_date'
+                # Note: estimation fields are NOT included in minimal_safe_fields as they may not exist in Odoo 14
             ]
             
             try:
@@ -842,13 +1224,53 @@ class QuotationMigrationLine(models.Model):
                     limit=1
                 )
             except Exception as e:
-                _logger.warning("Error fetching quotation with expanded fields: %s. Using minimal safe fields.", str(e))
-                full_quotation = client.search_read(
-                    'sale.order',
-                    [('id', '=', quotation_data['id'])],
-                    minimal_safe_fields,
-                    limit=1
-                )
+                error_msg = str(e)
+                _logger.warning("Error fetching quotation with expanded fields: %s. Trying to fix and retry.", error_msg)
+                
+                # Check for "Invalid field" errors - extract field name from error
+                problematic_fields = []
+                if 'Invalid field' in error_msg:
+                    # Try to extract field name from error message
+                    import re
+                    match = re.search(r"Invalid field ['\"]([^'\"]+)['\"]", error_msg)
+                    if match:
+                        problematic_field = match.group(1)
+                        problematic_fields.append(problematic_field)
+                        _logger.info("Detected invalid field: %s", problematic_field)
+                
+                # Also check for estimation-related errors
+                if 'estimation' in error_msg.lower() or 'crm_estimation' in error_msg.lower():
+                    problematic_fields.extend(['estimation_id', 'crm_estimation_id', 'estimation', 'crm_estimation'])
+                    _logger.info("Removing estimation fields that don't exist in Odoo 14")
+                
+                # Remove problematic fields from fields_to_fetch and try again
+                if problematic_fields:
+                    safe_fields = [f for f in fields_to_fetch if f not in problematic_fields]
+                    try:
+                        full_quotation = client.search_read(
+                            'sale.order',
+                            [('id', '=', quotation_data['id'])],
+                            safe_fields,
+                            limit=1
+                        )
+                        _logger.info("Successfully fetched quotation with safe fields (without estimation fields)")
+                    except Exception as e2:
+                        _logger.warning("Error with safe fields: %s. Using minimal safe fields.", str(e2))
+                        # Final fallback: use minimal safe fields only (guaranteed to work)
+                        full_quotation = client.search_read(
+                            'sale.order',
+                            [('id', '=', quotation_data['id'])],
+                            minimal_safe_fields,
+                            limit=1
+                        )
+                else:
+                    # Fallback: use minimal safe fields only (guaranteed to work)
+                    full_quotation = client.search_read(
+                        'sale.order',
+                        [('id', '=', quotation_data['id'])],
+                        minimal_safe_fields,
+                        limit=1
+                    )
             
             if not full_quotation:
                 raise UserError('Could not fetch full quotation data')
@@ -856,9 +1278,155 @@ class QuotationMigrationLine(models.Model):
             quotation_data = full_quotation[0]
             _logger.info("✅ Fetched full quotation data for %s", quotation_number)
             
+            # Try to get estimation_id separately using direct read() call
+            # This might work even if search_read fails with the field
+            estimation_id = None
+            quotation_odoo14_id = quotation_data.get('id')
+            if quotation_odoo14_id:
+                try:
+                    # Try to read estimation_id directly from the sale.order record
+                    estimation_fields_to_try = ['estimation_id', 'crm_estimation_id', 'estimation', 'crm_estimation']
+                    for est_field in estimation_fields_to_try:
+                        try:
+                            estimation_read = client.read('sale.order', [quotation_odoo14_id], [est_field])
+                            if estimation_read and len(estimation_read) > 0:
+                                est_value = estimation_read[0].get(est_field)
+                                if est_value:
+                                    estimation_id = est_value
+                                    _logger.info("✅ Found estimation_id %s using field %s for quotation %s", 
+                                               estimation_id, est_field, quotation_number)
+                                    break
+                        except Exception as e:
+                            error_msg = str(e).lower()
+                            # If field doesn't exist, that's fine - try next field
+                            if 'invalid field' in error_msg or "doesn't exist" in error_msg:
+                                _logger.debug("Field %s doesn't exist in Odoo 14: %s", est_field, str(e))
+                            else:
+                                _logger.debug("Could not read field %s: %s", est_field, str(e))
+                            continue
+                except Exception as e:
+                    _logger.debug("Could not read estimation fields directly: %s", str(e))
+            
+            # Also check if estimation_id is in the quotation_data (might have been included)
+            if not estimation_id:
+                if 'estimation_id' in quotation_data:
+                    estimation_id = quotation_data.get('estimation_id')
+                elif 'crm_estimation_id' in quotation_data:
+                    estimation_id = quotation_data.get('crm_estimation_id')
+            
+            # Fallback: Try to find estimation by matching quotation name pattern
+            # Some Odoo 14 systems link quotations to estimations by name pattern
+            if not estimation_id:
+                try:
+                    # Try to find estimation by similar name pattern
+                    import re
+                    parts = re.split(r'[/\s]', quotation_number)
+                    if len(parts) >= 4:
+                        possible_estimation_patterns = []
+                        if len(parts) >= 5:
+                            prefix = parts[0]  # MFS
+                            branch = parts[1]  # AUH
+                            number = parts[3]   # 01844
+                            year = parts[4]     # 2025
+                            # Try variations
+                            possible_estimation_patterns.append(f"{prefix}/{branch}/EST/{year}/{number}")
+                            possible_estimation_patterns.append(f"MSF/{branch}/EST/{year}/{number.lstrip('0')}")
+                            possible_estimation_patterns.append(f"{prefix}/{branch}/EST/{year}/{number.lstrip('0')}")
+                        
+                        # Search for estimation in Odoo 19 by these patterns
+                        for pattern in possible_estimation_patterns:
+                            estimation_19 = record.env['fm.amc.estimation'].search([
+                                ('name', '=', pattern)
+                            ], limit=1)
+                            if estimation_19:
+                                _logger.info("Found estimation %s by name pattern matching for quotation %s", 
+                                           pattern, quotation_number)
+                                estimation_id = 'pattern_matched_' + str(estimation_19.id)
+                                break
+                except Exception as e:
+                    _logger.debug("Could not try pattern matching for estimation: %s", str(e))
+            
             # Migrate using wizard's helper methods
             _logger.info("🔄 Preparing quotation values...")
             quotation_vals = wizard._prepare_quotation_vals(quotation_data, client)
+            
+            # Link estimation if we found one
+            if estimation_id:
+                # Handle pattern-matched estimation (already found in Odoo 19)
+                if isinstance(estimation_id, str) and estimation_id.startswith('pattern_matched_'):
+                    estimation_19_id = int(estimation_id.replace('pattern_matched_', ''))
+                    estimation_19 = record.env['fm.amc.estimation'].browse(estimation_19_id)
+                    if estimation_19.exists():
+                        sale_order_fields = record.env['sale.order']._fields
+                        if 'is_estimation' in sale_order_fields:
+                            quotation_vals['is_estimation'] = True
+                            _logger.info("✅ Set is_estimation checkbox to True for quotation %s", quotation_number)
+                        
+                        if 'estimation_id' in sale_order_fields:
+                            quotation_vals['estimation_id'] = estimation_19.id
+                            _logger.info("✅ Set estimation_id to %s (%s) for quotation %s", 
+                                       estimation_19.id, estimation_19.name, quotation_number)
+                        
+                        _logger.info("✅ Successfully linked estimation %s (ID: %s) to quotation %s via pattern matching", 
+                                   estimation_19.name, estimation_19.id, quotation_number)
+                else:
+                    # Normal case: estimation_id from Odoo 14
+                    estimation_id_val = estimation_id[0] if isinstance(estimation_id, list) else estimation_id
+                    if estimation_id_val:
+                        try:
+                            # Try to get estimation from Odoo 14
+                            estimation_data_14 = client.search_read(
+                                'crm.estimation',
+                                [('id', '=', estimation_id_val)],
+                                ['name'],
+                                limit=1
+                            )
+                            if not estimation_data_14:
+                                # Try alternative model names
+                                for model_name in ['fm.amc.estimation', 'estimation.estimation']:
+                                    try:
+                                        estimation_data_14 = client.search_read(
+                                            model_name,
+                                            [('id', '=', estimation_id_val)],
+                                            ['name'],
+                                            limit=1
+                                        )
+                                        if estimation_data_14:
+                                            break
+                                    except:
+                                        continue
+                            
+                            if estimation_data_14:
+                                estimation_number = estimation_data_14[0].get('name')
+                                if estimation_number:
+                                    # Find estimation in Odoo 19 by number
+                                    estimation_19 = record.env['fm.amc.estimation'].search([
+                                        ('name', '=', estimation_number)
+                                    ], limit=1)
+                                    
+                                    if estimation_19:
+                                        # Set estimation checkbox and estimation_id
+                                        sale_order_fields = record.env['sale.order']._fields
+                                        if 'is_estimation' in sale_order_fields:
+                                            quotation_vals['is_estimation'] = True
+                                            _logger.info("✅ Set is_estimation checkbox to True for quotation %s", quotation_number)
+                                        
+                                        if 'estimation_id' in sale_order_fields:
+                                            quotation_vals['estimation_id'] = estimation_19.id
+                                            _logger.info("✅ Set estimation_id to %s (%s) for quotation %s", 
+                                                       estimation_19.id, estimation_number, quotation_number)
+                                        
+                                        _logger.info("✅ Successfully linked estimation %s (ID: %s) to quotation %s", 
+                                                   estimation_number, estimation_19.id, quotation_number)
+                                    else:
+                                        _logger.warning("⚠️ Estimation %s not found in Odoo 19 for quotation %s", estimation_number, quotation_number)
+                                else:
+                                    _logger.warning("⚠️ Estimation number not found in Odoo 14 data for quotation %s", quotation_number)
+                            else:
+                                _logger.warning("⚠️ Estimation data not found in Odoo 14 for ID %s (quotation %s)", estimation_id_val, quotation_number)
+                        except Exception as e:
+                            _logger.warning("Could not link estimation to quotation %s: %s", quotation_number, str(e))
+            
             _logger.info("💾 Creating quotation in Odoo 19...")
             quotation = record.env['sale.order'].create(quotation_vals)
             _logger.info("✅ Quotation created in Odoo 19: %s (ID: %s)", quotation.name, quotation.id)
