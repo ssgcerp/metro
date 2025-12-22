@@ -30,6 +30,7 @@
         'stock',
         'project',
         'sale',
+        'account',  # Required for account.move (vendor bills)
         'fm_inventory_custom',  # Required for product.brand model
     ],
     'data': [
@@ -41,6 +42,7 @@
         'views/eq_fc_rfq_stage_views.xml',
         'views/purchase_order_views.xml',
         'views/purchase_menu_views.xml',
+        'views/account_move_views.xml',
     ],
     'installable': True,
     'application': False,

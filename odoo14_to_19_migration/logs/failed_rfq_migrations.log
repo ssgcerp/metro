@@ -14,3 +14,5 @@
 2025-12-22 09:25:06 | MFS-FUJ-3612 | 'purchase.order' object has no attribute 'refresh'
 2025-12-22 09:25:25 | MFS-AUH-3611 | 'purchase.order' object has no attribute 'refresh'
 2025-12-22 09:25:44 | MFS-FUJ-3610 | 'purchase.order' object has no attribute 'refresh'
+2025-12-22 18:43:56 | MFS-AUH-3544 | cursor already closed
+2025-12-22 19:01:11 | MFS-AUH-3533 | cursor already closed

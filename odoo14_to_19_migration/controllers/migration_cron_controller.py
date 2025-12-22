@@ -966,29 +966,10 @@ class MigrationCronController(http.Controller):
                 from datetime import timedelta
                 stuck_threshold = fields.Datetime.now() - timedelta(seconds=30)
                 
-                # Find ALL migrating records
-                all_migrating = MigrationRFQ.search([
-                    ('status', '=', 'migrating')
-                ])
-                
-                # Reset stuck migrations back to error
-                stuck_count = 0
-                for migrating_record in all_migrating:
-                    if migrating_record.write_date and migrating_record.write_date < stuck_threshold:
-                        stuck_seconds = int((fields.Datetime.now() - migrating_record.write_date).total_seconds())
-                        _logger.warning("Found stuck RFQ migration: %s (stuck for %s seconds), resetting to error", 
-                                      migrating_record.uploaded_rfq_number,
-                                      stuck_seconds)
-                        migrating_record.write({
-                            'status': 'error',
-                            'status_message': 'Migration stuck - reset to error',
-                            'error_message': f'Migration was stuck in migrating status for {stuck_seconds} seconds. Last update: {migrating_record.write_date}',
-                        })
-                        stuck_count += 1
-                
-                if stuck_count > 0:
+                # Reset stuck migrations using the model method
+                reset_result = MigrationRFQ.action_reset_stuck_migrations(stuck_threshold_seconds=30)
+                if reset_result['reset_count'] > 0:
                     cr.commit()
-                    _logger.warning("Reset %s stuck RFQ migration(s) to error status", stuck_count)
                 
                 # Find currently migrating (recent ones, not stuck)
                 currently_migrating = MigrationRFQ.search([
@@ -1008,6 +989,27 @@ class MigrationCronController(http.Controller):
                     if rfq_to_process:
                         rfq_number = rfq_to_process.uploaded_rfq_number
                         _logger.info("Processing RFQ: %s", rfq_number)
+                        
+                        # Log ALL details from migration table BEFORE migration starts
+                        _logger.info("=" * 80)
+                        _logger.info("📋 RFQ MIGRATION LINE DETAILS (BEFORE MIGRATION)")
+                        _logger.info("=" * 80)
+                        _logger.info("RFQ Number: %s", rfq_to_process.uploaded_rfq_number)
+                        _logger.info("Priority: %s", rfq_to_process.priority or 'N/A')
+                        _logger.info("Vendor: %s", rfq_to_process.vendor or 'N/A')
+                        _logger.info("Project: %s", rfq_to_process.project or 'N/A')
+                        _logger.info("Purchase Representative: %s", rfq_to_process.purchase_representative or 'N/A')
+                        _logger.info("Order Deadline: %s", rfq_to_process.order_deadline or 'N/A')
+                        _logger.info("Status (Excel): %s", rfq_to_process.excel_status or 'N/A')
+                        _logger.info("Branch/ID: %s", rfq_to_process.company or 'N/A')
+                        _logger.info("Stage: %s", rfq_to_process.stage or 'N/A')
+                        _logger.info("Bills/Number: %s", rfq_to_process.bills_number or 'N/A')
+                        _logger.info("Bills/ID: %s", rfq_to_process.odoo14_bill_ids or 'N/A')
+                        _logger.info("Created On: %s", rfq_to_process.created_on or 'N/A')
+                        _logger.info("Effective Date: %s", rfq_to_process.effective_date or 'N/A')
+                        _logger.info("Receipt Date: %s", rfq_to_process.receipt_date or 'N/A')
+                        _logger.info("Current Status: %s", rfq_to_process.status)
+                        _logger.info("=" * 80)
                         
                         try:
                             # Check if RFQ already exists
@@ -1097,12 +1099,34 @@ class MigrationCronController(http.Controller):
                 ])
                 _logger.info("Final queued count: %s (status='queued')", total_queued)
                 
-                # Build response
+                # Build response with RFQ details if available
                 response_lines = [
                     f"Total Queued: {total_queued}",
                     f"Migrating Now: {migrating_rfq}",
-                    "DONE"
                 ]
+                
+                # Add RFQ migration line details if we have one to process or currently migrating
+                rfq_for_details = rfq_to_process or currently_migrating
+                if rfq_for_details:
+                    response_lines.append("RFQ_DETAILS_START")
+                    response_lines.append(f"RFQ_Number: {rfq_for_details.uploaded_rfq_number}")
+                    response_lines.append(f"Priority: {rfq_for_details.priority or 'N/A'}")
+                    response_lines.append(f"Vendor: {rfq_for_details.vendor or 'N/A'}")
+                    response_lines.append(f"Project: {rfq_for_details.project or 'N/A'}")
+                    response_lines.append(f"Purchase_Representative: {rfq_for_details.purchase_representative or 'N/A'}")
+                    response_lines.append(f"Order_Deadline: {rfq_for_details.order_deadline or 'N/A'}")
+                    response_lines.append(f"Status_Excel: {rfq_for_details.excel_status or 'N/A'}")
+                    response_lines.append(f"Branch_ID: {rfq_for_details.company or 'N/A'}")
+                    response_lines.append(f"Stage: {rfq_for_details.stage or 'N/A'}")
+                    response_lines.append(f"Bills_Number: {rfq_for_details.bills_number or 'N/A'}")
+                    response_lines.append(f"Bills_ID: {rfq_for_details.odoo14_bill_ids or 'N/A'}")
+                    response_lines.append(f"Created_On: {rfq_for_details.created_on or 'N/A'}")
+                    response_lines.append(f"Effective_Date: {rfq_for_details.effective_date or 'N/A'}")
+                    response_lines.append(f"Receipt_Date: {rfq_for_details.receipt_date or 'N/A'}")
+                    response_lines.append(f"Current_Status: {rfq_for_details.status}")
+                    response_lines.append("RFQ_DETAILS_END")
+                
+                response_lines.append("DONE")
                 
                 return request.make_response(
                     '\n'.join(response_lines),
@@ -1120,6 +1144,268 @@ class MigrationCronController(http.Controller):
                 headers=[
                     ('Content-Type', 'text/plain; charset=utf-8'),
                 ]
+            )
+
+    @http.route('/migration/rfq_details', type='http', auth='public', methods=['GET'], csrf=False)
+    def get_rfq_details(self, **kwargs):
+        """
+        Get detailed RFQ migration information including Purchase Order, Vendor Bills, and Payments.
+        Returns JSON with detailed status.
+        
+        Usage: /migration/rfq_details?db=your_database_name&rfq_number=MFS-AUH-3578
+        """
+        try:
+            db = kwargs.get('db')
+            rfq_number = kwargs.get('rfq_number')
+            
+            if not db and hasattr(request, 'httprequest') and request.httprequest:
+                from urllib.parse import parse_qs, urlparse
+                try:
+                    parsed = urlparse(request.httprequest.url)
+                    query_params = parse_qs(parsed.query)
+                    if 'db' in query_params:
+                        db = query_params['db'][0]
+                    if 'rfq_number' in query_params:
+                        rfq_number = query_params['rfq_number'][0]
+                except:
+                    pass
+            
+            if not db:
+                import json
+                return request.make_response(
+                    json.dumps({'error': 'Database not specified'}),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            
+            if not rfq_number:
+                import json
+                return request.make_response(
+                    json.dumps({'error': 'RFQ number not specified'}),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            
+            from odoo.api import Environment
+            from odoo import sql_db
+            try:
+                db_conn = sql_db.db_connect(db)
+                cr = db_conn.cursor()
+            except Exception as reg_error:
+                import json
+                return request.make_response(
+                    json.dumps({'error': f'Database "{db}" not found: {str(reg_error)}'}),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            
+            try:
+                env = Environment(cr, 1, {})
+                
+                # First check migration line to get odoo19_rfq_id if available
+                migration_line = env['rfq.migration.line'].search([
+                    ('uploaded_rfq_number', '=', rfq_number)
+                ], limit=1, order='id desc')
+                
+                purchase_order = None
+                if migration_line:
+                    # First try: Use the stored ID from migration
+                    if migration_line.odoo19_rfq_id:
+                        # Ensure we have a single integer ID, not a recordset
+                        po_id = migration_line.odoo19_rfq_id
+                        if isinstance(po_id, (list, tuple)):
+                            po_id = po_id[0] if po_id else None
+                        if po_id:
+                            purchase_order = env['purchase.order'].browse(po_id)
+                            if not purchase_order.exists():
+                                purchase_order = None
+                                _logger.warning("Migration line has odoo19_rfq_id=%s but Purchase Order doesn't exist", po_id)
+                    
+                    # Second try: Search by in_system_rfq_number if available
+                    if not purchase_order and migration_line.in_system_rfq_number:
+                        purchase_order = env['purchase.order'].search([
+                            ('name', '=', migration_line.in_system_rfq_number)
+                        ], limit=1)
+                        if purchase_order:
+                            _logger.info("Found Purchase Order by in_system_rfq_number: %s", migration_line.in_system_rfq_number)
+                
+                # Third try: Search by uploaded_rfq_number (exact match)
+                if not purchase_order:
+                    purchase_order = env['purchase.order'].search([
+                        ('name', '=', rfq_number)
+                    ], limit=1)
+                    if purchase_order:
+                        _logger.info("Found Purchase Order by name: %s", rfq_number)
+                
+                # Fourth try: Search by partial match (in case name changed)
+                if not purchase_order:
+                    purchase_order = env['purchase.order'].search([
+                        ('name', 'ilike', rfq_number)
+                    ], limit=1)
+                    if purchase_order:
+                        _logger.info("Found Purchase Order by partial name match: %s -> %s", rfq_number, purchase_order.name)
+                
+                result = {
+                    'rfq_number': rfq_number,
+                    'has_purchase_order': False,
+                    'purchase_order_state': None,
+                    'purchase_order_id': None,
+                    'is_confirmed': False,
+                    'vendor_bills': [],
+                    'payments': [],
+                }
+                
+                if purchase_order:
+                    # Ensure purchase_order is a single recordset (not multiple)
+                    if len(purchase_order) > 1:
+                        purchase_order = purchase_order[0]
+                        _logger.warning("Multiple Purchase Orders found, using first one: %s", purchase_order.id)
+                    
+                    # Extract ID to avoid SQL adaptation errors
+                    po_id = purchase_order.id if hasattr(purchase_order, 'id') else None
+                    if not po_id:
+                        _logger.error("Purchase Order has no ID, skipping")
+                        purchase_order = None
+                    else:
+                        _logger.info("✅ Found Purchase Order for RFQ %s: ID=%s, Name=%s, State=%s, Stage=%s", 
+                                   rfq_number, po_id, purchase_order.name, purchase_order.state,
+                                   purchase_order.rfq_stage_id.name if hasattr(purchase_order, 'rfq_stage_id') and purchase_order.rfq_stage_id else 'N/A')
+                        result['has_purchase_order'] = True
+                        result['purchase_order_state'] = purchase_order.state
+                        result['purchase_order_id'] = po_id
+                        result['is_confirmed'] = purchase_order.state in ('purchase', 'done')
+                        result['rfq_stage'] = purchase_order.rfq_stage_id.name if hasattr(purchase_order, 'rfq_stage_id') and purchase_order.rfq_stage_id else 'Draft'
+                    
+                    # Get billing status
+                    if hasattr(purchase_order, 'billing_status'):
+                        result['billing_status'] = purchase_order.billing_status
+                    elif hasattr(purchase_order, 'invoice_status'):
+                        # Map invoice_status to billing_status
+                        invoice_status = purchase_order.invoice_status
+                        if invoice_status == 'no':
+                            result['billing_status'] = 'nothing_to_bill'
+                        elif invoice_status == 'to invoice':
+                            result['billing_status'] = 'to_bill'
+                        elif invoice_status == 'invoiced':
+                            result['billing_status'] = 'billed'
+                        else:
+                            result['billing_status'] = 'nothing_to_bill'
+                    else:
+                        result['billing_status'] = 'unknown'
+                    
+                    # Get bill numbers from migration line (queue list) - PRIMARY SOURCE
+                    bill_numbers_from_queue = []
+                    bill_ids_from_queue = []
+                    if migration_line:
+                        if migration_line.bills_number:
+                            # Parse comma-separated bill numbers
+                            bill_numbers_from_queue = [b.strip() for b in migration_line.bills_number.split(',') if b.strip()]
+                        if migration_line.odoo14_bill_ids:
+                            # Parse comma-separated bill IDs
+                            bill_ids_from_queue = [b.strip() for b in migration_line.odoo14_bill_ids.split(',') if b.strip()]
+                            _logger.info("📋 Queue list has bill IDs: %s", bill_ids_from_queue)
+                    
+                    # Get vendor bills (account.move) - from Purchase Order
+                    # Use the extracted po_id to avoid SQL adaptation errors
+                    vendor_bills = env['account.move'].search([
+                        ('purchase_id', '=', po_id),
+                        ('move_type', 'in', ('in_invoice', 'in_refund'))
+                    ])
+                    
+                    # Add bill numbers and IDs from queue list to result
+                    result['bill_numbers_from_queue'] = bill_numbers_from_queue
+                    result['bill_ids_from_queue'] = bill_ids_from_queue
+                    
+                    # Also add bill IDs from migrated bills if available
+                    if vendor_bills and not bill_ids_from_queue:
+                        # Extract IDs from migrated bills
+                        migrated_bill_ids = [str(bill.id) for bill in vendor_bills]
+                        result['bill_ids_from_queue'] = migrated_bill_ids
+                    
+                    for bill in vendor_bills:
+                        bill_info = {
+                            'name': bill.name,
+                            'state': bill.state,
+                            'amount_total': bill.amount_total,
+                            'id': bill.id,
+                        }
+                        
+                        # Get payments for this bill
+                        payments = []
+                        if bill.state == 'posted':
+                            # Find account.payment records linked to this invoice
+                            if 'account.payment' in env.registry:
+                                linked_payments = env['account.payment'].search([
+                                    ('state', '=', 'posted'),
+                                    ('reconciled_invoice_ids', 'in', bill.id)
+                                ])
+                                
+                                for payment in linked_payments:
+                                    payment_info = {
+                                        'name': payment.name,
+                                        'date': str(payment.date),
+                                        'amount': payment.amount,
+                                        'id': payment.id,
+                                    }
+                                    payments.append(payment_info)
+                            
+                            # Also check account.move.line for payment entries
+                            if not payments:
+                                payment_lines = env['account.move.line'].search([
+                                    ('move_id', '=', bill.id),
+                                    ('reconciled', '=', True)
+                                ])
+                                
+                                for line in payment_lines:
+                                    # Find the payment move that reconciled this line
+                                    reconciled_lines = env['account.move.line'].search([
+                                        ('full_reconcile_id', '=', line.full_reconcile_id.id),
+                                        ('move_id', '!=', bill.id)
+                                    ])
+                                    
+                                    for rec_line in reconciled_lines:
+                                        payment_move = rec_line.move_id
+                                        if payment_move.move_type == 'entry' and payment_move.state == 'posted':
+                                            payment_info = {
+                                                'name': payment_move.name,
+                                                'date': str(payment_move.date),
+                                                'amount': abs(rec_line.balance),
+                                                'id': payment_move.id,
+                                            }
+                                            if payment_info not in payments:
+                                                payments.append(payment_info)
+                        
+                        bill_info['payments'] = payments
+                        result['vendor_bills'].append(bill_info)
+                        result['payments'].extend(payments)
+                else:
+                    _logger.warning("⚠️ Purchase Order not found for RFQ %s. Migration line: ID=%s, odoo19_rfq_id=%s, in_system_rfq_number=%s", 
+                                  rfq_number, 
+                                  migration_line.id if migration_line else 'Not found',
+                                  migration_line.odoo19_rfq_id.id if migration_line and migration_line.odoo19_rfq_id else 'None',
+                                  migration_line.in_system_rfq_number if migration_line else 'None')
+                    # Still return bill numbers and IDs from queue list even if PO not found
+                    if migration_line:
+                        bill_numbers_from_queue = []
+                        bill_ids_from_queue = []
+                        if migration_line.bills_number:
+                            bill_numbers_from_queue = [b.strip() for b in migration_line.bills_number.split(',') if b.strip()]
+                        if migration_line.odoo14_bill_ids:
+                            bill_ids_from_queue = [b.strip() for b in migration_line.odoo14_bill_ids.split(',') if b.strip()]
+                        result['bill_numbers_from_queue'] = bill_numbers_from_queue
+                        result['bill_ids_from_queue'] = bill_ids_from_queue
+                
+                import json
+                return request.make_response(
+                    json.dumps(result, default=str),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            finally:
+                cr.close()
+                
+        except Exception as e:
+            import json
+            _logger.error("Error getting RFQ details: %s", str(e), exc_info=True)
+            return request.make_response(
+                json.dumps({'error': str(e)}),
+                headers=[('Content-Type', 'application/json; charset=utf-8')]
             )
 
     @http.route('/migration/status_rfq', type='http', auth='public', methods=['GET'], csrf=False)
