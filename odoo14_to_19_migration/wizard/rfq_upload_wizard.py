@@ -74,6 +74,8 @@ class RFQUploadWizard(models.TransientModel):
                     for col_idx, cell_value in enumerate(row):
                         if cell_value:
                             cell_str = str(cell_value).strip().lower()
+                            # Remove special characters for better matching
+                            cell_str_clean = cell_str.replace('/', ' ').replace('-', ' ').replace('_', ' ')
                             # Map common column name variations
                             if 'priority' in cell_str:
                                 column_mapping['priority'] = col_idx
@@ -87,9 +89,9 @@ class RFQUploadWizard(models.TransientModel):
                                 column_mapping['purchase_representative'] = col_idx
                             elif 'order deadline' in cell_str or 'deadline' in cell_str:
                                 column_mapping['order_deadline'] = col_idx
-                            elif 'status' in cell_str:
+                            elif 'status' in cell_str and 'excel' not in cell_str:
                                 column_mapping['status'] = col_idx
-                            elif 'branch' in cell_str or 'company' in cell_str:
+                            elif 'branch' in cell_str or ('company' in cell_str and 'branch' not in cell_str):
                                 column_mapping['branch'] = col_idx
                             elif 'created on' in cell_str or 'created' in cell_str:
                                 column_mapping['created_on'] = col_idx
@@ -97,6 +99,21 @@ class RFQUploadWizard(models.TransientModel):
                                 column_mapping['effective_date'] = col_idx
                             elif 'receipt date' in cell_str or 'receipt' in cell_str:
                                 column_mapping['receipt_date'] = col_idx
+                            elif 'stage' in cell_str:
+                                column_mapping['stage'] = col_idx
+                            # Match Bills/Number, Bills Number, Bill Number, etc.
+                            elif ('bills' in cell_str_clean or 'bill' in cell_str_clean) and 'number' in cell_str_clean:
+                                if 'bills_number' not in column_mapping:
+                                    column_mapping['bills_number'] = col_idx
+                            # Match Bills/ID, Bills ID, Bill ID, Bills/IDs, etc. (but not Bills/Number)
+                            elif ('bills' in cell_str_clean or 'bill' in cell_str_clean) and ('id' in cell_str_clean or 'ids' in cell_str_clean) and 'number' not in cell_str_clean:
+                                # Prioritize odoo14 bill ids if it contains "odoo14"
+                                if 'odoo14' in cell_str:
+                                    column_mapping['odoo14_bill_ids'] = col_idx
+                                # Otherwise, if it's just "Bills/ID" or "Bill ID", also map to odoo14_bill_ids
+                                elif 'odoo14_bill_ids' not in column_mapping:
+                                    column_mapping['odoo14_bill_ids'] = col_idx
+                                    _logger.info("Mapped column '%s' (index %s) to odoo14_bill_ids", cell_value, col_idx)
                     continue
                 
                 # Extract data from columns using mapping
@@ -152,6 +169,33 @@ class RFQUploadWizard(models.TransientModel):
                 if 'receipt_date' in column_mapping and len(row) > column_mapping['receipt_date']:
                     receipt_date = str(row[column_mapping['receipt_date']]).strip() if row[column_mapping['receipt_date']] else ''
                 
+                stage = ''
+                if 'stage' in column_mapping and len(row) > column_mapping['stage']:
+                    stage = str(row[column_mapping['stage']]).strip() if row[column_mapping['stage']] else ''
+                
+                bills_number = ''
+                if 'bills_number' in column_mapping and len(row) > column_mapping['bills_number']:
+                    bills_number = str(row[column_mapping['bills_number']]).strip() if row[column_mapping['bills_number']] else ''
+                
+                odoo14_bill_ids = ''
+                if 'odoo14_bill_ids' in column_mapping:
+                    col_idx = column_mapping['odoo14_bill_ids']
+                    if len(row) > col_idx:
+                        bill_id_value = row[col_idx]
+                        if bill_id_value is not None:
+                            odoo14_bill_ids = str(bill_id_value).strip()
+                            # Handle empty strings, "None", "N/A", etc.
+                            if odoo14_bill_ids.lower() in ('', 'none', 'n/a', 'null', 'nan'):
+                                odoo14_bill_ids = ''
+                            if odoo14_bill_ids:
+                                _logger.info("✅ Extracted odoo14_bill_ids for RFQ %s: %s", rfq_number, odoo14_bill_ids)
+                        else:
+                            _logger.debug("Bill ID value is None for RFQ %s at column index %s", rfq_number, col_idx)
+                    else:
+                        _logger.warning("⚠️ Row length (%s) is less than column index (%s) for odoo14_bill_ids", len(row), col_idx)
+                else:
+                    _logger.debug("No odoo14_bill_ids column mapping found for RFQ %s. Available mappings: %s", rfq_number, list(column_mapping.keys()))
+                
                 rows_data.append({
                     'rfq_number': rfq_number,
                     'priority': priority,
@@ -164,6 +208,9 @@ class RFQUploadWizard(models.TransientModel):
                     'created_on': created_on,
                     'effective_date': effective_date,
                     'receipt_date': receipt_date,
+                    'stage': stage,
+                    'bills_number': bills_number,
+                    'odoo14_bill_ids': odoo14_bill_ids,
                 })
             
             workbook.close()
@@ -205,6 +252,9 @@ class RFQUploadWizard(models.TransientModel):
                         'created_on': row_data.get('created_on', ''),
                         'effective_date': row_data.get('effective_date', ''),
                         'receipt_date': row_data.get('receipt_date', ''),
+                        'stage': row_data.get('stage', ''),
+                        'bills_number': row_data.get('bills_number', ''),
+                        'odoo14_bill_ids': row_data.get('odoo14_bill_ids', ''),
                         'config_id': self.config_id.id if self.config_id else False,
                         'status': 'pending_migration',
                         'status_message': 'Uploaded from Excel',
@@ -215,8 +265,14 @@ class RFQUploadWizard(models.TransientModel):
             
             # Batch create all records
             if lines_to_create:
-                MigrationLine.create(lines_to_create)
+                created_records = MigrationLine.create(lines_to_create)
                 self.env.cr.commit()  # Commit after creation
+                
+                # Log created records with bill IDs for verification
+                for record in created_records:
+                    if record.odoo14_bill_ids:
+                        _logger.info("✅ Created RFQ migration line %s (RFQ: %s) with Bills/ID: %s", 
+                                   record.id, record.uploaded_rfq_number, record.odoo14_bill_ids)
             
             # Return to list view to show uploaded lines
             domain = []

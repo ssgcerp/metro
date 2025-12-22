@@ -39,6 +39,9 @@
                 <field name="order_deadline"/>
                 <field name="excel_status"/>
                 <field name="company"/>
+                <field name="stage"/>
+                <field name="bills_number"/>
+                <field name="odoo14_bill_ids"/>
                 <field name="in_system_rfq_number"/>
                 <field name="status" widget="badge" 
                        decoration-success="status == 'migrated' or status == 'already_migrated'"
@@ -73,6 +76,10 @@
                     <button name="action_migrate" string="Migrate" type="object" 
                             class="btn-primary" icon="fa-download"
                             invisible="status != 'pending_migration'"/>
+                    <button name="action_reset_stuck" string="Reset Stuck" type="object" 
+                            class="btn-warning" icon="fa-exclamation-triangle"
+                            invisible="status != 'migrating'"
+                            confirm="Are you sure you want to reset this stuck migration to error status?"/>
                     <field name="status" widget="statusbar" 
                            statusbar_visible="pending_migration,queued,migrating,migrated"/>
                 </header>
@@ -103,6 +110,9 @@
                             <field name="created_on"/>
                             <field name="effective_date"/>
                             <field name="receipt_date"/>
+                            <field name="stage"/>
+                            <field name="bills_number"/>
+                            <field name="odoo14_bill_ids"/>
                         </group>
                     </group>
                     <group>
@@ -128,6 +138,9 @@
                 <field name="order_deadline"/>
                 <field name="excel_status"/>
                 <field name="company"/>
+                <field name="stage"/>
+                <field name="bills_number"/>
+                <field name="odoo14_bill_ids"/>
                 <field name="in_system_rfq_number"/>
                 <field name="status"/>
                 <filter name="pending" string="Pending Migration" domain="[('status', '=', 'pending_migration')]"/>
@@ -136,6 +149,7 @@
                 <filter name="migrated" string="Migrated" domain="[('status', '=', 'migrated')]"/>
                 <filter name="not_found" string="Not Found" domain="[('status', '=', 'not_found')]"/>
                 <filter name="error" string="Error" domain="[('status', '=', 'error')]"/>
+                <filter name="migrating" string="Migrating" domain="[('status', '=', 'migrating')]"/>
                 <separator/>
                 <filter name="needs_action" string="Needs Action" domain="[('status', 'in', ['pending_migration', 'queued', 'not_found', 'error'])]"/>
             </search>
@@ -205,6 +219,19 @@ else:
         <field name="state">code</field>
         <field name="code">
 action = records.action_trigger_queue_job_runner()
+        </field>
+    </record>
+
+    <!-- Server Action to Reset Stuck Migrations - appears in Action menu (always visible) -->
+    <record id="action_server_rfq_reset_stuck_migrations" model="ir.actions.server">
+        <field name="name">Reset Stuck Migrations</field>
+        <field name="model_id" ref="model_rfq_migration_line"/>
+        <field name="binding_model_id" ref="model_rfq_migration_line"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+result = env['rfq.migration.line'].action_reset_stuck_migrations(stuck_threshold_seconds=30)
+raise UserError(result['message'])
         </field>
     </record>
 

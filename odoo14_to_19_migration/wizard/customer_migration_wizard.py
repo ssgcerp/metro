@@ -1389,57 +1389,23 @@ class CustomerMigrationWizard(models.TransientModel):
         if not partner:
             raise UserError('Partner (vendor) is required for RFQ')
         
-        # Get currency - Try to map from Odoo 14, fallback to AED, then company currency
-        currency = False
+        # Get currency - Always use AED for RFQ migration (as per requirement)
+        currency = self.env['res.currency'].search([('name', '=', 'AED')], limit=1)
+        
+        if currency:
+            _logger.info("✅ Using AED currency for RFQ migration")
+        else:
+            # Fallback to company currency if AED not found
+            currency = self.env.company.currency_id
+            _logger.warning("⚠️ AED currency not found, using company currency: %s", currency.name)
+        
+        # Log original currency from Odoo 14 for reference (but don't use it)
         if rfq_data.get('currency_id'):
             currency_id = rfq_data['currency_id']
             currency_id_val = currency_id[0] if isinstance(currency_id, list) else currency_id
             currency_name = currency_id[1] if isinstance(currency_id, list) and len(currency_id) > 1 else ''
-            
-            if currency_id_val:
-                # First try to find by ID
-                currency = self.env['res.currency'].browse(currency_id_val)
-                if not currency.exists():
-                    currency = False
-                
-                # If not found by ID, try to get from Odoo 14 and find by name/code
-                if not currency:
-                    try:
-                        currency_data = client.search_read(
-                            'res.currency',
-                            [('id', '=', currency_id_val)],
-                            ['name', 'symbol'],
-                            limit=1
-                        )
-                        if currency_data:
-                            currency_name_from_14 = currency_data[0].get('name', '') or currency_name
-                            currency_symbol = currency_data[0].get('symbol', '')
-                            
-                            # Try to find by name (e.g., "AED")
-                            if currency_name_from_14:
-                                currency = self.env['res.currency'].search([
-                                    ('name', '=', currency_name_from_14)
-                                ], limit=1)
-                            
-                            # If not found by name, try by symbol
-                            if not currency and currency_symbol:
-                                currency = self.env['res.currency'].search([
-                                    ('symbol', '=', currency_symbol)
-                                ], limit=1)
-                    except Exception as e:
-                        _logger.warning("Could not get currency %s from Odoo 14: %s", currency_id_val, str(e))
-        
-        # Fallback: Try AED first, then company currency
-        if not currency:
-            currency = self.env['res.currency'].search([('name', '=', 'AED')], limit=1)
-            if currency:
-                _logger.info("✅ Using AED currency (fallback)")
-        
-        if not currency:
-            currency = self.env.company.currency_id
-            _logger.warning("⚠️ Currency not found, using company currency: %s", currency.name)
-        else:
-            _logger.info("✅ Mapped currency: %s (ID: %s)", currency.name, currency.id)
+            _logger.info("ℹ️ Original Odoo 14 currency: %s (ID: %s) - Using AED instead", 
+                        currency_name or currency_id_val, currency_id_val)
         
         # Get company - Check branch_id first (maps to company in Odoo 19), then company_id
         company = self.env.company
@@ -1576,6 +1542,45 @@ class CustomerMigrationWizard(models.TransientModel):
                 if not fiscal_position.exists():
                     fiscal_position = False
         
+        # Map RFQ stage from Odoo 14 state to Odoo 19 rfq_stage_id
+        rfq_stage_id = False
+        odoo14_state = rfq_data.get('state', 'draft')
+        
+        # Map Odoo 14 purchase order states to RFQ stages
+        state_to_stage_mapping = {
+            'draft': 'Draft',
+            'sent': 'RFQ Sent',
+            'to approve': 'Pending For Approval',
+            'purchase': 'Purchase Order',
+            'done': 'Purchase Order',
+            'cancel': 'Draft',  # Cancelled orders go back to draft
+        }
+        
+        stage_name = state_to_stage_mapping.get(odoo14_state, 'Draft')
+        _logger.info("🔍 Mapping Odoo 14 state '%s' to RFQ stage '%s'", odoo14_state, stage_name)
+        
+        # Find the stage by name
+        if 'eq.fc.rfq.stage' in self.env:
+            rfq_stage = self.env['eq.fc.rfq.stage'].search([
+                ('name', '=', stage_name),
+                ('active', '=', True)
+            ], limit=1)
+            
+            if rfq_stage:
+                rfq_stage_id = rfq_stage.id
+                _logger.info("  ✅ Found RFQ stage '%s' (ID: %s)", stage_name, rfq_stage_id)
+            else:
+                # Fallback to Draft stage
+                rfq_stage = self.env['eq.fc.rfq.stage'].search([
+                    ('name', '=', 'Draft'),
+                    ('active', '=', True)
+                ], limit=1)
+                if rfq_stage:
+                    rfq_stage_id = rfq_stage.id
+                    _logger.warning("  ⚠️ RFQ stage '%s' not found, using Draft stage (ID: %s)", stage_name, rfq_stage_id)
+        else:
+            _logger.warning("  ⚠️ eq.fc.rfq.stage model not available, skipping RFQ stage mapping")
+        
         # Prepare RFQ values
         rfq_vals = {
             'name': rfq_data.get('name', ''),
@@ -1590,6 +1595,11 @@ class CustomerMigrationWizard(models.TransientModel):
             'note': rfq_data.get('notes', '') or rfq_data.get('note', ''),  # Odoo 19 uses 'note' (singular)
             'origin': rfq_data.get('origin', ''),
         }
+        
+        # Add RFQ stage if available
+        if rfq_stage_id and 'rfq_stage_id' in self.env['purchase.order']._fields:
+            rfq_vals['rfq_stage_id'] = rfq_stage_id
+            _logger.info("  ✅ Added rfq_stage_id: %s to RFQ %s", rfq_stage_id, rfq_data.get('name', 'Unknown'))
         
         # Add standard Odoo fields
         if incoterm:

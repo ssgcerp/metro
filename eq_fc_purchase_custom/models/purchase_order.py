@@ -73,7 +73,42 @@ class PurchaseOrder(models.Model):
                 default_stage = self._get_default_rfq_stage()
                 if default_stage:
                     vals['rfq_stage_id'] = default_stage
-        return super().create(vals_list)
+        orders = super().create(vals_list)
+        # Sync RFQ stage with state after creation
+        orders._sync_rfq_stage_from_state()
+        return orders
+    
+    def _sync_rfq_stage_from_state(self):
+        """Sync RFQ stage based on current state (only if stage is not already set)"""
+        for order in self:
+            # Only sync if rfq_stage_id is not set, to preserve migration mapping
+            if not order.rfq_stage_id:
+                stage_name = None
+                if order.state == 'draft':
+                    stage_name = 'Draft'
+                elif order.state == 'sent':
+                    stage_name = 'RFQ Sent'
+                elif order.state == 'to approve':
+                    stage_name = 'Pending For Approval'
+                elif order.state == 'purchase':
+                    stage_name = 'Purchase Order'
+                elif order.state == 'done':
+                    stage_name = 'Purchase Order'  # Use Purchase Order for done state too
+                
+                if stage_name:
+                    stage = self.env['eq.fc.rfq.stage'].search([
+                        ('name', '=', stage_name),
+                        ('active', '=', True)
+                    ], limit=1)
+                    if stage:
+                        order.rfq_stage_id = stage.id
+    
+    def write(self, vals):
+        """Sync RFQ stage when state changes"""
+        result = super().write(vals)
+        if 'state' in vals:
+            self._sync_rfq_stage_from_state()
+        return result
     
     @api.depends('project_code')
     def _compute_project_name(self):
