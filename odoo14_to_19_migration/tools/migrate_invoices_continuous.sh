@@ -2,7 +2,6 @@
 # Bash script for Continuous Customer Invoice Migration (Linux/Unix)
 # Processes all queued invoices one by one
 # Shows each invoice on a line: Invoice | Total Queued | Migrated | Current Migration | Status
-# List persists and grows as invoices are processed
 
 # Configuration - Change these if needed
 ODOO_URL="http://localhost:8079"
@@ -118,7 +117,6 @@ fi
 TOTAL_QUEUED=$(parse_json_number "$STATUS_JSON" "total_queued")
 TOTAL_MIGRATED=$(parse_json_number "$STATUS_JSON" "total_migrated")
 TOTAL_ERRORS=$(parse_json_number "$STATUS_JSON" "total_errors")
-MIGRATING_NOW=$(parse_json "$STATUS_JSON" "migrating_now")
 
 write_status "  ✅ Initial status retrieved" "Green"
 echo ""
@@ -164,13 +162,15 @@ while true; do
     PROCESS_RESPONSE=$(curl -s -b "$COOKIE_FILE" -L "$PROCESS_URL" 2>/dev/null)
     
     CURRENT_INVOICE="None"
-    if [ -n "$PROCESS_RESPONSE" ]; then
-        # Extract "Migrating Now:" line
-        MIGRATING_LINE=$(echo "$PROCESS_RESPONSE" | grep -iE "Migrating Now:" | head -n1)
-        if [ -n "$MIGRATING_LINE" ]; then
-            CURRENT_INVOICE=$(echo "$MIGRATING_LINE" | sed 's/.*Migrating Now:[[:space:]]*\(.*\)/\2/' | sed 's/[[:space:]]*$//')
+    
+    # Parse response to extract invoice details
+    while IFS= read -r line; do
+        line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        
+        if echo "$line" | grep -qiE "Migrating Now:"; then
+            CURRENT_INVOICE=$(echo "$line" | sed 's/.*Migrating Now:[[:space:]]*\(.*\)/\1/' | sed 's/[[:space:]]*$//')
         fi
-    fi
+    done <<< "$PROCESS_RESPONSE"
     
     # Extract invoice number and determine status
     if [ -n "$CURRENT_INVOICE" ] && [ "$CURRENT_INVOICE" != "None" ]; then
@@ -178,6 +178,7 @@ while true; do
         
         STATUS="Migrating"
         STATUS_COLOR="Yellow"
+        
         if echo "$CURRENT_INVOICE" | grep -qiE "DONE|Already migrated"; then
             STATUS="✅ DONE"
             STATUS_COLOR="Green"
@@ -198,7 +199,7 @@ while true; do
             processed_invoices[$DISPLAY_KEY]=1
             
             # Display the line with all info
-            DISPLAY_LINE="$INVOICE_NUM | Total Queued: $TOTAL_QUEUED | Migrated: $TOTAL_MIGRATED | Current: $CURRENT_INVOICE | Status: $STATUS"
+            DISPLAY_LINE="${INVOICE_NUM} | Total Queued: ${TOTAL_QUEUED} | Migrated: ${TOTAL_MIGRATED} | Current: ${CURRENT_INVOICE} | Status: ${STATUS}"
             write_status "$DISPLAY_LINE" "$STATUS_COLOR"
         fi
     fi
@@ -222,4 +223,3 @@ while true; do
     # Wait before next iteration
     sleep $PROCESSING_DELAY
 done
-
