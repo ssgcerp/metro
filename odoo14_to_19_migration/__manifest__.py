@@ -61,6 +61,7 @@ Features:
         'views/amc_system_type_migration_line_views.xml',
         'views/project_migration_line_views.xml',
         'views/rfq_migration_line_views.xml',
+        'views/customer_invoice_migration_line_views.xml',
         'views/branch_company_mapping_views.xml',
         'views/menu_items.xml',
     ],

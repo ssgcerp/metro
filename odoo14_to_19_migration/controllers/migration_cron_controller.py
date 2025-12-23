@@ -1498,6 +1498,278 @@ class MigrationCronController(http.Controller):
                 ]
             )
 
+    @http.route('/migration/process_one_invoice', type='http', auth='public', methods=['GET'], csrf=False)
+    def process_one_invoice(self, **kwargs):
+        """
+        Process one customer invoice from the queue.
+        Can be called repeatedly like a cron job.
+        
+        Returns simple text response with status.
+        
+        Usage: /migration/process_one_invoice?db=your_database_name
+        """
+        _logger.info("=" * 50)
+        _logger.info("process_one_invoice ROUTE CALLED!")
+        _logger.info("URL: %s", request.httprequest.url if hasattr(request, 'httprequest') and request.httprequest else 'N/A')
+        _logger.info("kwargs: %s", kwargs)
+        _logger.info("=" * 50)
+        try:
+            db = kwargs.get('db')
+            
+            if not db and hasattr(request, 'httprequest') and request.httprequest:
+                from urllib.parse import parse_qs, urlparse
+                try:
+                    parsed = urlparse(request.httprequest.url)
+                    query_params = parse_qs(parsed.query)
+                    if 'db' in query_params:
+                        db = query_params['db'][0]
+                except:
+                    pass
+            
+            if not db:
+                return request.make_response(
+                    'ERROR: Database not specified. Use: /migration/process_one_invoice?db=your_database_name\n',
+                    headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                )
+            
+            from odoo.api import Environment
+            from odoo import sql_db
+            try:
+                db_conn = sql_db.db_connect(db)
+                cr = db_conn.cursor()
+            except Exception as reg_error:
+                return request.make_response(
+                    f'ERROR: Database "{db}" not found: {str(reg_error)}\n',
+                    headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                )
+            
+            try:
+                env = Environment(cr, 1, {})
+                
+                MigrationInvoice = env['customer.invoice.migration.line']
+            
+                total_queued = MigrationInvoice.search_count([
+                    ('status', '=', 'queued')
+                ])
+                _logger.info("Total queued invoices: %s (status='queued')", total_queued)
+                
+                # Check for stuck migrations
+                from datetime import timedelta
+                stuck_threshold = fields.Datetime.now() - timedelta(seconds=30)
+                
+                all_migrating = MigrationInvoice.search([
+                    ('status', '=', 'migrating')
+                ])
+                
+                stuck_count = 0
+                for migrating_record in all_migrating:
+                    if migrating_record.write_date and migrating_record.write_date < stuck_threshold:
+                        stuck_seconds = int((fields.Datetime.now() - migrating_record.write_date).total_seconds())
+                        _logger.warning("Found stuck invoice migration: %s (stuck for %s seconds), resetting to error", 
+                                      migrating_record.uploaded_invoice_number,
+                                      stuck_seconds)
+                        migrating_record.write({
+                            'status': 'error',
+                            'status_message': 'Migration stuck - reset to error',
+                            'error_message': f'Migration was stuck in migrating status for {stuck_seconds} seconds. Last update: {migrating_record.write_date}',
+                        })
+                        stuck_count += 1
+                
+                if stuck_count > 0:
+                    cr.commit()
+                    _logger.warning("Reset %s stuck invoice migration(s) to error status", stuck_count)
+                
+                currently_migrating = MigrationInvoice.search([
+                    ('status', '=', 'migrating'),
+                    ('write_date', '>=', stuck_threshold)
+                ], limit=1, order='write_date desc')
+                
+                migrating_invoice = 'None'
+                
+                invoice_to_process = None
+                if not currently_migrating:
+                    invoice_to_process = MigrationInvoice.search([
+                        ('status', '=', 'queued')
+                    ], limit=1, order='id asc')
+                
+                if invoice_to_process and not currently_migrating:
+                    try:
+                        if invoice_to_process.status != 'queued':
+                            migrating_invoice = f"Skipped: {invoice_to_process.status} (not queued)"
+                        else:
+                            invoice_number = invoice_to_process.uploaded_invoice_number
+                            _logger.info("🔄 Starting SYNCHRONOUS migration for invoice %s", invoice_number)
+                            
+                            invoice_to_process.write({
+                                'status': 'pending_migration',
+                                'status_message': 'Starting migration...',
+                            })
+                            cr.commit()
+                            migrating_invoice = invoice_number
+                            
+                            try:
+                                existing_invoice = env['account.move'].search([
+                                    ('name', '=', invoice_number),
+                                    ('move_type', '=', 'out_invoice')
+                                ], limit=1)
+                                
+                                if existing_invoice:
+                                    if invoice_to_process.status in ('queued', 'pending_migration'):
+                                        _logger.info("Invoice %s already exists in Odoo 19 (ID: %s), updating status to migrated", 
+                                                   invoice_number, existing_invoice.id)
+                                        invoice_to_process.write({
+                                            'status': 'migrated',
+                                            'status_message': 'Already migrated (existed in system)',
+                                            'odoo19_invoice_id': existing_invoice.id,
+                                            'in_system_invoice_number': existing_invoice.name,
+                                            'migration_date': fields.Datetime.now(),
+                                            'error_message': False,
+                                        })
+                                        cr.commit()
+                                        migrating_invoice = f"{invoice_number} - DONE (already existed)"
+                                        _logger.info("✅ Invoice %s marked as migrated (already existed)", invoice_number)
+                                    else:
+                                        migrating_invoice = f"{invoice_number} - Already migrated"
+                                else:
+                                    try:
+                                        result = invoice_to_process.action_migrate()
+                                        cr.commit()
+                                        migrating_invoice = f"{invoice_number} - DONE"
+                                        _logger.info("✅ Successfully migrated invoice %s", invoice_number)
+                                    except Exception as migrate_exception:
+                                        error_msg = str(migrate_exception)
+                                        _logger.error("❌ Error migrating invoice %s: %s", invoice_number, error_msg, exc_info=True)
+                                        _log_failed_invoice_migration(invoice_number, error_msg)
+                                        migrating_invoice = f"{invoice_number} - ERROR: {error_msg[:100]}"
+                            except Exception as e:
+                                error_msg = str(e)
+                                _logger.error("❌ Error processing invoice %s: %s", invoice_number, error_msg, exc_info=True)
+                                _log_failed_invoice_migration(invoice_number, error_msg)
+                                migrating_invoice = f"{invoice_number} - ERROR: {error_msg[:100]}"
+                    except Exception as e:
+                        _logger.error("❌ Error in invoice migration process: %s", str(e), exc_info=True)
+                        migrating_invoice = f"ERROR: {str(e)[:100]}"
+                elif currently_migrating:
+                    migrating_invoice = f"{currently_migrating.uploaded_invoice_number} - in progress"
+                
+                total_migrated = MigrationInvoice.search_count([
+                    ('status', '=', 'migrated')
+                ])
+                
+                total_errors = MigrationInvoice.search_count([
+                    ('status', '=', 'error')
+                ])
+                
+                response_text = f"""Migrating Now: {migrating_invoice}
+Total Queued: {total_queued} (status='queued')
+Total Migrated: {total_migrated}
+Total Errors: {total_errors}
+"""
+                
+                return request.make_response(
+                    response_text,
+                    headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                )
+            finally:
+                cr.close()
+            
+        except Exception as e:
+            _logger.error("Error in invoice migration process: %s", str(e), exc_info=True)
+            return request.make_response(
+                f'ERROR: {str(e)}\n',
+                headers=[('Content-Type', 'text/plain; charset=utf-8')]
+            )
+
+    @http.route('/migration/status_invoice', type='http', auth='public', methods=['GET'], csrf=False)
+    def get_invoice_status(self, **kwargs):
+        """
+        Get current customer invoice migration status without processing.
+        Returns JSON with detailed status.
+        
+        Usage: /migration/status_invoice?db=your_database_name
+        """
+        try:
+            db = kwargs.get('db')
+            
+            if not db and hasattr(request, 'httprequest') and request.httprequest:
+                from urllib.parse import parse_qs, urlparse
+                try:
+                    parsed = urlparse(request.httprequest.url)
+                    query_params = parse_qs(parsed.query)
+                    if 'db' in query_params:
+                        db = query_params['db'][0]
+                except:
+                    pass
+            
+            if not db:
+                import json
+                return request.make_response(
+                    json.dumps({'error': 'Database not specified. Use: /migration/status_invoice?db=your_database_name'}),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            
+            from odoo.api import Environment
+            from odoo import sql_db
+            try:
+                db_conn = sql_db.db_connect(db)
+                cr = db_conn.cursor()
+            except Exception as reg_error:
+                import json
+                return request.make_response(
+                    json.dumps({'error': f'Database "{db}" not found: {str(reg_error)}'}),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            
+            try:
+                env = Environment(cr, 1, {})
+                
+                MigrationInvoice = env['customer.invoice.migration.line']
+                
+                total_queued = MigrationInvoice.search_count([
+                    ('status', '=', 'queued')
+                ])
+                
+                currently_migrating = MigrationInvoice.search([
+                    ('status', '=', 'migrating')
+                ], limit=1, order='write_date desc')
+                
+                migrating_invoice = currently_migrating.uploaded_invoice_number if currently_migrating else None
+                
+                total_migrated = MigrationInvoice.search_count([
+                    ('status', '=', 'migrated')
+                ])
+                
+                total_errors = MigrationInvoice.search_count([
+                    ('status', '=', 'error')
+                ])
+                
+                import json
+                status_data = {
+                    'total_queued': total_queued,
+                    'migrating_now': migrating_invoice,
+                    'total_migrated': total_migrated,
+                    'total_errors': total_errors,
+                }
+                
+                return request.make_response(
+                    json.dumps(status_data, indent=2),
+                    headers=[
+                        ('Content-Type', 'application/json; charset=utf-8'),
+                    ]
+                )
+            finally:
+                cr.close()
+            
+        except Exception as e:
+            _logger.error("Error in invoice migration status: %s", str(e), exc_info=True)
+            import json
+            return request.make_response(
+                json.dumps({'error': str(e)}),
+                headers=[
+                    ('Content-Type', 'application/json; charset=utf-8'),
+                ]
+            )
+
     @http.route('/migration/process_one_system_type', type='http', auth='public', methods=['GET'], csrf=False)
     def process_one_system_type(self, **kwargs):
         """Process one system type from the queue synchronously"""
@@ -1839,3 +2111,21 @@ def _log_failed_estimation_migration(estimation_number, error_detail):
         _logger.info("Failed estimation migration logged to: %s", log_file)
     except Exception as e:
         _logger.warning("Could not write to failed estimation migrations log: %s", str(e))
+
+
+def _log_failed_invoice_migration(invoice_number, error_detail):
+    """Log failed customer invoice migration to a file for later processing"""
+    try:
+        log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        
+        log_file = os.path.join(log_dir, 'failed_invoice_migrations.log')
+        
+        with open(log_file, 'a', encoding='utf-8') as f:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"{timestamp} | {invoice_number} | {error_detail[:200]}\n")
+        
+        _logger.info("Failed invoice migration logged to: %s", log_file)
+    except Exception as e:
+        _logger.warning("Could not write to failed invoice migrations log: %s", str(e))
