@@ -22,9 +22,16 @@
               sequence="15"/>
 
     <menuitem id="menu_migration_customers_invoices"
-              name="Invoices"
+              name="Customer Invoices"
               parent="menu_migration_customers"
+              action="action_migration_customer_invoice"
               sequence="20"/>
+
+    <menuitem id="menu_migration_customers_invoices_upload_excel"
+              name="Upload Excel (Customer Invoice)"
+              parent="menu_migration_customers"
+              action="action_customer_invoice_upload_wizard"
+              sequence="22"/>
 
     <menuitem id="menu_migration_customers_customers"
               name="Customers"
