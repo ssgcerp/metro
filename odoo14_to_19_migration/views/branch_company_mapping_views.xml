@@ -9,7 +9,10 @@
                 <sheet>
                     <group>
                         <field name="odoo19_company_id" required="1"/>
-                        <field name="odoo14_branch_id" required="1"/>
+                        <group string="Branch Identification (at least one required)">
+                            <field name="odoo14_branch_id" placeholder="Branch ID from Odoo 14"/>
+                            <field name="odoo14_branch_name" placeholder="Branch Name from Odoo 14"/>
+                        </group>
                         <field name="active"/>
                     </group>
                 </sheet>
@@ -24,6 +27,7 @@
         <field name="arch" type="xml">
             <list string="Branch to Company Mappings" multi_edit="1">
                 <field name="odoo14_branch_id"/>
+                <field name="odoo14_branch_name"/>
                 <field name="odoo19_company_id"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>
@@ -37,6 +41,7 @@
         <field name="arch" type="xml">
             <search>
                 <field name="odoo14_branch_id"/>
+                <field name="odoo14_branch_name"/>
                 <field name="odoo19_company_id"/>
                 <filter name="active" string="Active" domain="[('active', '=', True)]"/>
                 <filter name="inactive" string="Inactive" domain="[('active', '=', False)]"/>
@@ -59,10 +64,13 @@
                 No branch mappings found
             </p>
             <p>
-                Map Odoo 14 branch IDs to Odoo 19 companies. Enter the branch ID from Odoo 14 and select the corresponding company in Odoo 19.
+                Map Odoo 14 branches to Odoo 19 companies. Enter either the branch ID or branch name from Odoo 14 and select the corresponding company in Odoo 19.
             </p>
             <p>
-                This mapping is used during migration to assign migrated data to the correct company.
+                <strong>Note:</strong> You can use either Branch ID or Branch Name (or both). At least one must be provided.
+            </p>
+            <p>
+                This mapping is used during migration to assign migrated data to the correct company. The migration will try to match by Branch ID first, then by Branch Name if ID mapping is not found.
             </p>
         </field>
     </record>

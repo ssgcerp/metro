@@ -8,6 +8,12 @@
 		},
 		{
 			"path": "../queue"
+		},
+		{
+			"path": "../../sttl_dynamic_bank_cheque_print"
+		},
+		{
+			"path": "../../adevx_account_pdc"
 		}
 	],
 	"settings": {}

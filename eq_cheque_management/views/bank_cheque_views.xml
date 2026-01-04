@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Bank Cheque List View -->
+        <record id="view_bank_cheque_list" model="ir.ui.view">
+            <field name="name">bank.cheque.list</field>
+            <field name="model">bank.cheque</field>
+            <field name="arch" type="xml">
+                <list string="Bank Cheques">
+                    <field name="name"/>
+                    <field name="bank_identifier_code"/>
+                    <field name="bank_address"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Bank Cheque Form View -->
+        <record id="view_bank_cheque_form" model="ir.ui.view">
+            <field name="name">bank.cheque.form</field>
+            <field name="model">bank.cheque</field>
+            <field name="arch" type="xml">
+                <form string="Bank Cheque Configuration">
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="Bank Name"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="bank_identifier_code"/>
+                                <field name="bank_address" widget="text"/>
+                                <field name="phone"/>
+                                <field name="email"/>
+                                <field name="font_size" options="{'type': 'number', 'step': 1}"/>
+                                <field name="company_id" groups="base.group_multi_company" options="{'no_create': True}"/>
+                                <field name="company_ids" widget="many2many_tags" groups="base.group_multi_company" options="{'no_create': True}" domain="[]"/>
+                            </group>
+                            <group>
+                                <field name="cheque_image" widget="image" options="{'preview_image': 'cheque_image'}"/>
+                                <field name="cheque_background" invisible="1"/>
+                                <field name="measurement_unit"/>
+                                <field name="cheque_height"/>
+                                <field name="cheque_width"/>
+                                <field name="maximum_characters"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group>
+                                <field name="cheque_no_lm"/>
+                                <field name="cheque_no_tm"/>
+                                <field name="amount_word_lm"/>
+                                <field name="amount_word_tm"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Cheque Attributes">
+                                <field name="cheque_attribute_ids">
+                                    <list editable="bottom">
+                                        <field name="attribute_name"/>
+                                        <field name="font_size"/>
+                                        <field name="letter_space"/>
+                                        <field name="top_displacement"/>
+                                        <field name="left_displacement"/>
+                                        <field name="width"/>
+                                        <field name="height"/>
+                                        <field name="x1"/>
+                                        <field name="y1"/>
+                                        <field name="x2"/>
+                                        <field name="y2"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Bank Cheque Action -->
+        <record id="action_bank_cheque" model="ir.actions.act_window">
+            <field name="name">Bank Cheque Configuration</field>
+            <field name="res_model">bank.cheque</field>
+            <field name="view_mode">list,form</field>
+        </record>
+    </data>
+</odoo>
+

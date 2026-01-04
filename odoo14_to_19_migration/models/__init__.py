@@ -18,4 +18,5 @@ from . import amc_system_type_migration_line
 from . import project_migration_line
 from . import rfq_migration_line
 from . import customer_invoice_migration_line
+from . import vendor_bill_migration_line
 

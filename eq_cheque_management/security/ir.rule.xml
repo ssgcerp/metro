@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Multi-company rules for cheque models -->
+        <record id="eq_cheque_config_comp_rule" model="ir.rule">
+            <field name="name">Cheque Config: multi-company</field>
+            <field name="model_id" ref="model_eq_cheque_config"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="eq_cheque_incoming_comp_rule" model="ir.rule">
+            <field name="name">Incoming Cheque: multi-company</field>
+            <field name="model_id" ref="model_eq_cheque_incoming"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="eq_cheque_outgoing_comp_rule" model="ir.rule">
+            <field name="name">Outgoing Cheque: multi-company</field>
+            <field name="model_id" ref="model_eq_cheque_outgoing"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+    </data>
+</odoo>
+

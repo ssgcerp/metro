@@ -140,6 +140,7 @@ This document maps fields between Odoo 14 and Odoo 19 for customer invoices (`ac
 
 ## Recommendations
 
+
 1. **Quote Reference**: Extract name from Many2one in Odoo 14 and store as Char in Odoo 19 (if field exists and is shared)
 2. **Sales Order Linking**: Search for sale order by `quote_reference` or `invoice_origin` if `sale_id` not available
 3. **Custom Fields**: All major custom fields from metro_erp are available in eq_fc_invoice_custom - migrate all of them

@@ -1,0 +1,89 @@
+2026-01-04 15:02:48 | BILL/2023/01/0005 | Line 2999 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:03:12 | BILL/2023/01/0006 | Line 2975 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:03:16 | BILL/2023/01/0006 | Line 2976 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:03:20 | BILL/2023/01/0006 | Line 2977 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:03:24 | BILL/2023/01/0006 | Line 2978 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:03:28 | BILL/2023/01/0006 | Line 2979 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:03:58 | BILL/2023/01/0007 | Line 1631 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:06:27 | BILL/2023/01/0008 | Line 2982 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:06:32 | BILL/2023/01/0008 | Line 2983 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:06:36 | BILL/2023/01/0008 | Line 2985 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:06:40 | BILL/2023/01/0008 | Line 2986 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:06:44 | BILL/2023/01/0008 | Line 2987 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:06:49 | BILL/2023/01/0008 | Line 2988 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:06:53 | BILL/2023/01/0008 | Line 2989 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:07:18 | BILL/2023/01/0009 | Line 1327 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:07:43 | BILL/2023/01/0010 | Line 1151 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:08:15 | BILL/2023/01/0011 | Line 1585 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:08:19 | BILL/2023/01/0011 | Line 1586 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:08:24 | BILL/2023/01/0011 | Line 1587 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:08:28 | BILL/2023/01/0011 | Line 1588 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:09:02 | BILL/2023/01/0012 | Line 1591 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:09:27 | BILL/2023/01/0013 | Line 3064 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:11:07 | BILL/2023/01/0015 | Line 2491 failed: Invalid field account.account.deprecated in condition ('deprecated', '=', False)
+2026-01-04 15:11:32 | BILL/2023/01/0016 | Line 1822 failed: Invalid field account.account.deprecated in condition ('deprecated', '=', False)
+2026-01-04 15:11:58 | BILL/2023/01/0017 | Line 3419 failed: Invalid field account.account.deprecated in condition ('deprecated', '=', False)
+2026-01-04 15:21:05 | BILL/2023/01/0018 | Line 3329 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:21:31 | BILL/2023/01/0019 | Line 3316 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:21:39 | BILL/2023/01/0019 | Line 3317 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:21:45 | BILL/2023/01/0019 | Line 3318 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:21:52 | BILL/2023/01/0019 | Line 3319 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:21:58 | BILL/2023/01/0019 | Line 3320 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:22:04 | BILL/2023/01/0019 | Line 3321 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:22:11 | BILL/2023/01/0019 | Line 3322 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:22:17 | BILL/2023/01/0019 | Line 3323 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:22:23 | BILL/2023/01/0019 | Line 3324 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:22:29 | BILL/2023/01/0019 | Line 3325 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:22:36 | BILL/2023/01/0019 | Line 3326 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:31:21 | BILL/2023/01/0020 | Line 3426 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 15:31:49 | BILL/2023/01/0021 | Line 3203 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 15:32:20 | BILL/2023/01/0022 | Line 3197 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 15:32:46 | BILL/2023/01/0023 | Line 1168 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 15:32:48 | BILL/2023/01/0023 | Line 1169 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (699, 1242, 2, 1, 128, 100, 667, 128, 39417, null, null, null, null, null, null, null, 
+2026-01-04 15:35:26 | BILL/2023/01/0024 | Line 2846 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 15:36:00 | BILL/2023/01/0025 | Line 2827 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 15:36:02 | BILL/2023/01/0025 | Line 2828 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (702, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:04 | BILL/2023/01/0025 | Line 2829 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (703, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:06 | BILL/2023/01/0025 | Line 2830 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (704, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:08 | BILL/2023/01/0025 | Line 2831 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (705, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:10 | BILL/2023/01/0025 | Line 2832 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (706, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:13 | BILL/2023/01/0025 | Line 2833 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (707, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:15 | BILL/2023/01/0025 | Line 2834 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (708, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:17 | BILL/2023/01/0025 | Line 2835 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (709, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:19 | BILL/2023/01/0025 | Line 2836 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (710, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:21 | BILL/2023/01/0025 | Line 2837 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (711, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:23 | BILL/2023/01/0025 | Line 2838 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (712, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:25 | BILL/2023/01/0025 | Line 2839 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (713, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:28 | BILL/2023/01/0025 | Line 2840 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (714, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:30 | BILL/2023/01/0025 | Line 2841 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (715, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:32 | BILL/2023/01/0025 | Line 2843 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (716, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:37:05 | BILL/2023/01/0026 | Line 3079 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 15:37:45 | BILL/2023/01/0027 | Line 2612 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 16:38:24 | BILL/2023/02/0003 | Line 986 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-04 16:38:31 | BILL/2023/02/0003 | Line 987 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-04 16:38:37 | BILL/2023/02/0003 | Line 988 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-04 16:38:46 | BILL/2023/02/0003 | Line 989 failed: Any journal item on a payable account must have a due date and vice versa.

@@ -12,4 +12,5 @@ from . import crm_lead_upload_wizard
 from . import amc_system_type_upload_wizard
 from . import project_upload_wizard
 from . import customer_invoice_upload_wizard
+from . import vendor_bill_upload_wizard
 
