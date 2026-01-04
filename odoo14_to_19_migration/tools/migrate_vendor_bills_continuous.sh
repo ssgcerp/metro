@@ -4,7 +4,7 @@
 # Shows each bill on a line: Bill | Total Queued | Migrated | Odoo 14 Products | Odoo 19 Products | Current Migration | Status
 
 # Configuration - Change these if needed
-ODOO_URL="http://localhost:8079"
+ODOO_URL="https://metro.equdaierp.com"
 DATABASE="metrodb"  # Change this to your database name
 PROCESSING_DELAY=2  # Seconds to wait between processing each bill
 
