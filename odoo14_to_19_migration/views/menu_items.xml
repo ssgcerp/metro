@@ -205,5 +205,29 @@
               action="action_employee_migration_wizard"
               sequence="15"/>
 
+    <!-- Vendors - Separate Top Level Menu -->
+    <menuitem id="menu_migration_vendors"
+              name="Vendors"
+              parent="menu_migration_root"
+              sequence="30"/>
+
+    <menuitem id="menu_migration_vendors_bills"
+              name="Vendor Bills"
+              parent="menu_migration_vendors"
+              action="action_migration_vendor_bill"
+              sequence="10"/>
+
+    <menuitem id="menu_migration_vendors_bills_upload_excel"
+              name="Upload Excel (Vendor Bill)"
+              parent="menu_migration_vendors"
+              action="action_vendor_bill_upload_wizard"
+              sequence="12"/>
+
+    <menuitem id="menu_migration_vendors_process_queue_jobs"
+              name="Process Queue Jobs Now"
+              parent="menu_migration_vendors"
+              action="action_trigger_queue_job_runner_menu"
+              sequence="15"/>
+
     <!-- Vendors, Products, Accounting will be added later -->
 </odoo>

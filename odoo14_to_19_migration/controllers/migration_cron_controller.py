@@ -1770,6 +1770,861 @@ Total Errors: {total_errors}
                 ]
             )
 
+    @http.route('/migration/process_one_vendor_bill', type='http', auth='public', methods=['GET'], csrf=False)
+    def process_one_vendor_bill(self, **kwargs):
+        """
+        Process one vendor bill from the queue.
+        Can be called repeatedly like a cron job.
+        
+        Returns simple text response with status.
+        
+        Usage: /migration/process_one_vendor_bill?db=your_database_name
+        """
+        _logger.info("=" * 50)
+        _logger.info("process_one_vendor_bill ROUTE CALLED!")
+        _logger.info("URL: %s", request.httprequest.url if hasattr(request, 'httprequest') and request.httprequest else 'N/A')
+        _logger.info("kwargs: %s", kwargs)
+        _logger.info("=" * 50)
+        try:
+            db = kwargs.get('db')
+            
+            if not db and hasattr(request, 'httprequest') and request.httprequest:
+                from urllib.parse import parse_qs, urlparse
+                try:
+                    parsed = urlparse(request.httprequest.url)
+                    query_params = parse_qs(parsed.query)
+                    if 'db' in query_params:
+                        db = query_params['db'][0]
+                except:
+                    pass
+            
+            if not db:
+                return request.make_response(
+                    'ERROR: Database not specified. Use: /migration/process_one_vendor_bill?db=your_database_name\n',
+                    headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                )
+            
+            from odoo.api import Environment
+            from odoo import sql_db
+            try:
+                db_conn = sql_db.db_connect(db)
+                cr = db_conn.cursor()
+            except Exception as reg_error:
+                return request.make_response(
+                    f'ERROR: Database "{db}" not found: {str(reg_error)}\n',
+                    headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                )
+            
+            try:
+                env = Environment(cr, 1, {})
+                
+                MigrationBill = env['vendor.bill.migration.line']
+            
+                total_queued = MigrationBill.search_count([
+                    ('status', '=', 'queued')
+                ])
+                _logger.info("Total queued vendor bills: %s (status='queued')", total_queued)
+                
+                # Check for stuck migrations (increased to 60 seconds to allow for complex migrations with many lines)
+                from datetime import timedelta
+                stuck_threshold = fields.Datetime.now() - timedelta(seconds=60)
+                
+                all_migrating = MigrationBill.search([
+                    ('status', '=', 'migrating')
+                ])
+                
+                stuck_count = 0
+                for migrating_record in all_migrating:
+                    if migrating_record.write_date and migrating_record.write_date < stuck_threshold:
+                        stuck_seconds = int((fields.Datetime.now() - migrating_record.write_date).total_seconds())
+                        _logger.warning("Found stuck vendor bill migration: %s (stuck for %s seconds), resetting to error", 
+                                      migrating_record.uploaded_bill_number,
+                                      stuck_seconds)
+                        try:
+                            migrating_record.write({
+                                'status': 'error',
+                                'status_message': 'Migration stuck - reset to error',
+                                'error_message': f'Migration was stuck in migrating status for {stuck_seconds} seconds. Last update: {migrating_record.write_date}',
+                            })
+                            stuck_count += 1
+                        except Exception as stuck_error:
+                            _logger.error("Error resetting stuck migration %s: %s", migrating_record.uploaded_bill_number, str(stuck_error))
+                            try:
+                                cr.rollback()
+                            except:
+                                pass
+                
+                if stuck_count > 0:
+                    try:
+                        cr.commit()
+                        _logger.warning("Reset %s stuck vendor bill migration(s) to error status", stuck_count)
+                    except Exception as commit_error:
+                        _logger.error("Error committing stuck migration reset: %s", str(commit_error))
+                        try:
+                            cr.rollback()
+                        except:
+                            pass
+                
+                # Find currently migrating (recent ones, not stuck - within last 60 seconds)
+                currently_migrating = MigrationBill.search([
+                    ('status', '=', 'migrating'),
+                    ('write_date', '>=', stuck_threshold)
+                ], limit=1, order='write_date desc')
+                
+                migrating_bill = 'None'
+                migrating_bill_details = None
+                
+                bill_to_process = None
+                if not currently_migrating:
+                    # Use SELECT FOR UPDATE SKIP LOCKED to avoid concurrent update conflicts
+                    try:
+                        cr.execute("""
+                            SELECT id FROM vendor_bill_migration_line 
+                            WHERE status = 'queued' 
+                            ORDER BY id ASC 
+                            LIMIT 1 
+                            FOR UPDATE SKIP LOCKED
+                        """)
+                        result = cr.fetchone()
+                        if result:
+                            bill_id = result[0]
+                            bill_to_process = MigrationBill.browse(bill_id)
+                    except Exception as lock_error:
+                        _logger.warning("Error using SELECT FOR UPDATE SKIP LOCKED: %s, falling back to regular search", str(lock_error))
+                        bill_to_process = MigrationBill.search([
+                            ('status', '=', 'queued')
+                        ], limit=1, order='id asc')
+                
+                if bill_to_process and not currently_migrating:
+                    try:
+                        if bill_to_process.status != 'queued':
+                            migrating_bill = f"Skipped: {bill_to_process.status} (not queued)"
+                        else:
+                            bill_number = bill_to_process.uploaded_bill_number
+                            partner_name = bill_to_process.bill_partner_name or 'N/A'
+                            _logger.info("🔄 Starting SYNCHRONOUS migration for vendor bill %s", bill_number)
+                            
+                            # Get bill amount from Odoo 14 if config available
+                            bill_amount = 0.0
+                            if bill_to_process.config_id:
+                                try:
+                                    from ..models.odoo14_api_client import Odoo14APIClient
+                                    client = Odoo14APIClient(
+                                        url=bill_to_process.config_id.odoo14_url,
+                                        db=bill_to_process.config_id.odoo14_database,
+                                        username=bill_to_process.config_id.odoo14_username,
+                                        password=bill_to_process.config_id.odoo14_password
+                                    )
+                                    if client.authenticate():
+                                        bills = client.search_read(
+                                            'account.move',
+                                            [('name', '=', bill_number), ('move_type', '=', 'in_invoice')],
+                                            ['amount_total', 'partner_id'],
+                                            limit=1
+                                        )
+                                        if bills:
+                                            bill_amount = bills[0].get('amount_total', 0.0)
+                                            # Get partner name if not set
+                                            if not partner_name or partner_name == 'N/A':
+                                                partner_id = bills[0].get('partner_id')
+                                                if partner_id and isinstance(partner_id, (list, tuple)) and len(partner_id) > 1:
+                                                    partner_name = partner_id[1]
+                                except:
+                                    pass
+                            
+                            # Update status with retry logic for serialization errors
+                            max_retries = 3
+                            updated = False
+                            for retry in range(max_retries):
+                                try:
+                                    bill_to_process.write({
+                                        'status': 'pending_migration',
+                                        'status_message': 'Starting migration...',
+                                    })
+                                    cr.commit()
+                                    updated = True
+                                    migrating_bill = bill_number
+                                    break
+                                except Exception as write_error:
+                                    error_msg = str(write_error).lower()
+                                    is_serialization_error = (
+                                        'could not serialize' in error_msg or
+                                        'concurrent update' in error_msg or
+                                        'serialization failure' in error_msg
+                                    )
+                                    
+                                    if is_serialization_error and retry < max_retries - 1:
+                                        import time
+                                        delay = 0.1 * (2 ** retry)  # Exponential backoff
+                                        _logger.warning("Serialization error updating status (retry %s/%s), waiting %s seconds: %s", 
+                                                      retry + 1, max_retries, delay, str(write_error))
+                                        try:
+                                            cr.rollback()
+                                        except:
+                                            pass
+                                        time.sleep(delay)
+                                        # Refresh record
+                                        bill_to_process.invalidate_recordset(['status'])
+                                        # Check if already being processed
+                                        if bill_to_process.status in ('migrating', 'pending_migration'):
+                                            _logger.info("Bill %s is already being processed (status: %s), skipping", 
+                                                       bill_number, bill_to_process.status)
+                                            migrating_bill = f"{bill_number} - Already processing"
+                                            updated = True
+                                            break
+                                    else:
+                                        _logger.error("Error updating bill status to pending_migration: %s", str(write_error))
+                                        try:
+                                            cr.rollback()
+                                        except:
+                                            pass
+                                        if retry == max_retries - 1:
+                                            # Last retry failed, try to continue anyway
+                                            migrating_bill = bill_number
+                                            updated = True
+                            
+                            if not updated:
+                                migrating_bill = bill_number
+                            
+                            # Include bill details in response
+                            # State: Excel status takes priority, payment_state always "not_paid"
+                            state_value = bill_to_process.excel_status or bill_to_process.odoo14_state or 'N/A'
+                            total_items_odoo14 = 0
+                            total_items_odoo19 = 0
+                            products_odoo14 = 0
+                            products_odoo19 = 0
+                            migrating_bill_details = {
+                                'bill_number': bill_number,
+                                'partner_name': partner_name,
+                                'amount_total': bill_amount,
+                                'state': state_value,
+                                'payment_state': 'not_paid',  # Always "not_paid"
+                                'total_items_odoo14': total_items_odoo14,
+                                'total_items_odoo19': total_items_odoo19,
+                                'products_odoo14': products_odoo14,
+                                'products_odoo19': products_odoo19,
+                            }
+                            
+                            try:
+                                existing_bill = env['account.move'].search([
+                                    ('name', '=', bill_number),
+                                    ('move_type', '=', 'in_invoice')
+                                ], limit=1)
+                                
+                                if existing_bill:
+                                    # Count products in Odoo 19 bill (lines with product_id)
+                                    if existing_bill.invoice_line_ids:
+                                        total_items_odoo19 = len(existing_bill.invoice_line_ids)
+                                        products_odoo19 = len(existing_bill.invoice_line_ids.filtered(lambda l: l.product_id))
+                                        migrating_bill_details['total_items_odoo19'] = total_items_odoo19
+                                        migrating_bill_details['products_odoo19'] = products_odoo19
+                                elif bill_to_process.odoo19_bill_id:
+                                    # Bill is already migrated, use odoo19_bill_id to count products
+                                    odoo19_bill = bill_to_process.odoo19_bill_id
+                                    if odoo19_bill.invoice_line_ids:
+                                        total_items_odoo19 = len(odoo19_bill.invoice_line_ids)
+                                        products_odoo19 = len(odoo19_bill.invoice_line_ids.filtered(lambda l: l.product_id))
+                                        migrating_bill_details['total_items_odoo19'] = total_items_odoo19
+                                        migrating_bill_details['products_odoo19'] = products_odoo19
+                                        migrating_bill_details['amount_total'] = odoo19_bill.amount_total or 0.0
+                                        if odoo19_bill.partner_id:
+                                            migrating_bill_details['partner_name'] = odoo19_bill.partner_id.name or partner_name
+                                        migrating_bill_details['state'] = bill_to_process.excel_status or odoo19_bill.state or bill_to_process.odoo14_state or 'N/A'
+                                
+                                if existing_bill:
+                                    if bill_to_process.status in ('queued', 'pending_migration'):
+                                        _logger.info("Vendor bill %s already exists in Odoo 19 (ID: %s), updating status to migrated", 
+                                                   bill_number, existing_bill.id)
+                                        try:
+                                            bill_to_process.write({
+                                                'status': 'migrated',
+                                                'status_message': 'Already migrated (existed in system)',
+                                                'odoo19_bill_id': existing_bill.id,
+                                                'in_system_bill_number': existing_bill.name,
+                                                'migration_date': fields.Datetime.now(),
+                                                'error_message': False,
+                                            })
+                                            cr.commit()
+                                            migrating_bill = f"{bill_number} - DONE (already existed)"
+                                            # Update bill details with existing bill info
+                                            migrating_bill_details['amount_total'] = existing_bill.amount_total or 0.0
+                                            if existing_bill.partner_id:
+                                                migrating_bill_details['partner_name'] = existing_bill.partner_id.name or partner_name
+                                            # Update state from existing bill (Excel status takes priority), payment_state always "not_paid"
+                                            migrating_bill_details['state'] = bill_to_process.excel_status or existing_bill.state or bill_to_process.odoo14_state or 'N/A'
+                                            migrating_bill_details['payment_state'] = 'not_paid'  # Always "not_paid"
+                                            _logger.info("✅ Vendor bill %s marked as migrated (already existed)", bill_number)
+                                        except Exception as update_error:
+                                            _logger.error("Error updating bill status to migrated: %s", str(update_error))
+                                            try:
+                                                cr.rollback()
+                                            except:
+                                                pass
+                                            migrating_bill = f"{bill_number} - DONE (already existed)"
+                                    else:
+                                        migrating_bill = f"{bill_number} - DONE"
+                                    
+                                    # Fetch Odoo 14 products for already-migrated bills
+                                    if bill_to_process.config_id:
+                                        try:
+                                            from ..models.odoo14_api_client import Odoo14APIClient
+                                            client = Odoo14APIClient(
+                                                url=bill_to_process.config_id.odoo14_url,
+                                                db=bill_to_process.config_id.odoo14_database,
+                                                username=bill_to_process.config_id.odoo14_username,
+                                                password=bill_to_process.config_id.odoo14_password
+                                            )
+                                            if client.authenticate():
+                                                bills = client.search_read(
+                                                    'account.move',
+                                                    [('name', '=', bill_number), ('move_type', '=', 'in_invoice')],
+                                                    ['invoice_line_ids'],
+                                                    limit=1
+                                                )
+                                                if bills:
+                                                    invoice_line_ids = bills[0].get('invoice_line_ids', [])
+                                                    if invoice_line_ids:
+                                                        if isinstance(invoice_line_ids, (list, tuple)):
+                                                            total_items_odoo14 = len([lid for lid in invoice_line_ids if isinstance(lid, int) or (isinstance(lid, (list, tuple)) and len(lid) > 0)])
+                                                        else:
+                                                            total_items_odoo14 = 1 if invoice_line_ids else 0
+                                                        
+                                                        # Count products from Odoo 14
+                                                        try:
+                                                            line_ids = [lid[0] if isinstance(lid, (list, tuple)) and len(lid) > 0 else lid for lid in invoice_line_ids if lid]
+                                                            if line_ids:
+                                                                lines = client.search_read(
+                                                                    'account.move.line',
+                                                                    [('id', 'in', line_ids), ('move_id', '=', bills[0]['id'])],
+                                                                    ['product_id'],
+                                                                    limit=1000
+                                                                )
+                                                                if lines:
+                                                                    products_odoo14 = len([l for l in lines if l.get('product_id')])
+                                                                    migrating_bill_details['products_odoo14'] = products_odoo14
+                                                                    migrating_bill_details['total_items_odoo14'] = total_items_odoo14
+                                                        except Exception as product_count_error:
+                                                            _logger.debug("Could not count products from Odoo 14 for migrated bill: %s", str(product_count_error))
+                                        except Exception as odoo14_error:
+                                            _logger.debug("Could not fetch Odoo 14 products for migrated bill: %s", str(odoo14_error))
+                                else:
+                                    try:
+                                        result = bill_to_process.action_migrate()
+                                        try:
+                                            cr.commit()
+                                        except Exception as commit_error:
+                                            _logger.warning("Error committing migration result: %s", str(commit_error))
+                                            try:
+                                                cr.rollback()
+                                            except:
+                                                pass
+                                        migrating_bill = f"{bill_number} - DONE"
+                                        # Update bill details if bill was created
+                                        try:
+                                            # Refresh bill_to_process to get updated data
+                                            bill_to_process.invalidate_recordset(['odoo19_bill_id', 'odoo14_state', 'odoo14_payment_state'])
+                                            if bill_to_process.odoo19_bill_id:
+                                                migrating_bill_details['amount_total'] = bill_to_process.odoo19_bill_id.amount_total or bill_amount
+                                                if bill_to_process.odoo19_bill_id.partner_id:
+                                                    migrating_bill_details['partner_name'] = bill_to_process.odoo19_bill_id.partner_id.name or partner_name
+                                                # Update state from migrated bill (Excel status takes priority), payment_state always "not_paid"
+                                                migrating_bill_details['state'] = bill_to_process.excel_status or bill_to_process.odoo19_bill_id.state or bill_to_process.odoo14_state or 'N/A'
+                                                migrating_bill_details['payment_state'] = 'not_paid'  # Always "not_paid"
+                                                
+                                                # Count products in Odoo 19 bill
+                                                if bill_to_process.odoo19_bill_id.invoice_line_ids:
+                                                    total_items_odoo19 = len(bill_to_process.odoo19_bill_id.invoice_line_ids)
+                                                    products_odoo19 = len(bill_to_process.odoo19_bill_id.invoice_line_ids.filtered(lambda l: l.product_id))
+                                                    migrating_bill_details['total_items_odoo19'] = total_items_odoo19
+                                                    migrating_bill_details['products_odoo19'] = products_odoo19
+                                                
+                                                # Fetch Odoo 14 products
+                                                if bill_to_process.config_id:
+                                                    try:
+                                                        from ..models.odoo14_api_client import Odoo14APIClient
+                                                        client = Odoo14APIClient(
+                                                            url=bill_to_process.config_id.odoo14_url,
+                                                            db=bill_to_process.config_id.odoo14_database,
+                                                            username=bill_to_process.config_id.odoo14_username,
+                                                            password=bill_to_process.config_id.odoo14_password
+                                                        )
+                                                        if client.authenticate():
+                                                            bills = client.search_read(
+                                                                'account.move',
+                                                                [('name', '=', bill_number), ('move_type', '=', 'in_invoice')],
+                                                                ['invoice_line_ids'],
+                                                                limit=1
+                                                            )
+                                                            if bills:
+                                                                invoice_line_ids = bills[0].get('invoice_line_ids', [])
+                                                                if invoice_line_ids:
+                                                                    if isinstance(invoice_line_ids, (list, tuple)):
+                                                                        total_items_odoo14 = len([lid for lid in invoice_line_ids if isinstance(lid, int) or (isinstance(lid, (list, tuple)) and len(lid) > 0)])
+                                                                    else:
+                                                                        total_items_odoo14 = 1 if invoice_line_ids else 0
+                                                                    
+                                                                    # Count products from Odoo 14
+                                                                    try:
+                                                                        line_ids = [lid[0] if isinstance(lid, (list, tuple)) and len(lid) > 0 else lid for lid in invoice_line_ids if lid]
+                                                                        if line_ids:
+                                                                            lines = client.search_read(
+                                                                                'account.move.line',
+                                                                                [('id', 'in', line_ids), ('move_id', '=', bills[0]['id'])],
+                                                                                ['product_id'],
+                                                                                limit=1000
+                                                                            )
+                                                                            if lines:
+                                                                                products_odoo14 = len([l for l in lines if l.get('product_id')])
+                                                                                migrating_bill_details['products_odoo14'] = products_odoo14
+                                                                                migrating_bill_details['total_items_odoo14'] = total_items_odoo14
+                                                                    except Exception as product_count_error:
+                                                                        _logger.debug("Could not count products from Odoo 14 for newly migrated bill: %s", str(product_count_error))
+                                                    except Exception as odoo14_error:
+                                                        _logger.debug("Could not fetch Odoo 14 products for newly migrated bill: %s", str(odoo14_error))
+                                            else:
+                                                # Use values from migration line if bill not yet linked
+                                                migrating_bill_details['state'] = bill_to_process.excel_status or bill_to_process.odoo14_state or 'N/A'
+                                                migrating_bill_details['payment_state'] = 'not_paid'  # Always "not_paid"
+                                        except:
+                                            pass
+                                        _logger.info("✅ Successfully migrated vendor bill %s", bill_number)
+                                    except Exception as migrate_exception:
+                                        error_msg = str(migrate_exception)
+                                        _logger.error("❌ Error migrating vendor bill %s: %s", bill_number, error_msg, exc_info=True)
+                                        _log_failed_vendor_bill_migration(bill_number, error_msg)
+                                        try:
+                                            cr.rollback()
+                                        except:
+                                            pass
+                                        # Try to update status to error
+                                        try:
+                                            bill_to_process.write({
+                                                'status': 'error',
+                                                'status_message': 'Migration failed',
+                                                'error_message': error_msg[:500],
+                                            })
+                                            cr.commit()
+                                        except:
+                                            try:
+                                                cr.rollback()
+                                            except:
+                                                pass
+                                        migrating_bill = f"{bill_number} - ERROR: {error_msg[:100]}"
+                            except Exception as e:
+                                error_msg = str(e)
+                                _logger.error("❌ Error processing vendor bill %s: %s", bill_number, error_msg, exc_info=True)
+                                _log_failed_vendor_bill_migration(bill_number, error_msg)
+                                try:
+                                    cr.rollback()
+                                except:
+                                    pass
+                                migrating_bill = f"{bill_number} - ERROR: {error_msg[:100]}"
+                    except Exception as e:
+                        _logger.error("❌ Error in vendor bill migration process: %s", str(e), exc_info=True)
+                        migrating_bill = f"ERROR: {str(e)[:100]}"
+                elif currently_migrating:
+                    migrating_bill = f"{currently_migrating.uploaded_bill_number} - in progress"
+                    # Get bill details for currently migrating bill
+                    partner_name = currently_migrating.bill_partner_name or 'N/A'
+                    bill_amount = 0.0
+                    state_value = currently_migrating.excel_status or currently_migrating.odoo14_state or 'N/A'
+                    total_items_odoo14 = 0
+                    total_items_odoo19 = 0
+                    products_odoo14 = 0
+                    products_odoo19 = 0
+                    
+                    if currently_migrating.odoo19_bill_id:
+                        bill_amount = currently_migrating.odoo19_bill_id.amount_total or 0.0
+                        # Update state from Odoo 19 bill (Excel status still takes priority)
+                        if not currently_migrating.excel_status:
+                            state_value = currently_migrating.odoo19_bill_id.state or currently_migrating.odoo14_state or 'N/A'
+                        # Count items in Odoo 19 bill
+                        total_items_odoo19 = len(currently_migrating.odoo19_bill_id.invoice_line_ids) if currently_migrating.odoo19_bill_id.invoice_line_ids else 0
+                        # Count products in Odoo 19 bill (lines with product_id)
+                        if currently_migrating.odoo19_bill_id.invoice_line_ids:
+                            products_odoo19 = len(currently_migrating.odoo19_bill_id.invoice_line_ids.filtered(lambda l: l.product_id))
+                    
+                    # Get total items from Odoo 14 (before migration)
+                    if currently_migrating.config_id:
+                        try:
+                            from ..models.odoo14_api_client import Odoo14APIClient
+                            client = Odoo14APIClient(
+                                url=currently_migrating.config_id.odoo14_url,
+                                db=currently_migrating.config_id.odoo14_database,
+                                username=currently_migrating.config_id.odoo14_username,
+                                password=currently_migrating.config_id.odoo14_password
+                            )
+                            if client.authenticate():
+                                bills = client.search_read(
+                                    'account.move',
+                                    [('name', '=', currently_migrating.uploaded_bill_number), ('move_type', '=', 'in_invoice')],
+                                    ['amount_total', 'state', 'invoice_line_ids'],
+                                    limit=1
+                                )
+                                if bills:
+                                    bill_amount = bills[0].get('amount_total', 0.0)
+                                    # Update state from Odoo 14 if Excel status not available
+                                    if not currently_migrating.excel_status and bills[0].get('state'):
+                                        state_value = bills[0].get('state')
+                                    # Count items from Odoo 14
+                                    invoice_line_ids = bills[0].get('invoice_line_ids', [])
+                                    if invoice_line_ids:
+                                        if isinstance(invoice_line_ids, (list, tuple)):
+                                            total_items_odoo14 = len([lid for lid in invoice_line_ids if isinstance(lid, int) or (isinstance(lid, (list, tuple)) and len(lid) > 0)])
+                                        else:
+                                            total_items_odoo14 = 1 if invoice_line_ids else 0
+                                    
+                                    # Count products from Odoo 14 (fetch lines with product_id)
+                                    if invoice_line_ids:
+                                        try:
+                                            line_ids = [lid[0] if isinstance(lid, (list, tuple)) and len(lid) > 0 else lid for lid in invoice_line_ids if lid]
+                                            if line_ids:
+                                                lines = client.search_read(
+                                                    'account.move.line',
+                                                    [('id', 'in', line_ids), ('move_id', '=', bills[0]['id'])],
+                                                    ['product_id'],
+                                                    limit=1000
+                                                )
+                                                if lines:
+                                                    products_odoo14 = len([l for l in lines if l.get('product_id')])
+                                        except Exception as product_count_error:
+                                            _logger.debug("Could not count products from Odoo 14: %s", str(product_count_error))
+                        except Exception as odoo14_error:
+                            _logger.warning("Could not fetch Odoo 14 bill details: %s", str(odoo14_error))
+                    
+                    # State: Excel status takes priority, payment_state always "not_paid"
+                    migrating_bill_details = {
+                        'bill_number': currently_migrating.uploaded_bill_number,
+                        'partner_name': partner_name,
+                        'amount_total': bill_amount,
+                        'state': state_value,
+                        'payment_state': 'not_paid',  # Always "not_paid"
+                        'total_items_odoo14': total_items_odoo14,
+                        'total_items_odoo19': total_items_odoo19,
+                        'products_odoo14': products_odoo14,
+                        'products_odoo19': products_odoo19,
+                    }
+                
+                # Ensure transaction is clean before counting
+                # Rollback any failed operations to reset transaction state
+                try:
+                    cr.rollback()
+                except Exception as rollback_error:
+                    _logger.debug("Rollback (may be normal): %s", str(rollback_error))
+                
+                # Get counts with error handling to avoid transaction errors
+                # Use raw SQL as fallback if ORM fails due to transaction state
+                try:
+                    total_migrated = MigrationBill.search_count([
+                        ('status', '=', 'migrated')
+                    ])
+                except Exception as count_error:
+                    _logger.warning("Error counting migrated bills with ORM: %s", str(count_error))
+                    try:
+                        cr.rollback()
+                        # Try with raw SQL as fallback
+                        cr.execute("""
+                            SELECT COUNT(*) 
+                            FROM vendor_bill_migration_line 
+                            WHERE status = 'migrated'
+                        """)
+                        total_migrated = cr.fetchone()[0] if cr.rowcount > 0 else 0
+                    except Exception as sql_error:
+                        _logger.warning("Error counting migrated bills with SQL: %s", str(sql_error))
+                        total_migrated = 0
+                
+                try:
+                    total_errors = MigrationBill.search_count([
+                        ('status', '=', 'error')
+                    ])
+                except Exception as count_error:
+                    _logger.warning("Error counting error bills with ORM: %s", str(count_error))
+                    try:
+                        cr.rollback()
+                        # Try with raw SQL as fallback
+                        cr.execute("""
+                            SELECT COUNT(*) 
+                            FROM vendor_bill_migration_line 
+                            WHERE status = 'error'
+                        """)
+                        total_errors = cr.fetchone()[0] if cr.rowcount > 0 else 0
+                    except Exception as sql_error:
+                        _logger.warning("Error counting error bills with SQL: %s", str(sql_error))
+                        total_errors = 0
+                
+                # Get payment information if bill exists in Odoo 19
+                payment_count = 0
+                if migrating_bill_details:
+                    bill_number = migrating_bill_details.get('bill_number', '')
+                    if bill_number:
+                        try:
+                            existing_bill = env['account.move'].search([
+                                ('name', '=', bill_number),
+                                ('move_type', '=', 'in_invoice')
+                            ], limit=1)
+                            
+                            if existing_bill:
+                                # Count payments linked to this bill
+                                if 'account.payment' in env.registry:
+                                    # Try to find payments via reconciled_invoice_ids (many2many field)
+                                    try:
+                                        payments = env['account.payment'].search([
+                                            ('state', '=', 'posted'),
+                                            ('reconciled_invoice_ids', 'in', existing_bill.id)
+                                        ])
+                                        payment_count = len(payments)
+                                    except:
+                                        payment_count = 0
+                                    
+                                    if not payment_count:
+                                        # Also check via reconciliation on account.move.line
+                                        try:
+                                            bill_lines = existing_bill.line_ids.filtered(lambda l: 
+                                                hasattr(l.account_id, 'account_type') and 
+                                                l.account_id.account_type == 'liability_payable' and 
+                                                l.reconciled)
+                                            if bill_lines:
+                                                # Count unique reconciliations
+                                                reconcile_ids = bill_lines.mapped('full_reconcile_id')
+                                                payment_count = len(reconcile_ids.filtered(lambda r: r))
+                                        except:
+                                            pass
+                        except:
+                            pass
+                
+                # Build response with bill details if available
+                bill_details_text = ""
+                if migrating_bill_details:
+                    payment_info = ""
+                    if payment_count > 0:
+                        payment_info = f"Payments Linked: {payment_count}"
+                    
+                    total_items_odoo14 = migrating_bill_details.get('total_items_odoo14', 0)
+                    total_items_odoo19 = migrating_bill_details.get('total_items_odoo19', 0)
+                    products_odoo14 = migrating_bill_details.get('products_odoo14', 0)
+                    products_odoo19 = migrating_bill_details.get('products_odoo19', 0)
+                    items_info = ""
+                    if total_items_odoo14 > 0:
+                        items_info = f"Total Items (Odoo 14): {total_items_odoo14}"
+                    if total_items_odoo19 > 0:
+                        if items_info:
+                            items_info += f"\nTotal Items Migrated: {total_items_odoo19}"
+                        else:
+                            items_info = f"Total Items Migrated: {total_items_odoo19}"
+                    if products_odoo14 > 0:
+                        if items_info:
+                            items_info += f"\nProducts (Odoo 14): {products_odoo14}"
+                        else:
+                            items_info = f"Products (Odoo 14): {products_odoo14}"
+                    if products_odoo19 > 0:
+                        if items_info:
+                            items_info += f"\nProducts Migrated: {products_odoo19}"
+                        else:
+                            items_info = f"Products Migrated: {products_odoo19}"
+                    
+                    bill_details_text = f"""
+Migrating Vendor Bill details:
+Bill Number: {migrating_bill_details.get('bill_number', 'N/A')}
+Vendor: {migrating_bill_details.get('partner_name', 'N/A')}
+Total Bill Amount: {migrating_bill_details.get('amount_total', 0.0):,.2f}
+{items_info}
+Status (Posted/Draft): {migrating_bill_details.get('state', 'N/A')}
+Payment Status: {migrating_bill_details.get('payment_state', 'N/A')}
+{payment_info}
+"""
+                
+                response_text = f"""Migrating Now: {migrating_bill}{bill_details_text}
+Total Queued: {total_queued} (status='queued')
+Total Migrated: {total_migrated}
+Total Errors: {total_errors}
+"""
+                
+                return request.make_response(
+                    response_text,
+                    headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                )
+            finally:
+                cr.close()
+            
+        except Exception as e:
+            _logger.error("Error in vendor bill migration process: %s", str(e), exc_info=True)
+            return request.make_response(
+                f'ERROR: {str(e)}\n',
+                headers=[('Content-Type', 'text/plain; charset=utf-8')]
+            )
+
+    @http.route('/migration/status_vendor_bill', type='http', auth='public', methods=['GET'], csrf=False)
+    def get_vendor_bill_status(self, **kwargs):
+        """
+        Get current vendor bill migration status without processing.
+        Returns JSON with detailed status.
+        
+        Usage: /migration/status_vendor_bill?db=your_database_name
+        """
+        try:
+            db = kwargs.get('db')
+            
+            if not db and hasattr(request, 'httprequest') and request.httprequest:
+                from urllib.parse import parse_qs, urlparse
+                try:
+                    parsed = urlparse(request.httprequest.url)
+                    query_params = parse_qs(parsed.query)
+                    if 'db' in query_params:
+                        db = query_params['db'][0]
+                except:
+                    pass
+            
+            if not db:
+                import json
+                return request.make_response(
+                    json.dumps({'error': 'Database not specified. Use: /migration/status_vendor_bill?db=your_database_name'}),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            
+            from odoo.api import Environment
+            from odoo import sql_db
+            try:
+                db_conn = sql_db.db_connect(db)
+                cr = db_conn.cursor()
+            except Exception as reg_error:
+                import json
+                return request.make_response(
+                    json.dumps({'error': f'Database "{db}" not found: {str(reg_error)}'}),
+                    headers=[('Content-Type', 'application/json; charset=utf-8')]
+                )
+            
+            try:
+                env = Environment(cr, 1, {})
+                
+                MigrationBill = env['vendor.bill.migration.line']
+                
+                # Get counts with error handling
+                try:
+                    total_queued = MigrationBill.search_count([
+                        ('status', '=', 'queued')
+                    ])
+                except Exception as count_error:
+                    _logger.warning("Error counting queued bills: %s", str(count_error))
+                    try:
+                        cr.rollback()
+                        cr.execute("SELECT COUNT(*) FROM vendor_bill_migration_line WHERE status = 'queued'")
+                        total_queued = cr.fetchone()[0] if cr.rowcount > 0 else 0
+                    except:
+                        total_queued = 0
+                
+                try:
+                    currently_migrating = MigrationBill.search([
+                        ('status', '=', 'migrating')
+                    ], limit=1, order='write_date desc')
+                except Exception as search_error:
+                    _logger.warning("Error searching migrating bills: %s", str(search_error))
+                    try:
+                        cr.rollback()
+                        currently_migrating = MigrationBill.browse([])
+                    except:
+                        currently_migrating = MigrationBill.browse([])
+                
+                migrating_bill = currently_migrating.uploaded_bill_number if currently_migrating else None
+                migrating_bill_details = None
+                
+                # Get bill details if currently migrating
+                if currently_migrating:
+                    bill_details = {
+                        'bill_number': currently_migrating.uploaded_bill_number,
+                        'partner_name': currently_migrating.bill_partner_name or 'N/A',
+                        'amount_total': 0.0,
+                        'state': currently_migrating.excel_status or currently_migrating.odoo14_state or 'N/A',  # Excel status takes priority
+                        'payment_state': 'not_paid',  # Always "not_paid"
+                    }
+                    
+                    # Try to get amount from Odoo 14 or Odoo 19
+                    if currently_migrating.odoo19_bill_id:
+                        bill_details['amount_total'] = currently_migrating.odoo19_bill_id.amount_total or 0.0
+                        # Update state from Excel status (priority) or Odoo 19 bill, payment_state always "not_paid"
+                        bill_details['state'] = currently_migrating.excel_status or currently_migrating.odoo19_bill_id.state or bill_details.get('state', 'N/A')
+                        bill_details['payment_state'] = 'not_paid'  # Always "not_paid"
+                    elif currently_migrating.config_id:
+                        try:
+                            from ..models.odoo14_api_client import Odoo14APIClient
+                            client = Odoo14APIClient(
+                                url=currently_migrating.config_id.odoo14_url,
+                                db=currently_migrating.config_id.odoo14_database,
+                                username=currently_migrating.config_id.odoo14_username,
+                                password=currently_migrating.config_id.odoo14_password
+                            )
+                            if client.authenticate():
+                                bills = client.search_read(
+                                    'account.move',
+                                    [('name', '=', currently_migrating.uploaded_bill_number), ('move_type', '=', 'in_invoice')],
+                                    ['amount_total', 'state', 'payment_state'],
+                                    limit=1
+                                )
+                                if bills:
+                                    bill_details['amount_total'] = bills[0].get('amount_total', 0.0)
+                                    # State: Excel status takes priority over Odoo 14, payment_state always "not_paid"
+                                    if not bill_details.get('state') or bill_details.get('state') == 'N/A':
+                                        if bills[0].get('state'):
+                                            bill_details['state'] = bills[0].get('state')
+                                    bill_details['payment_state'] = 'not_paid'  # Always "not_paid"
+                        except:
+                            pass
+                    
+                    migrating_bill_details = bill_details
+                
+                try:
+                    total_migrated = MigrationBill.search_count([
+                        ('status', '=', 'migrated')
+                    ])
+                except Exception as count_error:
+                    _logger.warning("Error counting migrated bills: %s", str(count_error))
+                    try:
+                        cr.rollback()
+                        cr.execute("SELECT COUNT(*) FROM vendor_bill_migration_line WHERE status = 'migrated'")
+                        total_migrated = cr.fetchone()[0] if cr.rowcount > 0 else 0
+                    except:
+                        total_migrated = 0
+                
+                try:
+                    total_errors = MigrationBill.search_count([
+                        ('status', '=', 'error')
+                    ])
+                except Exception as count_error:
+                    _logger.warning("Error counting error bills: %s", str(count_error))
+                    try:
+                        cr.rollback()
+                        cr.execute("SELECT COUNT(*) FROM vendor_bill_migration_line WHERE status = 'error'")
+                        total_errors = cr.fetchone()[0] if cr.rowcount > 0 else 0
+                    except:
+                        total_errors = 0
+                
+                import json
+                status_data = {
+                    'total_queued': total_queued,
+                    'migrating_now': migrating_bill,
+                    'migrating_bill_details': migrating_bill_details,
+                    'total_migrated': total_migrated,
+                    'total_errors': total_errors,
+                }
+                
+                return request.make_response(
+                    json.dumps(status_data, indent=2),
+                    headers=[
+                        ('Content-Type', 'application/json; charset=utf-8'),
+                    ]
+                )
+            finally:
+                cr.close()
+            
+        except Exception as e:
+            _logger.error("Error in vendor bill migration status: %s", str(e), exc_info=True)
+            import json
+            return request.make_response(
+                json.dumps({'error': str(e)}),
+                headers=[
+                    ('Content-Type', 'application/json; charset=utf-8'),
+                ]
+            )
+
     @http.route('/migration/process_one_system_type', type='http', auth='public', methods=['GET'], csrf=False)
     def process_one_system_type(self, **kwargs):
         """Process one system type from the queue synchronously"""
@@ -2129,3 +2984,22 @@ def _log_failed_invoice_migration(invoice_number, error_detail):
         _logger.info("Failed invoice migration logged to: %s", log_file)
     except Exception as e:
         _logger.warning("Could not write to failed invoice migrations log: %s", str(e))
+
+
+def _log_failed_vendor_bill_migration(bill_number, error_detail):
+    """Log failed vendor bill migration to a file for later processing"""
+    try:
+        log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        
+        log_file = os.path.join(log_dir, 'failed_vendor_bill_migrations.log')
+        
+        with open(log_file, 'a', encoding='utf-8') as f:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"{timestamp} | {bill_number} | {error_detail[:200]}\n")
+        
+        _logger.info("Failed vendor bill migration logged to: %s", log_file)
+    except Exception as e:
+        _logger.warning("Could not write to failed vendor bill migrations log: %s", str(e))
+

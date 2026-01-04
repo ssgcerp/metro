@@ -1732,6 +1732,15 @@ class RFQMigrationLine(models.Model):
             'po_no',  # Odoo 14 field name, maps to Odoo 19: po_number
             'is_wo_header',  # Same name in both
             'is_with_stamp',  # Same name in both
+            # Additional custom fields from metro_erp (may exist in other Odoo 19 modules)
+            'location',  # Odoo 14: Char, may exist in Odoo 19
+            'site_name',  # Odoo 14: Char, may exist in Odoo 19
+            'create_do',  # Odoo 14: Boolean, may exist in Odoo 19
+            'picking_ids',  # Odoo 14: Many2many, may exist in Odoo 19
+            'bank_details',  # Odoo 14: Text, may exist in Odoo 19
+            'file_to_upload',  # Odoo 14: Binary, may exist in Odoo 19
+            'filename',  # Odoo 14: Char, may exist in Odoo 19
+            'in_note',  # Odoo 14: Text, may exist in Odoo 19
         ]
         
         # Dynamically filter fields that exist in Odoo 14 to avoid "Invalid field" errors
@@ -1824,6 +1833,14 @@ class RFQMigrationLine(models.Model):
                 _logger.info("📋 po_no: %s", bill_data.get('po_no', 'N/A'))
                 _logger.info("📋 is_wo_header: %s", bill_data.get('is_wo_header', False))
                 _logger.info("📋 is_with_stamp: %s", bill_data.get('is_with_stamp', False))
+                _logger.info("📋 location: %s", bill_data.get('location', 'N/A'))
+                _logger.info("📋 site_name: %s", bill_data.get('site_name', 'N/A'))
+                _logger.info("📋 create_do: %s", bill_data.get('create_do', False))
+                _logger.info("📋 picking_ids: %s", bill_data.get('picking_ids', []))
+                _logger.info("📋 bank_details: %s", bill_data.get('bank_details', 'N/A')[:100] if bill_data.get('bank_details') else 'N/A')
+                _logger.info("📋 file_to_upload: %s", 'Yes' if bill_data.get('file_to_upload') else 'No')
+                _logger.info("📋 filename: %s", bill_data.get('filename', 'N/A'))
+                _logger.info("📋 in_note: %s", bill_data.get('in_note', 'N/A')[:100] if bill_data.get('in_note') else 'N/A')
                 
                 # Log invoice line IDs
                 invoice_line_ids_14 = bill_data.get('invoice_line_ids', []) or bill_data.get('line_ids', [])
@@ -2009,6 +2026,97 @@ class RFQMigrationLine(models.Model):
                         bill_vals['is_with_stamp'] = bool(is_with_stamp_14)
                         if is_with_stamp_14:
                             _logger.info("✅ Mapped is_with_stamp: %s", is_with_stamp_14)
+                    
+                    # Additional custom fields (may exist in other Odoo 19 modules)
+                    # location
+                    if 'location' in odoo19_move_fields:
+                        location_14 = bill_data.get('location', '')
+                        if location_14:
+                            bill_vals['location'] = location_14
+                            _logger.info("✅ Mapped location: %s", location_14)
+                    
+                    # site_name
+                    if 'site_name' in odoo19_move_fields:
+                        site_name_14 = bill_data.get('site_name', '')
+                        if site_name_14:
+                            bill_vals['site_name'] = site_name_14
+                            _logger.info("✅ Mapped site_name: %s", site_name_14)
+                    
+                    # create_do
+                    if 'create_do' in odoo19_move_fields:
+                        create_do_14 = bill_data.get('create_do', False)
+                        bill_vals['create_do'] = bool(create_do_14)
+                        if create_do_14:
+                            _logger.info("✅ Mapped create_do: %s", create_do_14)
+                    
+                    # picking_ids (Many2many - need to map IDs)
+                    if 'picking_ids' in odoo19_move_fields:
+                        picking_ids_14 = bill_data.get('picking_ids', [])
+                        if picking_ids_14:
+                            # Extract picking IDs from Odoo 14
+                            picking_ids_list = []
+                            for picking_item in picking_ids_14:
+                                if isinstance(picking_item, (list, tuple)) and len(picking_item) > 0:
+                                    picking_ids_list.append(picking_item[0])
+                                elif isinstance(picking_item, int):
+                                    picking_ids_list.append(picking_item)
+                            
+                            # Find corresponding pickings in Odoo 19 (by name or origin)
+                            if picking_ids_list:
+                                odoo19_picking_ids = []
+                                for picking_id_14 in picking_ids_list:
+                                    try:
+                                        picking_data_14 = client.search_read(
+                                            'stock.picking',
+                                            [('id', '=', picking_id_14)],
+                                            ['name', 'origin'],
+                                            limit=1
+                                        )
+                                        if picking_data_14:
+                                            picking_name = picking_data_14[0].get('name', '')
+                                            picking_origin = picking_data_14[0].get('origin', '')
+                                            # Try to find in Odoo 19
+                                            picking_19 = self.env['stock.picking'].search([
+                                                '|',
+                                                ('name', '=', picking_name),
+                                                ('origin', '=', picking_origin)
+                                            ], limit=1)
+                                            if picking_19:
+                                                odoo19_picking_ids.append(picking_19.id)
+                                    except Exception as e:
+                                        _logger.warning("⚠️ Could not map picking ID %s: %s", picking_id_14, str(e))
+                                
+                                if odoo19_picking_ids:
+                                    bill_vals['picking_ids'] = [(6, 0, odoo19_picking_ids)]
+                                    _logger.info("✅ Mapped picking_ids: %s", odoo19_picking_ids)
+                    
+                    # bank_details
+                    if 'bank_details' in odoo19_move_fields:
+                        bank_details_14 = bill_data.get('bank_details', '')
+                        if bank_details_14:
+                            bill_vals['bank_details'] = bank_details_14
+                            _logger.info("✅ Mapped bank_details: %s", bank_details_14[:50] + '...' if len(bank_details_14) > 50 else bank_details_14)
+                    
+                    # file_to_upload (Binary)
+                    if 'file_to_upload' in odoo19_move_fields:
+                        file_to_upload_14 = bill_data.get('file_to_upload', False)
+                        if file_to_upload_14:
+                            bill_vals['file_to_upload'] = file_to_upload_14
+                            _logger.info("✅ Mapped file_to_upload: Binary data")
+                    
+                    # filename
+                    if 'filename' in odoo19_move_fields:
+                        filename_14 = bill_data.get('filename', '')
+                        if filename_14:
+                            bill_vals['filename'] = filename_14
+                            _logger.info("✅ Mapped filename: %s", filename_14)
+                    
+                    # in_note
+                    if 'in_note' in odoo19_move_fields:
+                        in_note_14 = bill_data.get('in_note', '')
+                        if in_note_14:
+                            bill_vals['in_note'] = in_note_14
+                            _logger.info("✅ Mapped in_note: %s", in_note_14[:50] + '...' if len(in_note_14) > 50 else in_note_14)
                     
                 except Exception as e:
                     _logger.warning("⚠️ Error mapping custom fields (continuing anyway): %s", str(e))
