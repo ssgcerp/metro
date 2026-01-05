@@ -1703,35 +1703,121 @@ class VendorBillMigrationLine(models.Model):
                 except Exception as e:
                     _logger.warning("Could not set original dates/users: %s", str(e))
             
-            # Migrate bill lines - check both invoice_line_ids and line_ids
+            # Migrate bill lines - Fetch lines directly with filtering to avoid description lines
+            # DON'T trust invoice_line_ids - fetch lines directly and filter by product_id
             line_ids_to_migrate = []
             
-            # Try invoice_line_ids first
-            if bill_data.get('invoice_line_ids'):
-                line_ids = bill_data['invoice_line_ids']
-                if isinstance(line_ids, (list, tuple)):
-                    for lid in line_ids:
-                        if isinstance(lid, int):
-                            line_ids_to_migrate.append(lid)
-                        elif isinstance(lid, (list, tuple)) and len(lid) > 0:
-                            # Many2one returns [id, name] format
-                            line_ids_to_migrate.append(lid[0])
+            try:
+                _logger.info("🔄 Fetching invoice lines directly from Odoo 14 for bill %s...", self.uploaded_bill_number)
+                # Fetch all lines for this bill
+                all_lines = client.search_read(
+                    'account.move.line',
+                    [('move_id', '=', bill_data['id'])],
+                    ['id', 'product_id', 'name', 'quantity', 'price_unit', 'display_type', 'tax_line_id'],
+                    limit=200
+                )
+                
+                if all_lines:
+                    _logger.info("📋 Fetched %s total lines from Odoo 14 for bill %s", len(all_lines), self.uploaded_bill_number)
+                    
+                    # Filter lines: ONLY include lines with product_id AND quantity > 0 AND price_unit > 0
+                    # Also track product+qty+price combinations to detect duplicates
+                    seen_combinations = {}  # Key: (product_id, quantity, price_unit) -> line_id
+                    
+                    for line in all_lines:
+                        line_id = line.get('id')
+                        if not line_id:
+                            continue
+                        
+                        # Skip tax lines
+                        if line.get('tax_line_id'):
+                            _logger.debug("   Skipping line %s (tax line)", line_id)
+                            continue
+                        
+                        # Skip section/note lines
+                        display_type = line.get('display_type')
+                        if display_type and display_type in ('line_section', 'line_note'):
+                            _logger.debug("   Skipping line %s (display_type='%s')", line_id, display_type)
+                            continue
+                        
+                        # Check for product_id - MUST be a valid positive integer
+                        product_id = line.get('product_id')
+                        product_id_valid = False
+                        
+                        if product_id:
+                            if isinstance(product_id, (list, tuple)) and len(product_id) > 0:
+                                # Many2one format: [id, name]
+                                extracted_id = product_id[0]
+                                if isinstance(extracted_id, int) and extracted_id > 0:
+                                    product_id = extracted_id
+                                    product_id_valid = True
+                            elif isinstance(product_id, int) and product_id > 0:
+                                product_id_valid = True
+                        
+                        # CRITICAL: Only proceed if we have a valid positive product_id
+                        if not product_id_valid or not product_id or product_id <= 0:
+                            _logger.debug("   Skipping line %s (no valid product_id: %s) - name: '%s'", 
+                                        line_id, product_id, (line.get('name', '') or 'N/A')[:50])
+                            continue
+                        
+                        # Check quantity and price - round to 2 decimal places to avoid floating point precision issues
+                        quantity = line.get('quantity', 0.0) or 0.0
+                        price_unit = line.get('price_unit', 0.0) or 0.0
+                        
+                        # Round to 2 decimal places for comparison (standard currency precision)
+                        quantity = round(float(quantity), 2)
+                        price_unit = round(float(price_unit), 2)
+                        
+                        if quantity <= 0.0 or price_unit <= 0.0:
+                            _logger.debug("   Skipping line %s (quantity=%s or price=%s is zero) - name: '%s'", 
+                                        line_id, quantity, price_unit, (line.get('name', '') or 'N/A')[:50])
+                            continue
+                        
+                        # CRITICAL: Check for duplicate product_id (regardless of qty/price)
+                        # This prevents migrating the same product multiple times (e.g., product line + description line)
+                        if product_id in seen_combinations:
+                            # This is a duplicate product - skip it
+                            existing_line_id = seen_combinations[product_id]
+                            _logger.warning("⏭️ Skipping duplicate line %s (same product_id=%s as line %s) - keeping first occurrence only", 
+                                          line_id, product_id, existing_line_id)
+                            _logger.warning("   Current line: qty=%s, price=%s, name='%s'", 
+                                          quantity, price_unit, (line.get('name', '') or 'N/A')[:50])
+                            continue
+                        
+                        # First occurrence of this product_id - keep it
+                        seen_combinations[product_id] = line_id
+                        line_ids_to_migrate.append(line_id)
+                        _logger.debug("   ✅ Including line %s (product_id=%s, qty=%s, price=%s)", 
+                                    line_id, product_id, quantity, price_unit)
+                    
+                    if len(all_lines) != len(line_ids_to_migrate):
+                        skipped_count = len(all_lines) - len(line_ids_to_migrate)
+                        _logger.info("✅ Filtered %s lines: %s valid product lines, %s skipped (tax/note/duplicate/zero qty/price)", 
+                                    len(all_lines), len(line_ids_to_migrate), skipped_count)
+                    
+                    # FINAL CHECK: Ensure no duplicate line IDs (shouldn't happen, but double-check)
+                    original_line_ids = line_ids_to_migrate
+                    line_ids_to_migrate = list(dict.fromkeys(line_ids_to_migrate))  # Preserves order, removes duplicates
+                    if len(original_line_ids) != len(line_ids_to_migrate):
+                        _logger.error("❌ CRITICAL: Found %s duplicate line IDs in line_ids_to_migrate after deduplication! This should NOT happen!", 
+                                    len(original_line_ids) - len(line_ids_to_migrate))
+                        _logger.error("   Original: %s", original_line_ids)
+                        _logger.error("   Deduplicated: %s", line_ids_to_migrate)
+                    
+                    _logger.info("✅ Filtered to %s unique product lines (deduplicated by product_id+qty+price) for bill %s", 
+                                len(line_ids_to_migrate), self.uploaded_bill_number)
+                    _logger.info("   Line IDs: %s", line_ids_to_migrate)
+                    
+                    # Log all seen combinations for debugging
+                    if seen_combinations:
+                        _logger.info("   Seen combinations (product_id, qty, price) -> line_id: %s", 
+                                    {f"({k[0]}, {k[1]}, {k[2]})": v for k, v in seen_combinations.items()})
+                else:
+                    _logger.error("❌ No lines found in Odoo 14 for bill %s", self.uploaded_bill_number)
+            except Exception as fetch_error:
+                _logger.error("❌ Error fetching lines from Odoo 14: %s", str(fetch_error), exc_info=True)
             
-            # Fallback to line_ids if invoice_line_ids not available
-            if not line_ids_to_migrate and bill_data.get('line_ids'):
-                line_ids = bill_data['line_ids']
-                if isinstance(line_ids, (list, tuple)):
-                    for lid in line_ids:
-                        if isinstance(lid, int):
-                            line_ids_to_migrate.append(lid)
-                        elif isinstance(lid, (list, tuple)) and len(lid) > 0:
-                            # Many2one returns [id, name] format
-                            line_ids_to_migrate.append(lid[0])
-            
-            _logger.info("📋 Found %s invoice line IDs to migrate for bill %s: %s", 
-                        len(line_ids_to_migrate), self.uploaded_bill_number, line_ids_to_migrate[:10] if len(line_ids_to_migrate) > 10 else line_ids_to_migrate)
-            
-            # Log what we got from bill_data for debugging
+            # Fallback: If direct fetch failed, try invoice_line_ids (but with heavy filtering)
             if not line_ids_to_migrate:
                 _logger.error("❌ CRITICAL: No invoice line IDs found for bill %s", self.uploaded_bill_number)
                 _logger.error("   invoice_line_ids from Odoo 14: %s (type: %s)", 
@@ -1746,11 +1832,17 @@ class VendorBillMigrationLine(models.Model):
                     _logger.info("🔄 Attempting to fetch lines directly using get_invoice_lines method...")
                     direct_lines = client.get_invoice_lines(bill_data['id'])
                     if direct_lines:
-                        _logger.info("✅ Found %s lines via get_invoice_lines method", len(direct_lines))
+                        fallback_ids = []
                         for line in direct_lines:
                             if line.get('id'):
-                                line_ids_to_migrate.append(line['id'])
-                        _logger.info("📋 Now have %s line IDs to migrate", len(line_ids_to_migrate))
+                                fallback_ids.append(line['id'])
+                        # CRITICAL: Deduplicate immediately using set()
+                        fallback_ids_unique = list(set(fallback_ids))
+                        if len(fallback_ids) != len(fallback_ids_unique):
+                            _logger.error("❌ Found %s duplicate line IDs in get_invoice_lines! Removing duplicates.", 
+                                        len(fallback_ids) - len(fallback_ids_unique))
+                        line_ids_to_migrate = fallback_ids_unique
+                        _logger.info("✅ Found %s unique line IDs via get_invoice_lines method", len(line_ids_to_migrate))
                     else:
                         _logger.error("❌ get_invoice_lines returned empty list for bill %s", self.uploaded_bill_number)
                 except Exception as direct_fetch_error:
@@ -1767,19 +1859,36 @@ class VendorBillMigrationLine(models.Model):
                             limit=100
                         )
                         if all_lines:
-                            _logger.info("✅ Found %s lines by searching move_id", len(all_lines))
+                            search_ids = []
                             for line in all_lines:
                                 if line.get('id'):
-                                    line_ids_to_migrate.append(line['id'])
-                            _logger.info("📋 Now have %s line IDs to migrate", len(line_ids_to_migrate))
+                                    search_ids.append(line['id'])
+                            # CRITICAL: Deduplicate immediately using set()
+                            search_ids_unique = list(set(search_ids))
+                            if len(search_ids) != len(search_ids_unique):
+                                _logger.error("❌ Found %s duplicate line IDs in search! Removing duplicates.", 
+                                            len(search_ids) - len(search_ids_unique))
+                            line_ids_to_migrate = search_ids_unique
+                            _logger.info("✅ Found %s unique line IDs by searching move_id", len(line_ids_to_migrate))
                     except Exception as search_error:
                         _logger.error("❌ Could not search for lines: %s", str(search_error), exc_info=True)
             
             if line_ids_to_migrate:
+                # FINAL VERIFICATION: Ensure NO duplicates before processing
+                final_unique_count = len(set(line_ids_to_migrate))
+                if len(line_ids_to_migrate) != final_unique_count:
+                    _logger.error("❌ CRITICAL ERROR: line_ids_to_migrate contains %s duplicates! Forcing deduplication.", 
+                                 len(line_ids_to_migrate) - final_unique_count)
+                    _logger.error("   Original list: %s", line_ids_to_migrate)
+                    line_ids_to_migrate = list(set(line_ids_to_migrate))
+                    _logger.error("   Deduplicated list: %s", line_ids_to_migrate)
+                
                 try:
                     total_lines = len(line_ids_to_migrate)
                     successful_lines = 0
                     failed_lines = 0
+                    
+                    _logger.info("🔒 FINAL VERIFICATION: Processing %s UNIQUE line IDs: %s", total_lines, line_ids_to_migrate)
                     
                     # Update total_items_odoo14 before starting migration
                     try:
@@ -1817,7 +1926,18 @@ class VendorBillMigrationLine(models.Model):
                     _logger.info("   Bill Company: %s (ID: %s)", bill.company_id.name, bill.company_id.id)
                     _logger.info("=" * 80)
                     
+                    # Track processed line IDs AND product_ids to prevent duplicates during processing
+                    processed_line_ids = set()  # Track line IDs to prevent processing same line twice
+                    processed_product_ids = set()  # Track product_ids to prevent migrating same product twice
+                    
                     for line_idx, line_id in enumerate(line_ids_to_migrate):
+                        # CRITICAL: Skip if we've already processed this line ID
+                        if line_id in processed_line_ids:
+                            _logger.warning("⚠️ Skipping duplicate line ID %s (already processed in this migration)", line_id)
+                            failed_lines += 1
+                            continue
+                        processed_line_ids.add(line_id)
+                        
                         # Periodic status update for long-running migrations (every 10 lines)
                         if line_idx > 0 and line_idx % 10 == 0:
                             try:
@@ -1832,7 +1952,8 @@ class VendorBillMigrationLine(models.Model):
                                 'account.move.line',
                                 [('id', '=', line_id), ('move_id', '=', bill_data['id'])],
                                 ['product_id', 'name', 'quantity', 'price_unit', 'discount', 'tax_ids', 
-                                 'account_id', 'sequence', 'purchase_line_id', 'brand_id', 'company_id', 'display_type'],
+                                 'account_id', 'sequence', 'purchase_line_id', 'brand_id', 'company_id', 'display_type',
+                                 'tax_line_id', 'tax_base_amount'],  # Add tax_line_id to identify tax lines
                                 limit=1
                             )
                             if line_data and len(line_data) > 0:
@@ -1846,16 +1967,67 @@ class VendorBillMigrationLine(models.Model):
                                     failed_lines += 1
                                     continue
                                 
-                                # Don't skip lines that have product_id or account_id, even if display_type is set
-                                # Extract actual IDs (handle many2one format [id, name])
-                                has_product = False
+                                # CRITICAL: Filter out tax lines and system-generated lines FIRST
+                                # Tax lines have tax_line_id set
+                                is_tax_line = bool(line_info.get('tax_line_id'))
+                                
+                                # Skip tax lines
+                                if is_tax_line:
+                                    _logger.info("⏭️ Skipping line %s (tax line - tax_line_id=%s)", 
+                                               line_id, line_info.get('tax_line_id'))
+                                    failed_lines += 1
+                                    continue
+                                
+                                # CRITICAL: Extract and validate product_id - MUST be a valid positive integer
                                 product_id_raw = line_info.get('product_id')
+                                product_id_valid = False
+                                product_id_value = None
+                                
                                 if product_id_raw:
                                     if isinstance(product_id_raw, (list, tuple)) and len(product_id_raw) > 0:
-                                        has_product = bool(product_id_raw[0])
-                                    elif isinstance(product_id_raw, int):
-                                        has_product = bool(product_id_raw)
+                                        # Many2one format: [id, name]
+                                        extracted_id = product_id_raw[0]
+                                        if isinstance(extracted_id, int) and extracted_id > 0:
+                                            product_id_value = extracted_id
+                                            product_id_valid = True
+                                    elif isinstance(product_id_raw, int) and product_id_raw > 0:
+                                        product_id_value = product_id_raw
+                                        product_id_valid = True
                                 
+                                # CRITICAL: ONLY migrate lines that have a VALID product_id (positive integer)
+                                # Skip ALL lines without valid product_id (descriptions, notes, system lines, etc.)
+                                if not product_id_valid or not product_id_value:
+                                    _logger.info("⏭️ Skipping line %s (no valid product_id: %s) - description/note/system line", 
+                                               line_id, product_id_raw)
+                                    _logger.info("   Line name: '%s'", (line_info.get('name', '') or 'N/A')[:100])
+                                    failed_lines += 1
+                                    continue
+                                
+                                # CRITICAL: Skip lines with zero quantity or zero price FIRST
+                                # Real product lines should have quantity > 0 and price_unit > 0
+                                # This ensures we prioritize actual product lines over description lines
+                                line_quantity = line_info.get('quantity', 0.0) or 0.0
+                                line_price = line_info.get('price_unit', 0.0) or 0.0
+                                
+                                if line_quantity <= 0.0 or line_price <= 0.0:
+                                    _logger.info("⏭️ Skipping line %s (quantity=%s or price=%s is zero - likely description/duplicate line)", 
+                                                line_id, line_quantity, line_price)
+                                    _logger.info("   Line name: '%s'", (line_info.get('name', '') or 'N/A')[:100])
+                                    failed_lines += 1
+                                    continue
+                                
+                                # CRITICAL: Check if we've already migrated a line with this product_id
+                                # This prevents duplicate product lines (e.g., product line + description line with same product)
+                                # BUT only check AFTER validating quantity/price > 0, so we prioritize real product lines
+                                if product_id_value in processed_product_ids:
+                                    _logger.warning("⏭️ Skipping line %s (product_id=%s already migrated) - duplicate product line", 
+                                                  line_id, product_id_value)
+                                    _logger.warning("   Line name: '%s', qty=%s, price=%s", 
+                                                  (line_info.get('name', '') or 'N/A')[:100], line_quantity, line_price)
+                                    failed_lines += 1
+                                    continue
+                                
+                                # Extract account_id
                                 has_account = False
                                 account_id_raw = line_info.get('account_id')
                                 if account_id_raw:
@@ -1864,15 +2036,18 @@ class VendorBillMigrationLine(models.Model):
                                     elif isinstance(account_id_raw, int):
                                         has_account = bool(account_id_raw)
                                 
-                                if not has_product and not has_account:
-                                    _logger.warning("⚠️ Line %s has no product_id or account_id, skipping", line_id)
+                                # Skip lines without account (invalid lines)
+                                if not has_account:
+                                    _logger.warning("⚠️ Line %s has product_id but no account_id, skipping", line_id)
                                     failed_lines += 1
                                     continue
                                 
-                                # Extract product_id for logging
-                                product_id_from_odoo14 = line_info.get('product_id')
-                                if isinstance(product_id_from_odoo14, (list, tuple)) and len(product_id_from_odoo14) > 0:
-                                    product_id_from_odoo14 = product_id_from_odoo14[0]
+                                # Mark this product_id as processed BEFORE creating the line
+                                # This ensures we don't create duplicate lines for the same product
+                                processed_product_ids.add(product_id_value)
+                                
+                                # Use the validated product_id_value for logging and mapping
+                                product_id_from_odoo14 = product_id_value
                                 
                                 _logger.info("📋 Fetched line %s/%s data: name='%s', qty=%s, price=%s, product_id=%s, account_id=%s", 
                                             line_idx + 1, total_lines,
