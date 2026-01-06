@@ -39,9 +39,12 @@ class CustomerInvoiceUpdater(models.TransientModel):
 
                 invoice = migration_line.odoo19_invoice_id
                 if invoice.state != 'draft':
-                     _logger.warning("Skipping update for %s: Invoice %s is not in Draft state (State: %s).", 
-                                   migration_line.uploaded_invoice_number, invoice.name, invoice.state)
-                     continue
+                     _logger.info("Invoice %s is %s. Resetting to Draft to allow update.", invoice.name, invoice.state)
+                     try:
+                         invoice.button_draft()
+                     except Exception as e:
+                         _logger.error("Failed to reset invoice %s to draft: %s", invoice.name, str(e))
+                         continue
 
                 # 1. Connect to Odoo 14 to fetch fresh data
                 if not migration_line.config_id:
@@ -87,10 +90,13 @@ class CustomerInvoiceUpdater(models.TransientModel):
                 # STEP 1: Update Company (Robust Logic from Vendor Bill Migration)
                 # =================================================================================
                 company = False
+                source = "None"
                 
                 # Priority 1: Excel Company Name (if available in migration line)
                 if migration_line.company:
                     company = self.env['res.company'].search([('name', 'ilike', migration_line.company)], limit=1)
+                    if company:
+                        source = f"Excel Mapping ('{migration_line.company}')"
                 
                 # Priority 2: Odoo 14 Branch ID via Mapping
                 if not company:
@@ -107,6 +113,8 @@ class CustomerInvoiceUpdater(models.TransientModel):
                              mapping_model = self.env['odoo14.branch.company.mapping']
                              if mapping_model:
                                  company = mapping_model.get_company_for_branch(odoo14_branch_id=branch_id, odoo14_branch_name=branch_name)
+                                 if company:
+                                     source = f"Branch Mapping (ID: {branch_id}, Name: {branch_name})"
                          except Exception:
                              pass
                          
@@ -115,6 +123,8 @@ class CustomerInvoiceUpdater(models.TransientModel):
                              company = self.env['res.company'].search([('name', '=', branch_name)], limit=1)
                              if not company:
                                  company = self.env['res.company'].search([('name', 'ilike', branch_name)], limit=1)
+                             if company:
+                                 source = f"Branch Name Match ('{branch_name}')"
 
                 # Priority 3: Odoo 14 Company ID
                 if not company:
@@ -123,9 +133,16 @@ class CustomerInvoiceUpdater(models.TransientModel):
                          if isinstance(c_id, (list, tuple)):
                              c_id = c_id[0]
                          company = self.env['res.company'].search([('id', '=', c_id)], limit=1)
+                         if company:
+                             source = f"Odoo 14 Company ID ({c_id})"
+                
+                _logger.info(f"DEBUG: Company Resolution for {invoice.name} | Current: {invoice.company_id.name} | Found: {company.name if company else 'None'} | Source: {source}")
 
                 if company:
                     if invoice.company_id.id != company.id:
+                        # Unlink lines FIRST to avoid company constraints
+                        invoice.invoice_line_ids.unlink()
+                        
                         _logger.info("Updating Company for %s: %s -> %s", invoice.name, invoice.company_id.name, company.name)
                         invoice.write({'company_id': company.id})
                         
@@ -137,14 +154,13 @@ class CustomerInvoiceUpdater(models.TransientModel):
                             ], limit=1)
                             if journal:
                                 invoice.write({'journal_id': journal.id})
+                    else:
+                        _logger.info("Skipping Company Update: Already matches.")
                 
                 # =================================================================================
                 # STEP 2: Re-create Invoice Lines (Robust Logic)
                 # =================================================================================
                 
-                # Clear existing lines
-                invoice.invoice_line_ids.unlink()
-
                 # Fetch lines from Odoo 14
                 lines_data = client.search_read(
                     'account.move.line',
