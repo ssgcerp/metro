@@ -2134,6 +2134,35 @@ class VendorBillMigrationLine(models.Model):
                                                 if product:
                                                     _logger.info("✅ Found product by barcode: %s (ID: %s)", 
                                                                product.barcode, product.id)
+                                        else:
+                                            # Fallback: Odoo 14 returned no data for this product ID (likely archived/deleted or access error)
+                                            # But the line has a product_id [id, name], so we can use that name.
+                                            _logger.warning("⚠️ Could not fetch details for Product ID %s from Odoo 14 (likely archived). Attempting fallback creation using name from line.", product_id)
+                                            
+                                            product_name_fallback = "Unknown Product"
+                                            if isinstance(line_info.get('product_id'), (list, tuple)) and len(line_info['product_id']) > 1:
+                                                product_name_fallback = line_info['product_id'][1]
+                                            
+                                            # Try to find by name first
+                                            product = self.env['product.product'].search([
+                                                ('name', '=', product_name_fallback)
+                                            ], limit=1)
+                                            
+                                            if not product:
+                                                try:
+                                                    _logger.info("📦 Creating fallback product: '%s'", product_name_fallback)
+                                                    product = self.env['product.product'].create({
+                                                        'name': product_name_fallback,
+                                                        'default_code': f"MIGRATED-MISSING-{product_id}",
+                                                        'type': 'consu',
+                                                        'purchase_ok': True,
+                                                    })
+                                                    _logger.info("✅ Created fallback product (ID: %s)", product.id)
+                                                except Exception as fallback_create_error:
+                                                    _logger.error("❌ Failed to create fallback product: %s", str(fallback_create_error))
+
+                                        # Use standard creation flow if we found data but no product yet (and it wasn't the fallback case above)
+                                        if product_data and not product:
                                             
                                             # Step 3: If still not found, CREATE the product
                                             if not product:
@@ -2678,132 +2707,89 @@ class VendorBillMigrationLine(models.Model):
                                 raise UserError(f'Cannot create vendor bill line {line_id} - account_id is missing. Bill: {bill.name}')
                             
                             # Try to create the line with full data (using company context)
+                            creation_success = False
+                            created_line = None
+                            
                             try:
-                                _logger.info("🔄 Creating line %s/%s (Odoo 14 ID: %s)", 
-                                           line_idx + 1, total_lines, line_id)
-                                _logger.info("   Line values: move_id=%s, name='%s', qty=%s, price=%s", 
-                                           line_vals.get('move_id'), line_vals.get('name', '')[:30], 
-                                           line_vals.get('quantity'), line_vals.get('price_unit'))
-                                _logger.info("   CRITICAL FIELDS: product_id=%s, account_id=%s, company_id=%s", 
-                                           line_vals.get('product_id', '❌ NOT SET'),
-                                           line_vals.get('account_id', '❌ NOT SET'),
-                                           line_vals.get('company_id', '❌ NOT SET'))
-                                
-                                # CRITICAL: Ensure bill is in draft state before creating lines
-                                if bill.state != 'draft':
-                                    _logger.warning("⚠️ Bill %s is not in draft state (%s), resetting to draft before creating lines", 
-                                                  bill.name, bill.state)
-                                    bill.button_draft()
-                                    self.env.cr.commit()
-                                    bill.invalidate_recordset(['state'])
-                                    bill = self.env['account.move'].browse(bill.id)
-                                
-                                # CRITICAL: Create the line using the bill's context with sudo() for permissions
-                                try:
+                                with self.env.cr.savepoint():
+                                    _logger.info("🔄 Creating line %s/%s (Odoo 14 ID: %s)", 
+                                               line_idx + 1, total_lines, line_id)
+                                    _logger.info("   Line values: move_id=%s, name='%s', qty=%s, price=%s", 
+                                               line_vals.get('move_id'), line_vals.get('name', '')[:30], 
+                                               line_vals.get('quantity'), line_vals.get('price_unit'))
+                                    
+                                    # CRITICAL: Ensure bill is in draft state before creating lines
+                                    if bill.state != 'draft':
+                                        _logger.warning("⚠️ Bill %s is not in draft state (%s), resetting to draft before creating lines", 
+                                                      bill.name, bill.state)
+                                        bill.button_draft()
+                                        bill.invalidate_recordset(['state'])
+                                        bill = self.env['account.move'].browse(bill.id)
+                                    
+                                    # CRITICAL: Create the line using the bill's context with sudo() for permissions
                                     created_line = self.env['account.move.line'].with_company(bill.company_id.id).sudo().create(line_vals)
-                                except Exception as create_exception:
-                                    _logger.error("❌ CRITICAL: Failed to create line %s/%s: %s", 
-                                                line_idx + 1, total_lines, str(create_exception), exc_info=True)
-                                    _logger.error("   Line values that failed: %s", line_vals)
-                                    raise  # Re-raise to trigger fallback creation
-                                
-                                # CRITICAL: Verify creation succeeded
-                                if not created_line:
-                                    raise UserError(f'Line creation returned None for line {line_id}')
-                                if not created_line.id:
-                                    raise UserError(f'Line creation returned no ID for line {line_id}')
-                                
-                                # Verify line was actually created
-                                if not created_line or not created_line.id:
-                                    raise UserError(f'Line creation returned no ID for line {line_id}')
-                                
-                                successful_lines += 1
-                                
-                                # CRITICAL: Verify product is set on the line
-                                product_info = "No Product"
-                                if created_line.product_id:
-                                    product_info = f"Product: {created_line.product_id.name} (ID: {created_line.product_id.id}, Code: {created_line.product_id.default_code or 'N/A'})"
-                                
-                                _logger.info("✅ SUCCESS: Created vendor bill line %s/%s (Odoo 19 ID: %s, Odoo 14 ID: %s)", 
-                                           line_idx + 1, total_lines, created_line.id, line_id)
-                                _logger.info("   %s", product_info)
-                                _logger.info("   Account: %s (%s)", 
-                                           created_line.account_id.code if created_line.account_id else 'N/A',
-                                           created_line.account_id.name if created_line.account_id else 'N/A')
-                                
-                                # Verify the line is actually linked to the bill
-                                created_line.invalidate_recordset(['move_id'])
-                                if created_line.move_id.id != bill.id:
-                                    _logger.error("❌ CRITICAL: Created line %s is not linked to bill %s! Line move_id: %s", 
-                                                created_line.id, bill.id, created_line.move_id.id)
-                                
-                                # Verify it's an invoice line (not tax/payment term line)
-                                if hasattr(created_line, 'display_type') and created_line.display_type:
-                                    _logger.warning("⚠️ Line %s has display_type='%s' - may not appear as invoice line", 
-                                                  created_line.id, created_line.display_type)
-                                
-                                # CRITICAL: Verify line is an invoice line (not tax/payment term line)
-                                # In Odoo 19, invoice lines are determined by display_type=False and having product/account
-                                created_line.invalidate_recordset(['display_type', 'move_id', 'product_id', 'account_id'])
-                                
-                                # Verify it's a proper invoice line (has product or account, display_type is False)
-                                if created_line.display_type:
-                                    _logger.warning("⚠️ Line %s has display_type='%s' - may not appear as invoice line", 
-                                                  created_line.id, created_line.display_type)
-                                elif not created_line.product_id and not created_line.account_id:
-                                    _logger.warning("⚠️ Line %s has no product_id or account_id - may not appear as invoice line", created_line.id)
-                                
-                                # Commit after each successful line creation to ensure it's saved
+                                    
+                                    # Verify creation succeeded
+                                    if created_line and created_line.id:
+                                        creation_success = True
+                            except Exception as create_exception:
+                                _logger.error("❌ CRITICAL: Failed to create line %s/%s: %s", 
+                                            line_idx + 1, total_lines, str(create_exception))
+                                # We intentionally swallow the exception here to let the fallback logic handle it
+                                # BUT only if creation_success is False
+                            
+                            # POST-CREATION ACTIONS (Only if creation succeeded)
+                            if creation_success and created_line:
                                 try:
+                                    # Verify product is set on the line
+                                    product_info = "No Product"
+                                    if created_line.product_id:
+                                        product_info = f"Product: {created_line.product_id.name} (ID: {created_line.product_id.id})"
+                                    
+                                    _logger.info("✅ SUCCESS: Created vendor bill line %s/%s (Odoo 19 ID: %s, Odoo 14 ID: %s)", 
+                                               line_idx + 1, total_lines, created_line.id, line_id)
+                                    _logger.info("   %s", product_info)
+                                    
+                                    # Verify the line is actually linked to the bill
+                                    if created_line.move_id.id != bill.id:
+                                        _logger.error("❌ CRITICAL: Created line %s is not linked to bill %s!", created_line.id, bill.id)
+                                    
+                                    # Commit after each successful line creation
                                     self.env.cr.commit()
-                                    # Refresh bill to see updated line count
-                                    bill.invalidate_recordset(['invoice_line_ids'])
-                                    # Reload bill to get updated line count
-                                    bill = self.env['account.move'].browse(bill.id)
-                                    current_line_count = len(bill.invoice_line_ids) if bill.invoice_line_ids else 0
-                                    _logger.info("   ✅ Bill now has %s invoice line(s) after creating line %s", 
-                                               current_line_count, created_line.id)
+                                    successful_lines += 1
                                     
-                                    # CRITICAL: Verify the line is actually in invoice_line_ids
-                                    if created_line.id not in bill.invoice_line_ids.ids:
-                                        _logger.error("❌ CRITICAL: Line %s was created but is NOT in bill.invoice_line_ids!", created_line.id)
-                                        _logger.error("   Bill invoice_line_ids: %s", bill.invoice_line_ids.ids)
-                                        _logger.error("   Created line display_type: %s", 
-                                                    getattr(created_line, 'display_type', 'N/A'))
-                                        _logger.error("   Created line product_id: %s", 
-                                                    created_line.product_id.id if created_line.product_id else 'None')
-                                        _logger.error("   Created line account_id: %s", 
-                                                    created_line.account_id.id if created_line.account_id else 'None')
-                                except Exception as commit_error:
-                                    error_msg = str(commit_error).lower()
-                                    if 'current transaction is aborted' in error_msg or 'transaction' in error_msg:
-                                        _logger.error("❌ Transaction error committing line %s, rolling back: %s", 
-                                                     created_line.id, str(commit_error))
-                                        try:
-                                            self.env.cr.rollback()
-                                            _logger.info("   ✅ Transaction rolled back successfully")
-                                        except:
-                                            pass
-                                    else:
-                                        _logger.error("❌ Error committing line %s: %s", created_line.id, str(commit_error))
+                                    # Compute taxes (safe to fail)
+                                    try:
+                                        created_line._compute_tax_amount()
+                                        created_line._compute_price_subtotal()
+                                    except:
+                                        pass
+                                except Exception as post_create_error:
+                                    _logger.warning("⚠️ Error during post-creation checks for line %s (line was created successfully): %s", 
+                                                  created_line.id, str(post_create_error))
+                                    # Do NOT re-raise to avoid triggering fallback (which would create a duplicate)
+                            
+                            # FALLBACK LOGIC (Only if creation FAILED)
+                            elif not creation_success:
+                                _logger.warning("⚠️ Primary line creation failed for line %s, attempting fallback strategies...", line_id)
                                 
-                                # Trigger tax recomputation to ensure VAT amounts are calculated
+                                # CRITICAL: STRICT PRODUCT CHECK
+                                # If the original line had a product, but we are here, it means we likely failed to map it
+                                # or failed to create the line with it.
+                                # OLD BEHAVIOR: Created a description-only line (bad)
+                                # NEW BEHAVIOR: Skip the line if product is missing but required
+                                if product_id_from_odoo14 and not line_vals.get('product_id'):
+                                    _logger.error("❌ STRICT MODE: Skipping line %s because it had a product in Odoo 14 (ID: %s) but product mapping failed.", 
+                                                 line_id, product_id_from_odoo14)
+                                    _logger.error("   We will NOT create a description-only line to prevent data corruption.")
+                                    failed_lines += 1
+                                    continue
+
                                 try:
-                                    created_line._compute_tax_amount()
-                                    created_line._compute_price_subtotal()
-                                except:
-                                    pass  # Non-critical, taxes will be computed on bill posting
-                            except Exception as create_error:
-                                error_msg = str(create_error)
-                                if 'company inconsistencies' in error_msg.lower() or 'uh-oh' in error_msg.lower():
-                                    _logger.error("❌ Company inconsistency error for line %s: %s", line_id, error_msg)
-                                    _logger.error("   Bill company: %s (ID: %s)", bill.company_id.name, bill.company_id.id)
-                                    _logger.error("   Line values: account_id=%s, product_id=%s, tax_ids=%s, purchase_line_id=%s, brand_id=%s", 
-                                                line_vals.get('account_id'), line_vals.get('product_id'), line_vals.get('tax_ids'), 
-                                                line_vals.get('purchase_line_id'), line_vals.get('brand_id'))
-                                    
+                                    # Try validation error fix (Company inconsistencies)
                                     # Try to create with minimal required fields only
-                                    _logger.warning("⚠️ Attempting to create line %s with minimal fields only", line_id)
+                                    _logger.warning("⚠️ Attempting to create line %s with minimal fields", line_id)
+                                    
                                     minimal_line_vals = {
                                         'move_id': bill.id,
                                         'company_id': bill.company_id.id,
@@ -2811,149 +2797,58 @@ class VendorBillMigrationLine(models.Model):
                                         'quantity': line_vals.get('quantity', 1.0),
                                         'price_unit': line_vals.get('price_unit', 0.0),
                                         'discount': line_vals.get('discount', 0.0),
-                                        # Do NOT set display_type - leave it as None for regular product lines
                                     }
                                     
-                                    # Add sequence if available
-                                    if line_vals.get('sequence'):
-                                        minimal_line_vals['sequence'] = line_vals['sequence']
-                                    
-                                    # Try to add account_id only if it matches company
+                                    # Add product if we have it (preserving strictness)
+                                    if line_vals.get('product_id'):
+                                        minimal_line_vals['product_id'] = line_vals['product_id']
+                                    elif product_id_from_odoo14:
+                                         # Should be caught by strict check above, but double check
+                                         _logger.error("❌ Aborting minimal creation: Product required but missing.")
+                                         failed_lines += 1
+                                         continue
+
+                                    # Fix account inconsistencies
                                     if line_vals.get('account_id'):
                                         account = self.env['account.account'].browse(line_vals['account_id'])
-                                        account_company_id = getattr(account, 'company_id', False)
-                                        if account_company_id and account_company_id.id == bill.company_id.id:
+                                        if getattr(account, 'company_id', bill.company_id) == bill.company_id:
                                             minimal_line_vals['account_id'] = account.id
                                         else:
-                                            # Find replacement account
-                                            replacement_account = _search_account_safe(
-                                                self.env,
-                                                [('code', '=', account.code)],
-                                                company_id=bill.company_id.id,
-                                                limit=1
+                                            # Find replacement or default
+                                            default_account = _search_account_safe(
+                                                self.env, [('internal_group', '=', 'expense')],
+                                                company_id=bill.company_id.id, limit=1
                                             )
-                                            if replacement_account:
-                                                minimal_line_vals['account_id'] = replacement_account.id
-                                            else:
-                                                # Use default expense account
-                                                default_account = _search_account_safe(
-                                                    self.env,
-                                                    [('internal_group', '=', 'expense')],
-                                                    company_id=bill.company_id.id,
-                                                    limit=1,
-                                                    order='code asc'
-                                                )
-                                                if default_account:
-                                                    minimal_line_vals['account_id'] = default_account.id
+                                            if default_account:
+                                                minimal_line_vals['account_id'] = default_account.id
                                     
-                                    # CRITICAL: Always add tax_ids if available (from line_vals or default)
+                                    # Fix tax inconsistencies
                                     if line_vals.get('tax_ids'):
-                                        minimal_line_vals['tax_ids'] = line_vals['tax_ids']
-                                    else:
-                                        # Try to get default purchase VAT tax for the company
-                                        default_purchase_tax = self.env['account.tax'].search([
-                                            ('company_id', '=', bill.company_id.id),
-                                            ('type_tax_use', '=', 'purchase'),
-                                            ('amount', '>', 0)
-                                        ], limit=1, order='amount desc')
-                                        if default_purchase_tax:
-                                            minimal_line_vals['tax_ids'] = [(6, 0, [default_purchase_tax.id])]
-                                            _logger.info("✅ Added default purchase VAT tax '%s' to minimal line %s", 
-                                                       default_purchase_tax.name, line_id)
-                                    
-                                    # Try to create with minimal fields (using company context with sudo)
-                                    try:
-                                        created_line = self.env['account.move.line'].with_company(bill.company_id.id).sudo().create(minimal_line_vals)
-                                        successful_lines += 1
-                                        _logger.info("✅ Created vendor bill line %s/%s with minimal fields: %s (Account: %s)", 
-                                                   line_idx + 1, total_lines, line_id,
-                                                   created_line.account_id.code if created_line.account_id else 'N/A')
-                                    except Exception as minimal_error:
-                                        _logger.error("❌ Failed to create line %s even with minimal fields: %s", line_id, str(minimal_error))
-                                        raise  # Re-raise to be caught by outer exception handler
-                                else:
-                                    # Not a company inconsistency error, re-raise
-                                    raise
-                        except Exception as e:
-                            error_msg = str(e)
-                            _logger.error("❌ CRITICAL: Could not migrate vendor bill line %s: %s", line_id, error_msg, exc_info=True)
-                            
-                            # CRITICAL: Rollback transaction if it's aborted
-                            if 'current transaction is aborted' in error_msg.lower() or 'transaction' in error_msg.lower():
-                                _logger.error("   Transaction aborted, rolling back before retry...")
-                                try:
-                                    self.env.cr.rollback()
-                                    _logger.info("   ✅ Transaction rolled back successfully")
-                                except Exception as rollback_error:
-                                    _logger.error("   ❌ Failed to rollback: %s", str(rollback_error))
-                            
-                            # Try to create line with absolute minimum required fields
-                            try:
-                                _logger.warning("🔄 Attempting to create line %s with absolute minimum fields as last resort...", line_id)
-                                
-                                # Get account - MUST have account_id
-                                fallback_account = False
-                                
-                                # Try 501100 PURCHASE EXPENSES first
-                                fallback_account = _search_account_safe(
-                                    self.env,
-                                    [('code', '=', '501100')],
-                                    company_id=bill.company_id.id,
-                                    limit=1
-                                )
-                                
-                                if not fallback_account:
-                                    # Use any expense account
-                                    fallback_account = _search_account_safe(
-                                        self.env,
-                                        [('internal_group', '=', 'expense')],
-                                        company_id=bill.company_id.id,
-                                        limit=1,
-                                        order='code asc'
-                                    )
-                                
-                                if not fallback_account:
-                                    # Use journal default account
-                                    if bill.journal_id and bill.journal_id.default_account_id:
-                                        fallback_account = bill.journal_id.default_account_id
-                                
-                                if fallback_account:
-                                    absolute_minimal_line = {
-                                        'move_id': bill.id,
-                                        'company_id': bill.company_id.id,
-                                        'name': line_info.get('name', 'Line') or 'Migrated Line',
-                                        'quantity': line_info.get('quantity', 1.0) or 1.0,
-                                        'price_unit': line_info.get('price_unit', 0.0) or 0.0,
-                                        'account_id': fallback_account.id,
-                                        # Do NOT set display_type - leave it as None for regular product lines
-                                    }
-                                    
-                                    # CRITICAL: Always add default purchase VAT tax if available
-                                    default_purchase_tax = self.env['account.tax'].search([
-                                        ('company_id', '=', bill.company_id.id),
-                                        ('type_tax_use', '=', 'purchase'),
-                                        ('amount', '>', 0)
-                                    ], limit=1, order='amount desc')
-                                    if default_purchase_tax:
-                                        absolute_minimal_line['tax_ids'] = [(6, 0, [default_purchase_tax.id])]
-                                        _logger.info("✅ Added default purchase VAT tax '%s' to absolute minimal line %s", 
-                                                   default_purchase_tax.name, line_id)
-                                    
-                                    created_line = self.env['account.move.line'].with_company(bill.company_id.id).sudo().create(absolute_minimal_line)
+                                        # Only include taxes from same company
+                                        tax_ids = line_vals['tax_ids'][0][2]
+                                        valid_taxes = self.env['account.tax'].search([
+                                            ('id', 'in', tax_ids), ('company_id', '=', bill.company_id.id)
+                                        ])
+                                        if valid_taxes:
+                                            minimal_line_vals['tax_ids'] = [(6, 0, valid_taxes.ids)]
+                                        
+                                    # Create with minimal fields
+                                    created_line = self.env['account.move.line'].with_company(bill.company_id.id).sudo().create(minimal_line_vals)
                                     successful_lines += 1
-                                    _logger.info("✅ Created line %s/%s with absolute minimum fields (account: %s, tax: %s)", 
-                                               line_idx + 1, total_lines, fallback_account.code,
-                                               default_purchase_tax.name if default_purchase_tax else 'None')
-                                else:
-                                    _logger.error("❌ CRITICAL: Cannot create line %s - no account available", line_id)
-                                    raise UserError(f'Cannot create vendor bill line {line_id} - no account available. Bill: {bill.name}')
-                            except Exception as fallback_error:
-                                failed_lines += 1
-                                _logger.error("❌ CRITICAL: Failed to create line %s/%s (ID: %s) even with absolute minimum: %s", 
-                                            line_idx + 1, total_lines, line_id, str(fallback_error), exc_info=True)
-                                # Don't raise - continue with next line, but log the failure
-                                _log_failed_bill_migration(bill.name, f"Line {line_id} failed: {str(fallback_error)[:200]}")
-                    
+                                    _logger.info("✅ Created vendor bill line %s/%s with minimal fields", line_idx + 1, total_lines)
+                                    
+                                except Exception as fallback_error:
+                                    _logger.error("❌ CRITICAL: Minimal fallback failed for line %s: %s", line_id, str(fallback_error))
+                                    failed_lines += 1
+                                    try:
+                                        _log_failed_bill_migration(bill.name, f"Line {line_id} failed: {str(fallback_error)[:200]}")
+                                    except:
+                                        pass
+                        
+                        except Exception as line_process_error:
+                            _logger.error("❌ CRITICAL: Unhandled error processing line %s: %s", line_id, str(line_process_error), exc_info=True)
+                            failed_lines += 1
+
                     # Final status update after all lines migrated
                     try:
                         if failed_lines > 0:
