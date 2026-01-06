@@ -458,7 +458,7 @@ class CustomerInvoiceMigrationLine(models.Model):
             fields_to_fetch = [
                 'id', 'name', 'partner_id', 'invoice_date', 'invoice_date_due', 'state', 'payment_state',
                 'amount_total', 'amount_untaxed', 'amount_tax', 'currency_id', 'journal_id', 'ref', 'narration',
-                'invoice_origin', 'invoice_payment_term_id', 'fiscal_position_id', 'sale_id', 'user_id',
+                'invoice_origin', 'invoice_payment_term_id', 'fiscal_position_id', 'user_id',
                 'invoice_line_ids', 'line_ids',
                 'create_date', 'write_date', 'write_uid', 'create_uid',
                 # Custom fields from metro_erp
@@ -555,15 +555,102 @@ class CustomerInvoiceMigrationLine(models.Model):
             else:
                 raise UserError('Partner is required for invoice')
             
-            # Map company_id
-            company_id = invoice_data.get('company_id') or self.env.company.id
-            if isinstance(company_id, (list, tuple)) and len(company_id) > 0:
-                company_id = company_id[0]
-            company = self.env['res.company'].search([('id', '=', company_id)], limit=1)
-            if company:
-                invoice_vals['company_id'] = company.id
-            else:
-                invoice_vals['company_id'] = self.env.company.id
+            # Map company_id - Priority: Excel company name > Odoo 14 branch_id (via mapping) > Odoo 14 company_id
+            company = False
+            
+            # Priority 1: Try to find company from Excel company field
+            if self.company:
+                company = self.env['res.company'].search([
+                    ('name', 'ilike', self.company)
+                ], limit=1)
+                if company:
+                    _logger.info("✅ Found company '%s' (ID: %s) from Excel field for invoice %s", 
+                               company.name, company.id, self.uploaded_invoice_number)
+            
+            # Priority 2: Try Odoo 14 branch_id (map to Odoo 19 company via branch_company_mapping)
+            if not company:
+                branch_id = invoice_data.get('branch_id')
+                branch_name = None
+                
+                if branch_id:
+                    if isinstance(branch_id, (list, tuple)) and len(branch_id) > 0:
+                        # Many2one format: [id, name]
+                        if len(branch_id) > 1:
+                            branch_id_value = branch_id[0]
+                            branch_name = branch_id[1]  # Extract branch name
+                        else:
+                            branch_id_value = branch_id[0]
+                        branch_id = branch_id_value
+                    
+                    # Fetch branch name from Odoo 14 if not already extracted
+                    if not branch_name and branch_id:
+                        try:
+                            # Try common branch models
+                            for model_name in ['res.branch', 'account.branch', 'branch.branch', 'res.company.branch']:
+                                try:
+                                    branch_data_fetch = client.search_read(
+                                        model_name,
+                                        [('id', '=', branch_id)],
+                                        ['name'],
+                                        limit=1
+                                    )
+                                    if branch_data_fetch:
+                                        branch_name = branch_data_fetch[0].get('name')
+                                        break
+                                except:
+                                    continue
+                        except Exception:
+                            pass
+                    
+                    # Use branch_company_mapping
+                    try:
+                        mapping_model = self.env['odoo14.branch.company.mapping']
+                        if mapping_model:
+                            # Try mapping by branch_id first
+                            company = mapping_model.get_company_for_branch(odoo14_branch_id=branch_id, odoo14_branch_name=None)
+                            if company:
+                                _logger.info("✅ Found company '%s' from Odoo 14 branch_id %s via mapping", company.name, branch_id)
+                            elif branch_name:
+                                # Try by branch_name
+                                company = mapping_model.get_company_for_branch(odoo14_branch_id=None, odoo14_branch_name=branch_name)
+                                if company:
+                                    _logger.info("✅ Found company '%s' from Odoo 14 branch_name '%s' via mapping", company.name, branch_name)
+                    except Exception:
+                        pass
+                    
+                    # Direct name match fallback
+                    if not company and branch_name:
+                        company = self.env['res.company'].search([('name', '=', branch_name)], limit=1)
+                        if not company:
+                            company = self.env['res.company'].search([('name', 'ilike', branch_name)], limit=1)
+                        if company:
+                            _logger.info("✅ Found company '%s' by direct name match with branch '%s'", company.name, branch_name)
+            
+            # Priority 3: Try Odoo 14 company_id
+            if not company:
+                company_id = invoice_data.get('company_id')
+                if company_id:
+                    if isinstance(company_id, (list, tuple)) and len(company_id) > 0:
+                        company_id = company_id[0]
+                    # Try by ID
+                    company = self.env['res.company'].search([('id', '=', company_id)], limit=1)
+                    if not company:
+                        # Try fetch name from Odoo 14 and match by name
+                        try:
+                            c_data = client.search_read('res.company', [('id', '=', company_id)], ['name'], limit=1)
+                            if c_data:
+                                company = self.env['res.company'].search([('name', 'ilike', c_data[0]['name'])], limit=1)
+                        except:
+                            pass
+                    if company:
+                        _logger.info("✅ Found company '%s' (ID: %s) from Odoo 14 company_id", company.name, company.id)
+            
+            # Fallback
+            if not company:
+                company = self.env.company
+                _logger.warning("⚠️ Company not found, using default: %s", company.name)
+            
+            invoice_vals['company_id'] = company.id
             
             # Map invoice_date
             if invoice_data.get('invoice_date'):
@@ -935,11 +1022,23 @@ class CustomerInvoiceMigrationLine(models.Model):
                                 'account.move.line',
                                 [('id', '=', line_id), ('move_id', '=', invoice_data['id'])],
                                 ['product_id', 'name', 'quantity', 'price_unit', 'discount', 'tax_ids', 
-                                 'account_id', 'sequence', 'sale_line_ids', 'brand_id'],
+                                 'account_id', 'sequence', 'sale_line_ids', 'brand_id', 'display_type', 'tax_line_id'],
                                 limit=1
                             )
                             if line_data:
                                 line_info = line_data[0]
+                                
+                                # FILTER: Skip section headers and notes
+                                if line_info.get('display_type') in ('line_section', 'line_note'):
+                                    continue
+                                    
+                                # FILTER: Skip auto-generated tax lines
+                                if line_info.get('tax_line_id'):
+                                    continue
+                                
+                                # FILTER: Skip lines with 0 quantity AND 0 price (unless it's 100% discount, but usually junk)
+                                if line_info.get('quantity', 0) == 0 and line_info.get('price_unit', 0) == 0:
+                                     continue
                                 
                                 line_vals = {
                                     'move_id': invoice.id,
@@ -993,34 +1092,44 @@ class CustomerInvoiceMigrationLine(models.Model):
                                     if product:
                                         line_vals['product_id'] = product.id
                                 
-                                # Map account_id (required field)
-                                account = False
-                                if line_info.get('account_id'):
-                                    account_id = line_info['account_id']
-                                    if isinstance(account_id, (list, tuple)) and len(account_id) > 0:
-                                        account_id = account_id[0]
-                                    account = self.env['account.account'].search([('id', '=', account_id)], limit=1)
+                                # Map account_id - ENFORCED RULE: Always use "401100 Sales Account"
+                                # Search for the specific sales account in the target company
+                                account_code = '401100'
+                                account = self.env['account.account'].search([
+                                    ('code', '=', account_code),
+                                    ('company_id', '=', invoice.company_id.id),
+                                    ('deprecated', '=', False)
+                                ], limit=1)
                                 
-                                # If account not found, try product's income account
-                                if not account and line_vals.get('product_id'):
-                                    product = self.env['product.product'].browse(line_vals['product_id'])
-                                    if product.property_account_income_id:
-                                        account = product.property_account_income_id
-                                
-                                # If still no account, find default income account for the company
                                 if not account:
-                                    default_account = self.env['account.account'].search([
-                                        ('company_id', '=', invoice.company_id.id),
-                                        ('deprecated', '=', False),
-                                        ('internal_group', '=', 'income')
-                                    ], limit=1, order='code asc')
-                                    if default_account:
-                                        account = default_account
+                                    _logger.warning("⚠️ CRITICAL: Enforced Sales Account '%s' not found for company '%s'! Falling back to default search...", 
+                                                  account_code, invoice.company_id.name)
+                                    # Fallback to old logic only if enforced account is missing
+                                    if line_info.get('account_id'):
+                                        account_id = line_info['account_id']
+                                        if isinstance(account_id, (list, tuple)) and len(account_id) > 0:
+                                            account_id = account_id[0]
+                                        account = self.env['account.account'].search([('id', '=', account_id)], limit=1)
+                                    
+                                    if not account and line_vals.get('product_id'):
+                                        product = self.env['product.product'].browse(line_vals['product_id'])
+                                        if product.property_account_income_id:
+                                            account = product.property_account_income_id
+                                            
+                                    if not account:
+                                        default_account = self.env['account.account'].search([
+                                            ('company_id', '=', invoice.company_id.id),
+                                            ('deprecated', '=', False),
+                                            ('internal_group', '=', 'income')
+                                        ], limit=1, order='code asc')
+                                        if default_account:
+                                            account = default_account
                                 
                                 if account:
                                     line_vals['account_id'] = account.id
+                                    _logger.info("   Using account: %s %s", account.code, account.name)
                                 else:
-                                    _logger.warning("Could not find account for invoice line, skipping account_id")
+                                    _logger.warning("❌ Could not find ANY account for invoice line!")
                                 
                                 # Map tax_ids
                                 if line_info.get('tax_ids'):
