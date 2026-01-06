@@ -4,7 +4,7 @@
 # Shows each invoice on a line: Invoice | Total Queued | Migrated | Current Migration | Status
 
 # Configuration - Change these if needed
-ODOO_URL="http://localhost:8079"
+ODOO_URL="https://metro.equdaierp.com"
 DATABASE="metrodb"  # Change this to your database name
 PROCESSING_DELAY=2  # Seconds to wait between processing each invoice
 
