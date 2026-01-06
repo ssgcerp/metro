@@ -62,6 +62,7 @@ Features:
         'views/project_migration_line_views.xml',
         'views/rfq_migration_line_views.xml',
         'views/customer_invoice_migration_line_views.xml',
+        'views/customer_invoice_updater_views.xml',
         'views/vendor_bill_migration_line_views.xml',
         'views/branch_company_mapping_views.xml',
         'views/menu_items.xml',

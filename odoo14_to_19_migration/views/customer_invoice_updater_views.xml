@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_customer_invoice_updater_form" model="ir.ui.view">
+        <field name="name">customer.invoice.updater.form</field>
+        <field name="model">customer.invoice.updater</field>
+        <field name="arch" type="xml">
+            <form string="Update Customer Invoices">
+                <sheet>
+                    <group>
+                        <field name="migration_line_ids" readonly="1"/>
+                    </group>
+                    <footer>
+                        <button name="action_update_invoices" string="Update Invoices" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_customer_invoice_updater" model="ir.actions.act_window">
+        <field name="name">Update Invoices</field>
+        <field name="res_model">customer.invoice.updater</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_customer_invoice_migration_line"/>
+        <field name="binding_view_types">list</field>
+    </record>
+</odoo>
