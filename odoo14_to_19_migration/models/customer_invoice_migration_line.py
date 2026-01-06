@@ -223,23 +223,22 @@ class CustomerInvoiceMigrationLine(models.Model):
         }
 
     def action_bulk_migrate(self):
-        """Bulk migrate selected invoices sequentially using Queue Jobs"""
-        # Simplified bulk migrate just triggers individual migrate for now if queue job isn't ready
-        # But let's try to do it properly if possible, or just loop
-        for record in self:
-            if record.status == 'pending_migration':
-                 try:
-                     record.action_migrate()
-                 except Exception as e:
-                     # Log but continue
-                     _logger.error("Bulk migrate error for %s: %s", record.uploaded_invoice_number, str(e))
+        """Bulk migrate selected invoices: Mark as QUEUED for continuous processor"""
+        pending = self.filtered(lambda r: r.status in ('pending_migration', 'error'))
+        
+        if pending:
+            pending.write({
+                'status': 'queued', 
+                'status_message': 'Queued for migration',
+                'error_message': False
+            })
         
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': 'Batch Migration Completed',
-                'message': 'Batch process finished. Check statuses.',
+                'title': 'Invoices Queued',
+                'message': f'{len(pending)} invoices marked as Queued. Run the continuous migration script to process them.',
                 'type': 'success',
             }
         }
