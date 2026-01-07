@@ -95,7 +95,7 @@ def main():
     parser.add_argument('--src-password', default='Sales@185734', help='Source Odoo 14 Password')
 
     # Odoo 19 Defaults
-    parser.add_argument('--dest-url', default='https://metro.equdaierp.com', help='Dest Odoo 19 URL')
+    parser.add_argument('--dest-url', default='http://localhost:8079', help='Dest Odoo 19 URL')
     parser.add_argument('--dest-db', default='metrodb', help='Dest Odoo 19 User')
     parser.add_argument('--dest-user', default='admin', help='Dest Odoo 19 User')
     parser.add_argument('--dest-password', default='Amaze@321', help='Dest Odoo 19 Password')

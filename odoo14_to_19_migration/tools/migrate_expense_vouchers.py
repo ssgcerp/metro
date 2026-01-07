@@ -177,10 +177,41 @@ def main():
     def get_dest_project_id(name):
         if not name: return False
         if name in project_map: return project_map[name]
+        
+        # 1. Exact Match
         res = dest_client.execute_kw('project.project', 'search', [[('name', '=', name)]], {'limit': 1})
         if res:
             project_map[name] = res[0]
             return res[0]
+            
+        # 2. Case Insensitive Exact Match
+        res = dest_client.execute_kw('project.project', 'search', [[('name', '=ilike', name)]], {'limit': 1})
+        if res:
+            project_map[name] = res[0]
+            return res[0]
+
+        import re
+        
+        # 3. Match by Project Code (if present in name like [CODE] Name)
+        # Odoo 14 often displays [Code] Name
+        match = re.match(r'^\[(.*?)\]', name)
+        if match:
+            code = match.group(1)
+            # Search by project_code
+            res = dest_client.execute_kw('project.project', 'search', [[('project_code', '=', code)]], {'limit': 1})
+            if res:
+                project_map[name] = res[0]
+                return res[0]
+
+        # 4. Substring Match (V19 name contains V14 name)
+        # Use simple ilike. e.g. V14="Project A", V19="[123] Project A" -> Match
+        # e.g. V14="[123] Project A", V19="Project A" -> No Match (search term longer than target)
+        if len(name) > 3: # Avoid matching short common strings
+            res = dest_client.execute_kw('project.project', 'search', [[('name', 'ilike', name)]], {'limit': 1})
+            if res:
+                project_map[name] = res[0]
+                return res[0]
+                
         return False
 
     # 3. Iterate
@@ -265,6 +296,7 @@ def main():
                  if proj_name:
                      proj_id = get_dest_project_id(proj_name)
                      if proj_id: l_vals['project_id'] = proj_id
+                     else: print(f"  WARNING: Project '{proj_name}' not found.")
                  
                  lines_data.append((0, 0, l_vals))
         
