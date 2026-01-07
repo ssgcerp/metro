@@ -98,7 +98,7 @@ def main():
     # Let's filter by type='out_invoice' and state='posted' usually desired for migration.
     domain = [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')]
     
-    fields = ['name', 'partner_id', 'invoice_date', 'invoice_date_due', 'user_id', 'amount_total', 'invoice_line_ids', 'currency_id', 'branch_id', 'state', 'payment_state']
+    fields = ['name', 'partner_id', 'invoice_date', 'invoice_date_due', 'user_id', 'amount_total', 'invoice_line_ids', 'currency_id', 'branch_id', 'state', 'payment_state', 'journal_id']
     
     print("Fetching Invoice Headers...")
     
@@ -164,8 +164,7 @@ def main():
             sales_agent = sanitize_for_excel(inv.get('user_id')[1]) if inv.get('user_id') else ''
             total_amt = inv.get('amount_total')
             branch_name = sanitize_for_excel(inv.get('branch_id')[1]) if inv.get('branch_id') else ''
-            status = sanitize_for_excel(inv.get('state'))
-            payment_status = sanitize_for_excel(inv.get('payment_state'))
+            journal_name = sanitize_for_excel(inv.get('journal_id')[1]) if inv.get('journal_id') else ''
             
             # Fetch Lines
             line_ids = inv.get('invoice_line_ids', [])
@@ -174,8 +173,7 @@ def main():
                 
             # Fetch Line details
             # Display_type=False ensures product lines (usually)
-            line_fields = ['product_id', 'name', 'quantity', 'price_unit', 'tax_ids', 'price_subtotal', 'display_type']
-            line_fields = ['product_id', 'name', 'quantity', 'price_unit', 'tax_ids', 'price_subtotal', 'display_type']
+            line_fields = ['product_id', 'name', 'quantity', 'price_unit', 'tax_ids', 'price_subtotal', 'display_type', 'account_id']
             lines = client.execute_kw('account.move.line', 'read', [line_ids, line_fields])
             
             # Fetch Tax Names efficiently for this batch
@@ -199,29 +197,26 @@ def main():
                 desc = sanitize_for_excel(line.get('name'))
                 qty = line.get('quantity')
                 price = line.get('price_unit')
+                account_code = sanitize_for_excel(line.get('account_id')[1]) if line.get('account_id') else ''
                 
                 # Map Taxes
                 tax_names_list = [tax_map.get(tid, '') for tid in line.get('tax_ids', [])]
                 tax_str = ', '.join(filter(None, tax_names_list))
                 
-                # Check format structure:
-                # ['Invoice #', 'Customer', 'date', 'dute_date', 'Sale Agent', 'Product', 'Description', 'Quantity', 'Unit Price', 'Taxes', 'Amount Total']
-                
                 row = {
-                    'Invoice #': inv_name if first_line else None,
-                    'Customer': partner if first_line else None,
+                    'Number': inv_name if first_line else None,
+                    'Partner': partner if first_line else None,
                     'Branch': branch_name if first_line else None,
-                    'date': date if first_line else None,
-                    'dute_date': due_date if first_line else None, # Maintaining typo from template
+                    'Journal*': journal_name if first_line else None,
+                    'Invoice Bill Date': date if first_line else None,
+                    'Due Date': due_date if first_line else None,
                     'Sale Agent': sales_agent if first_line else None,
-                    'Product': prod_name,
+                    'Invoice Lines/Product': prod_name,
                     'Description': desc,
-                    'Quantity': qty,
-                    'Unit Price': price,
-                    'Taxes': tax_str,
-                    'Amount Total': total_amt if first_line else None,
-                    'Status': status if first_line else None,
-                    'Payment Status': payment_status if first_line else None
+                    'Invoice Lines/Quantity': qty,
+                    'Invoice Lines/Unit Price': price,
+                    'Invoice Lines/Taxes': tax_str,
+                    'Invoice Lines/Account*': account_code
                 }
                 excel_rows.append(row)
                 first_line = False
@@ -233,7 +228,10 @@ def main():
     df = pd.DataFrame(excel_rows)
     
     # Reorder columns to match format
-    cols = ['Invoice #', 'Customer', 'Branch', 'date', 'dute_date', 'Sale Agent', 'Product', 'Description', 'Quantity', 'Unit Price', 'Taxes', 'Amount Total', 'Status', 'Payment Status']
+    cols = ['Number', 'Partner', 'Branch', 'Journal*', 'Invoice Bill Date', 'Due Date', 'Sale Agent', 
+            'Invoice Lines/Product', 'Description', 'Invoice Lines/Quantity', 'Invoice Lines/Unit Price', 
+            'Invoice Lines/Taxes', 'Invoice Lines/Account*']
+            
     # Ensure they exist (if DataFrame has unexpected cols)
     for c in cols:
         if c not in df.columns:

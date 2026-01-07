@@ -14,7 +14,7 @@ class ProjectFC(models.Model):
         string='AMC Contract',
         help='Linked AMC contract for this project'
     )
-    partner_id = fields.Many2one('res.partner', string='Customer', required=True)
+    partner_id = fields.Many2one('res.partner', string='Customer')
     company_id = fields.Many2one('res.company', string='Company', required=True,
                                  default=lambda self: self.env.company)
     

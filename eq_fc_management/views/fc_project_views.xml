@@ -41,7 +41,7 @@
                     <field name="user_id" invisible="1"/>
                     <group col="1" class="o_group">
                         <field name="name" required="1" placeholder="e.g. Office Party"/>
-                        <field name="partner_id" string="Customer" widget="res_partner_many2one" options="{'no_create': False}"/>
+                        <field name="partner_id" string="Customer" widget="res_partner_many2one" options="{'no_create': False}" required="1"/>
                         <field name="company_id" string="Company" options="{'no_create': True}"/>
                         <field name="amc_contract_id" string="AMC Contract"
                                options="{'no_create': True, 'no_open': True}"
