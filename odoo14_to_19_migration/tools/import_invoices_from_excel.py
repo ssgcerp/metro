@@ -91,9 +91,9 @@ def main():
     df.columns = df.columns.str.strip()
     
     # Forward Fill Header Columns to handle merged cells/sparse rows
-    # Columns that represent the Invoice Header: Invoice Number, Partner, Company, date, Status
+    # Columns that represent the Invoice Header: Invoice Number, Partner, Company, date, Status, Branch
     # User changed 'Invoice #' to 'Invoice Number'
-    header_cols = ['Invoice Number', 'Partner', 'Company', 'date', 'Status'] # Try 'Invoice Number'
+    header_cols = ['Invoice Number', 'Partner', 'Company', 'date', 'Status', 'Branch'] # Try 'Invoice Number'
     # Fallback if user uses 'Invoice #'
     if 'Invoice Number' not in df.columns and 'Invoice #' in df.columns:
         df.rename(columns={'Invoice #': 'Invoice Number'}, inplace=True)
@@ -119,6 +119,7 @@ def main():
         partner_name = str(first_row.get('Partner', '')).strip()
         date = first_row.get('date') # Format? YYYY-MM-DD usually from Excel date
         status_val = str(first_row.get('Status', '')).strip().lower() # 'posted' or 'draft'
+        branch_val = str(first_row.get('Branch', '')).strip()
         
         if not partner_name or partner_name == 'nan':
             print(f"Skipping Invoice {invoice_num}: No Partner Name")
@@ -176,7 +177,31 @@ def main():
 
             # Resolve Taxes
             tax_ids = []
-            if tax_str and tax_str != 'nan':
+            
+            # 1. Try Branch-based Tax Mapping
+            branch_tax_name = None
+            if branch_val and branch_val != 'nan':
+                # Map based on substrings
+                b_high = branch_val.upper()
+                if 'AUH' in b_high: branch_tax_name = 'VAT AUH (AE)'
+                elif 'RAK' in b_high: branch_tax_name = 'VAT RAK (AE)'
+                elif 'DXB' in b_high: branch_tax_name = 'VAT DXB (AE)'
+                elif 'SHJ' in b_high: branch_tax_name = 'VAT SHJ (AE)'
+                elif 'AJM' in b_high: branch_tax_name = 'VAT AJM (AE)'
+                elif 'FUJ' in b_high: branch_tax_name = 'VAT FUJ (AE)'
+                elif 'DS' in b_high: branch_tax_name = 'VAT DS'
+                
+            if branch_tax_name:
+                 # Search for this specific tax
+                 print(f"  Branch '{branch_val}' -> Tax '{branch_tax_name}'")
+                 taxes = client.execute_kw('account.tax', 'search', [[('name', '=', branch_tax_name), ('type_tax_use', '=', 'sale')]], {'limit': 1})
+                 if taxes:
+                     tax_ids.append(taxes[0])
+                 else:
+                     print(f"  WARNING: Mapped Tax '{branch_tax_name}' not found in Odoo.")
+
+            # 2. If NO Branch Tax found, check 'Taxes' column
+            if not tax_ids and tax_str and tax_str != 'nan':
                  # Split by comma if multiple?
                  tax_names = [t.strip() for t in tax_str.split(',')]
                  for t_name in tax_names:

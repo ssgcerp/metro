@@ -61,7 +61,7 @@
 
 							<field name="stage_id" string="Current Stage"/>
 								<field name="name" string="Project Name" placeholder="Project Name"/>
-								<field name="partner_id" string="Customer" options="{'no_open': True}"/>
+								<field name="partner_id" string="Customer" options="{'no_open': True}" required="1"/>
 								<field name="company_id" options="{'no_open': True}"/>
 								<field name="amc_contract_id" options="{'no_open': True, 'no_create': True}"/>
 								<field name="branch_id" options="{'no_open': True, 'no_create': True}"/>
