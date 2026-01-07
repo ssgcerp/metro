@@ -64,7 +64,7 @@ def main():
     parser.add_argument('--src-password', default='Sales@185734', help='Source Odoo 14 Password')
 
     # Odoo 19 Defaults
-    parser.add_argument('--dest-url', default='http://localhost:8079', help='Dest Odoo 19 URL')
+    parser.add_argument('--dest-url', default='https://metro.equdaierp.com', help='Dest Odoo 19 URL')
     parser.add_argument('--dest-db', default='metrodb', help='Dest Odoo 19 DB')
     parser.add_argument('--dest-user', default='admin', help='Dest Odoo 19 User')
     parser.add_argument('--dest-password', default='Amaze@321', help='Dest Odoo 19 Password')
@@ -126,6 +126,7 @@ def main():
     account_map = {} # Code -> ID
     tax_map = {} # Name -> ID
     project_map = {} # Name -> ID
+    company_map = {} # Name -> ID
 
     # Helper functions for lookup
     def get_dest_partner_id(name):
@@ -214,6 +215,20 @@ def main():
                 
         return False
 
+    def get_dest_company_id(name):
+        if not name: return False
+        if name in company_map: return company_map[name]
+        res = dest_client.execute_kw('res.company', 'search', [[('name', '=', name)]], {'limit': 1})
+        if res:
+            company_map[name] = res[0]
+            return res[0]
+        # Try case insensitive
+        res = dest_client.execute_kw('res.company', 'search', [[('name', '=ilike', name)]], {'limit': 1})
+        if res:
+            company_map[name] = res[0]
+            return res[0]
+        return False
+
     # 3. Iterate
     for v in vouchers_v14:
         v_name = v['name']
@@ -261,6 +276,13 @@ def main():
         if c_name:
             cid = get_dest_currency_id(c_name)
             if cid: vals['currency_id'] = cid
+        
+        # Branch -> Company
+        b_name = v['branch_id'][1] if v['branch_id'] else False
+        if b_name:
+            comp_id = get_dest_company_id(b_name)
+            if comp_id: vals['company_id'] = comp_id
+            else: print(f"  WARNING: Company for Branch '{b_name}' not found.")
         
         # Lines
         line_ids = v['expense_line_ids']
