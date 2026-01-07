@@ -74,17 +74,19 @@ class CustomerInvoiceUpdater(models.TransientModel):
                     _logger.warning("Could not find Odoo 14 ID for %s", migration_line.uploaded_invoice_number)
                     continue
 
-                # Fetch necessary fields
+                # Fetch latest data from Odoo 14
                 invoice_data_list = client.search_read(
-                    'account.move', 
-                    [('id', '=', odoo14_id)], 
-                    ['branch_id', 'company_id', 'currency_id'], # Fields needed for company/currency mapping
+                    'account.move',
+                    [('id', '=', odoo14_id)],
+                    ['partner_id', 'currency_id', 'invoice_date', 'ref', 'company_id', 'journal_id', 'amount_total', 'branch_id'], # Fields needed for company/currency mapping
                     limit=1
                 )
                 if not invoice_data_list:
                     continue
-                    
                 invoice_data = invoice_data_list[0]
+                
+                # Capture O14 Stats
+                o14_amount_total = invoice_data.get('amount_total', 0.0)
 
                 # =================================================================================
                 # STEP 1: Update Company (Robust Logic from Vendor Bill Migration)
@@ -174,8 +176,11 @@ class CustomerInvoiceUpdater(models.TransientModel):
                     ['product_id', 'name', 'quantity', 'price_unit', 'tax_ids', 'discount'],
                     limit=500
                 )
+                
+                # Capture O14 Line Count
+                o14_line_count = len(lines_data)
 
-                new_lines = []
+                lines_to_add = []
                 for line in lines_data:
                     # Filter logic: Must be product line (or we handle product mapping)
                     # Skip tax lines if mistakenly fetched (exclude_from_invoice_tab handles most)
