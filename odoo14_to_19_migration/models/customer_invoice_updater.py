@@ -157,6 +157,12 @@ class CustomerInvoiceUpdater(models.TransientModel):
                     else:
                         _logger.info("Skipping Company Update: Already matches.")
                 
+                # ALWAYS UNLINK LINES to ensure we replace them with fresh data
+                # This fixes the issue of appending new lines to broken existing lines
+                if invoice.invoice_line_ids:
+                    invoice.invoice_line_ids.unlink()
+                    _logger.info("Cleared existing lines for invoice %s", invoice.name)
+
                 # =================================================================================
                 # STEP 2: Re-create Invoice Lines (Robust Logic)
                 # =================================================================================
@@ -164,7 +170,7 @@ class CustomerInvoiceUpdater(models.TransientModel):
                 # Fetch lines from Odoo 14
                 lines_data = client.search_read(
                     'account.move.line',
-                    [('move_id', '=', odoo14_id), ('display_type', '=', False), ('exclude_from_invoice_tab', '=', False)], 
+                    [('move_id', '=', odoo14_id), ('display_type', '=', False)], 
                     ['product_id', 'name', 'quantity', 'price_unit', 'tax_ids', 'discount'],
                     limit=500
                 )
@@ -187,22 +193,43 @@ class CustomerInvoiceUpdater(models.TransientModel):
                              p_name = line.get('name', '')
                              # Avoid matching generic names
                              if p_name and len(p_name) > 3:
-                                product = self.env['product.product'].search([('name', 'ilike', p_name)], limit=1)
+                                 product = self.env['product.product'].search([('name', 'ilike', p_name)], limit=1)
                         
                         if product:
-                            product_id = product.id
+                            # CRITICAL: If Odoo 14 has "Migration Fallback Product" (from previous bad migration), ignore it!
+                            if 'Fallback' in product.name or 'MIG_W_FALLBACK' in product.default_code:
+                                _logger.info("Ignoring Odoo 14 Fallback Product: %s", product.name)
+                                product_id = False
+                            else:
+                                product_id = product.id
                     
-                    # Fallback product if not found
-                    if not product_id:
-                        # Use/Create "Product Not Found"
-                         fallback_product = self.env['product.product'].search([('default_code', '=', 'MIGRATION_FALLBACK')], limit=1)
-                         if not fallback_product:
-                             fallback_product = self.env['product.product'].create({
-                                 'name': 'Migration Product Fallback',
-                                 'default_code': 'MIGRATION_FALLBACK',
+                    # Ensure we use product_id as the truth source in case we forced it to False above
+                    if not product_id and product:
+                         pass # It means we explicitly ignored it
+                    
+                    # SPECIFIC FIX: Down Payment Logic
+                    # If product mapping failed, checks if it's a Down Payment line
+                    if not product_id and 'Down payment' in line.get('name', ''):
+                        dp_product = self.env['product.product'].search([('name', 'ilike', 'Down Payment')], limit=1)
+                        if not dp_product:
+                             dp_product = self.env['product.product'].create({
+                                 'name': 'Down Payment',
                                  'type': 'service',
+                                 'default_code': 'DOWN_PAYMENT'
                              })
-                         product_id = fallback_product.id
+                        product_id = dp_product.id
+                        _logger.info("Fixed Down Payment product mapping for line '%s'", line.get('name'))
+
+                    # Fallback product if still not found
+                    if not product_id:
+                        # User Request: If product not found (fallback scenario), REMOVE the line.
+                        # Skipping the line allows the invoice total to recalculate without this line.
+                        
+                        # Extra Check: If it's a Down Payment/Advance but we specifically failed above? 
+                        # No, the above check catches "Down payment".
+                        
+                        _logger.warning("Skipping line '%s' (O14 Product ID: %s) as product could not be mapped.", line.get('name'), product_id_o14)
+                        continue
 
                     # Account Enforcement: 401100 Sales Account
                     account_401100 = self.env['account.account'].search([
@@ -240,6 +267,14 @@ class CustomerInvoiceUpdater(models.TransientModel):
 
                     self.env['account.move.line'].create(vals)
                 
+                # Post the invoice if it was successfully updated
+                if invoice.state == 'draft':
+                     try:
+                         invoice.action_post()
+                         _logger.info("✅ Posted invoice %s", invoice.name)
+                     except Exception as e:
+                         _logger.warning("Could not post invoice %s: %s", invoice.name, str(e))
+
                 _logger.info("Successfully updated invoice %s", invoice.name)
                 updated_count += 1
                 self.env.cr.commit()

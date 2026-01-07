@@ -81,7 +81,7 @@ class OdooJsonRpcClient:
 
 def main():
     parser = argparse.ArgumentParser(description='Reset Posted Customer Invoices to Draft')
-    parser.add_argument('--url', default='https://metro.equdaierp.com', help='Odoo URL')
+    parser.add_argument('--url', default='http://localhost:8079', help='Odoo URL')
     parser.add_argument('--db', default='metrodb', help='Database name')
     parser.add_argument('--user', default='admin', help='Username')
     parser.add_argument('--password', default='Amaze@321', help='Password')

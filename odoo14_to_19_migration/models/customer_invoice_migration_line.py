@@ -427,7 +427,7 @@ class CustomerInvoiceMigrationLine(models.Model):
             _logger.info("🔄 Fetching invoice lines from Odoo 14...")
             all_lines = client.search_read(
                 'account.move.line',
-                [('move_id', '=', odoo14_id)],
+                [('move_id', '=', odoo14_id), ('display_type', '=', False)],
                 ['id', 'product_id', 'name', 'quantity', 'price_unit', 'discount', 'tax_ids', 
                  'account_id', 'sequence', 'display_type', 'tax_line_id'],
                 limit=200
@@ -502,25 +502,38 @@ class CustomerInvoiceMigrationLine(models.Model):
                                         })
                             except Exception as pe:
                                 _logger.warning("Product Map Error: %s", str(pe))
+                            
+                            # CRITICAL: If Odoo 14 has "Migration Fallback Product" (from previous bad migration), ignore it!
+                            if product and ('Fallback' in product.name or 'MIG_W_FALLBACK' in product.default_code):
+                                _logger.info("Ignoring Odoo 14 Fallback Product: %s", product.name)
+                                product = False
+                    
+                    # SPECIFIC FIX: Down Payment Logic
+                    # If product mapping failed, checks if it's a Down Payment line
+                    if not product and 'Down payment' in line_data.get('name', ''):
+                        dp_product = self.env['product.product'].search([('name', 'ilike', 'Down Payment')], limit=1)
+                        if not dp_product:
+                             dp_product = self.env['product.product'].create({
+                                 'name': 'Down Payment',
+                                 'type': 'service',
+                                 'default_code': 'DOWN_PAYMENT'
+                             })
+                        product = dp_product
+                        _logger.info("Fixed Down Payment product mapping for line '%s'", line_data.get('name'))
                     
                     if product:
                         line_vals['product_id'] = product.id
                     else:
                         # Fallback for product (if missing in O14 or mapping failed)
-                        # We MUST have a product for the line to be useful usually, or at least a label
-                        # But to ensure it appears, let's use fallback
-                        fallback_prod = self.env['product.product'].search([('default_code', '=', 'MIG_W_FALLBACK')], limit=1)
-                        if not fallback_prod:
-                             fallback_prod = self.env['product.product'].create({
-                                 'name': 'Migration Fallback Product',
-                                 'default_code': 'MIG_W_FALLBACK',
-                                 'type': 'service'
-                             })
-                        line_vals['product_id'] = fallback_prod.id
+                        # User Request: If product not found (fallback scenario), REMOVE the line.
+                        # Skipping the line allows the invoice total to recalculate without this line.
+                        
+                        _logger.info("Skipping line '%s' (O14 Product ID: %s) as product could not be mapped.", line_data.get('name'), product_id_raw)
+                        continue
                         
                         # Preserve original name if it was a label-only line
-                        if not product_id_raw:
-                             line_vals['name'] = line_data.get('name', 'Line description')
+                        # if not product_id_raw:
+                        #      line_vals['name'] = line_data.get('name', 'Line description')
 
                     # B. Map Account (401100 Enforced)
                     # 1. Try 401100 in Company
