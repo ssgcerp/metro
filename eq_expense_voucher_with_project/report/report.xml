@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="paperformat_expense_voucher_a4" model="report.paperformat">
+            <field name="name">Expense Voucher - A4</field>
+            <field name="format">A4</field>
+            <field name="page_height">0</field>
+            <field name="page_width">0</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">35</field>
+            <field name="margin_bottom">20</field>
+            <field name="margin_left">6</field>
+            <field name="margin_right">6</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">35</field>
+            <field name="dpi">90</field>
+        </record>
+
+        <record id="action_report_expense_voucher" model="ir.actions.report">
+            <field name="name">Expense Voucher</field>
+            <field name="model">account.expense.voucher</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">eq_expense_voucher_with_project.account_expense_voucher_template</field>
+            <field name="report_file">eq_expense_voucher_with_project.account_expense_voucher_template</field>
+            <field name="paperformat_id" ref="paperformat_expense_voucher_a4"/>
+            <field name="print_report_name">'Expense Voucher - %s' % (object.name)</field>
+            <field name="binding_model_id" ref="eq_expense_voucher_with_project.model_account_expense_voucher"/>
+            <field name="binding_type">report</field>
+        </record>
+
+        <template id="report_header_minimal">
+            <div class="header" style="font-size: 13px;font-family:Roboto;">
+                <div class="row">
+                    <div class="col-6 left">
+                        <img t-if="res_company.logo" t-att-src="image_data_uri(res_company.logo)" class="left"
+                             style="max-height: 100px;"/>
+                    </div>
+                    <div class="col-6 pull-right text-right" style="padding-top:20px;">
+                        <strong style="font-size:15px;" t-field="res_company.name"/>
+                        <span t-if="res_company.street">
+                            <br/>
+                            <span t-field="res_company.street"/>
+                        </span>
+                        <span t-if="res_company.street2">
+                            <br/>
+                            <span t-field="res_company.street2"/>
+                            <span t-field="res_company.city"/>
+                            <span t-field="res_company.state_id.name"/>
+                        </span>
+                        <span t-if="res_company.zip or res_company.country_id">
+                            <br/>
+                            <span t-field="res_company.zip"/>
+                            <span t-field="res_company.country_id.name"/>
+                        </span>
+                        <br/>
+                        <strong>TRN :</strong>
+                        <strong t-field="res_company.vat"/>
+                    </div>
+                </div>
+            </div>
+            <div class="footer" style="font-size: 13px;font-family:Roboto;">
+                <strong t-field="res_company.name"/>
+                |
+                <i class="fa fa-phone-alt"></i>
+                <span t-field="res_company.phone"/>
+                |
+                <i class="fa fa-envelope"></i>
+                <span t-field="res_company.email"/>
+                |
+                <i class="fa fa-globe"></i>
+                <span t-field="res_company.website"/>
+                <div class="row" style="border-top: 1px solid gray;">
+                    <div class="col-10"></div>
+                    <div class="col-2 pull-right">
+                        <small class="pull-right">
+                            <span>Page</span>
+                            <span class="page"/>
+                            of
+                            <span class="topage"/>
+                            <br/>
+                            <br/>
+                            <span style="font-size:8px;"></span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+    </data>
+</odoo>
+
+

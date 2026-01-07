@@ -198,11 +198,40 @@ def main():
                 qty = line.get('quantity')
                 price = line.get('price_unit')
                 account_code = sanitize_for_excel(line.get('account_id')[1]) if line.get('account_id') else ''
-                
-                # Map Taxes
-                tax_names_list = [tax_map.get(tid, '') for tid in line.get('tax_ids', [])]
-                tax_str = ', '.join(filter(None, tax_names_list))
-                
+
+                # Map Taxes based on Branch (User Request)
+                # Available: VAT AUH (AE), VAT RAK (AE), VAT DXB (AE), VAT SHJ (AE), VAT AJM (AE), VAT FUJ (AE), VAT DS
+                mapped_tax_str = ''
+                if line.get('tax_ids'):
+                    # Default raw names
+                    raw_tax_names = [tax_map.get(tid, '') for tid in line.get('tax_ids', [])]
+                    
+                    # Heuristic Mapping based on Branch
+                    b_name_upper = str(branch_name).upper()
+                    new_tax_name = None
+                    
+                    if 'ABU DHABI' in b_name_upper or 'AUH' in b_name_upper:
+                        new_tax_name = 'VAT AUH (AE)'
+                    elif 'DUBAI' in b_name_upper or 'DXB' in b_name_upper:
+                        new_tax_name = 'VAT DXB (AE)'
+                    elif 'SHARJAH' in b_name_upper or 'SHJ' in b_name_upper:
+                        new_tax_name = 'VAT SHJ (AE)'
+                    elif 'AJMAN' in b_name_upper or 'AJM' in b_name_upper:
+                        new_tax_name = 'VAT AJM (AE)'
+                    elif 'RAS' in b_name_upper or 'RAK' in b_name_upper:
+                        new_tax_name = 'VAT RAK (AE)'
+                    elif 'FUJAIRAH' in b_name_upper or 'FUJ' in b_name_upper:
+                        new_tax_name = 'VAT FUJ (AE)'
+                    
+                    # If we found a mapping and there IS a tax on the line, force the mapped name.
+                    # Assumption: Only one VAT tax usually.
+                    if new_tax_name:
+                         mapped_tax_str = new_tax_name
+                    else:
+                         mapped_tax_str = ', '.join(filter(None, raw_tax_names))
+                else:
+                    mapped_tax_str = ''
+
                 row = {
                     'Number': inv_name if first_line else None,
                     'Partner': partner if first_line else None,
@@ -215,7 +244,7 @@ def main():
                     'Description': desc,
                     'Invoice Lines/Quantity': qty,
                     'Invoice Lines/Unit Price': price,
-                    'Invoice Lines/Taxes': tax_str,
+                    'Invoice Lines/Taxes': mapped_tax_str,
                     'Invoice Lines/Account*': account_code
                 }
                 excel_rows.append(row)
