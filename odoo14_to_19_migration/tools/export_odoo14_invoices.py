@@ -145,7 +145,8 @@ def main():
         pass
 
     # Prepare Data List
-    excel_rows = []
+    # Dictionary to hold rows per branch: { 'Branch Name': [row1, row2, ...] }
+    branch_rows = {}
     
     count = 0
     total = len(invoice_ids)
@@ -163,7 +164,7 @@ def main():
             due_date = inv.get('invoice_date_due')
             sales_agent = sanitize_for_excel(inv.get('user_id')[1]) if inv.get('user_id') else ''
             total_amt = inv.get('amount_total')
-            branch_name = sanitize_for_excel(inv.get('branch_id')[1]) if inv.get('branch_id') else ''
+            branch_name = sanitize_for_excel(inv.get('branch_id')[1]) if inv.get('branch_id') else 'Unassigned'
             journal_name = sanitize_for_excel(inv.get('journal_id')[1]) if inv.get('journal_id') else ''
             
             # Fetch Lines
@@ -247,41 +248,45 @@ def main():
                     'Invoice Lines/Taxes': mapped_tax_str,
                     'Invoice Lines/Account*': account_code
                 }
-                excel_rows.append(row)
+                
+                # Add to appropriate branch list
+                if branch_name not in branch_rows:
+                    branch_rows[branch_name] = []
+                branch_rows[branch_name].append(row)
+                
                 first_line = False
         
         count += len(batch_ids)
         print(f"Processed {count}/{total} invoices...", end='\r')
 
-    print("\nWriting to Excel...")
-    df = pd.DataFrame(excel_rows)
+    print("\nWriting to Excel files (Branch-wise)...")
     
-    # Reorder columns to match format
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     cols = ['Number', 'Partner', 'Branch', 'Journal*', 'Invoice Bill Date', 'Due Date', 'Sale Agent', 
             'Invoice Lines/Product', 'Description', 'Invoice Lines/Quantity', 'Invoice Lines/Unit Price', 
             'Invoice Lines/Taxes', 'Invoice Lines/Account*']
             
-    # Ensure they exist (if DataFrame has unexpected cols)
-    for c in cols:
-        if c not in df.columns:
-            df[c] = None
-            
-    df = df[cols]
-    
-    df = df[cols]
-    
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = f'Odoo14_Exported_Invoices_{timestamp}.xlsx'
-    
-    try:
-        df.to_excel(output_file, index=False)
-        print(f"Successfully exported to {output_file}")
-    except PermissionError:
-        print(f"ERROR: Could not write to {output_file}. Is the file open?")
-        print("Trying with a new name...")
-        output_file = f'Odoo14_Exported_Invoices_{timestamp}_new.xlsx'
-        df.to_excel(output_file, index=False)
-        print(f"Successfully exported to {output_file}")
+    for branch, rows in branch_rows.items():
+        print(f"Exporting {len(rows)} rows for Branch: {branch}...")
+        df = pd.DataFrame(rows)
+        
+        # Ensure cols exist
+        for c in cols:
+            if c not in df.columns:
+                df[c] = None
+                
+        df = df[cols]
+        
+        # Sanitize filename
+        safe_branch = re.sub(r'[^a-zA-Z0-9_\-]', '_', str(branch))
+        output_file = f'Odoo14_Invoices_{safe_branch}_{timestamp}.xlsx'
+        
+        try:
+            df.to_excel(output_file, index=False)
+            print(f"  -> Saved to {output_file}")
+        except Exception as e:
+            print(f"  -> ERROR saving {output_file}: {e}")
+
 
 if __name__ == '__main__':
     main()

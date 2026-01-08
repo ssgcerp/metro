@@ -30,6 +30,7 @@
     'data': [
         'security/ir.model.access.csv',
         'views/account_move_views.xml',
+        'views/invoice_config_view.xml',
     ],
     'installable': True,
     'application': False,
