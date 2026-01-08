@@ -81,19 +81,37 @@ class OdooJsonRpcClient:
 
 def main():
     parser = argparse.ArgumentParser(description='Reset Posted Customer Invoices to Draft')
-    parser.add_argument('--url', default='http://localhost:8079', help='Odoo URL')
+    parser.add_argument('--url', default='https://metro.equdaierp.com', help='Odoo URL')
     parser.add_argument('--db', default='metrodb', help='Database name')
     parser.add_argument('--user', default='admin', help='Username')
     parser.add_argument('--password', default='Amaze@321', help='Password')
     parser.add_argument('--limit', type=int, default=100, help='Batch size')
+    parser.add_argument('--company', default='6', help='Company Name or ID to filter by')
     
     args = parser.parse_args()
-
+    
     client = OdooJsonRpcClient(args.url, args.db, args.user, args.password)
     
     if not client.authenticate():
         _logger.error("Authentication failed")
         sys.exit(1)
+
+    company_id = False
+    if args.company:
+        _logger.info(f"Looking up company: {args.company}")
+        try:
+             # Try ID first
+             company_id = int(args.company)
+             _logger.info(f"Using Company ID: {company_id}")
+        except ValueError:
+             # Search by Name
+             companies = client.execute_kw('res.company', 'search_read', [[('name', 'ilike', args.company)]], {'fields': ['id', 'name'], 'limit': 1})
+             if companies:
+                 company_id = companies[0]['id']
+                 _logger.info(f"Found Company '{companies[0]['name']}' (ID: {company_id})")
+             else:
+                 _logger.error(f"Company '{args.company}' not found.")
+                 sys.exit(1)
 
     while True:
         # Search for Posted Customer Invoices
@@ -102,7 +120,10 @@ def main():
             ('state', '=', 'posted')
         ]
         
-        _logger.info(f"Searching for posted customer invoices (Limit: {args.limit})...")
+        if company_id:
+            domain.append(('company_id', '=', company_id))
+        
+        _logger.info(f"Searching for posted customer invoices (Limit: {args.limit}, Company: {args.company if args.company else 'ALL'})...")
         
         invoice_ids = client.execute_kw(
             'account.move', 

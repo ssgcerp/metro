@@ -290,7 +290,7 @@ def main():
     parser.add_argument('--dest-user', default='admin', help='Dest Odoo 19 User')
     parser.add_argument('--dest-password', default='Amaze@321', help='Dest Odoo 19 Password')
     
-    parser.add_argument('--limit', type=int, default=20, help='Limit number of records')
+    parser.add_argument('--limit', type=int, default=200, help='Limit number of records')
 
     args = parser.parse_args()
 
@@ -307,191 +307,193 @@ def main():
         
     print("Connected to Source and Destination.")
 
-    # 2. Fetch Odoo 14 Payments
-    try:
-        domain = [
-            ('payment_type', '=', 'inbound'),
-            ('partner_type', '=', 'customer'),
-            ('state', '=', 'posted')
-        ]
-        fields_to_fetch = ['name', 'date', 'amount', 'ref', 'partner_id', 'journal_id', 'branch_id']
-        
-        # search_read behaves differently in standard execute_kw vs json rpc sometimes, but usually [domain, fields]
-        # or kwargs fieldst
-        payments = src_client.execute_kw('account.payment', 'search_read', [domain], {'fields': fields_to_fetch, 'limit': args.limit, 'order': 'date desc'})
-        if not payments:
-            print("No payments found in source.")
-            return
-            
-    except Exception as e:
-        print(f"Failed to fetch payments: {e}")
-        return
-
-    print(f"fetched {len(payments)} payments.")
-
-    # 3. Migrate
-    for pay in payments:
+    # 2. Fetch Odoo 14 Payments (Loop for Batches)
+    offset = 0
+    total_migrated = 0
+    
+    while True:
+        print(f"\n--- Starting Batch (Offset: {offset}, Limit: {args.limit}) ---")
         try:
-            print(f"Processing Payment: {pay.get('name')}")
+            domain = [
+                ('payment_type', '=', 'inbound'),
+                ('partner_type', '=', 'customer'),
+                ('state', '=', 'posted')
+            ]
+            fields_to_fetch = ['name', 'date', 'amount', 'ref', 'partner_id', 'journal_id', 'branch_id']
             
-            # Map Partner
-            src_partner_name = pay['partner_id'][1] if pay['partner_id'] else False
-            dest_partner_id = False
-            if src_partner_name:
-                partner_search = dest_client.execute_kw('res.partner', 'search', [[('name', '=', src_partner_name)]], {'limit': 1})
-                if partner_search:
-                    dest_partner_id = partner_search[0]
+            # Fetch Source Payments
+            payments = src_client.execute_kw('account.payment', 'search_read', [domain], 
+                {'fields': fields_to_fetch, 'limit': args.limit, 'offset': offset, 'order': 'date desc'})
             
-            if not dest_partner_id:
-                print(f"  Skipping: Partner '{src_partner_name}' not found.")
-                continue
+            if not payments:
+                print("No more payments found in source.")
+                break
+                
+        except Exception as e:
+            print(f"Failed to fetch payments: {e}")
+            break
+    
+        print(f"Fetched {len(payments)} payments.")
+        batch_processed_count = 0
 
-            # Map Company
-            branch_name = pay.get('branch_id', [0, ''])[1] if pay.get('branch_id') else ''
-            dest_company_id = get_dest_company_id(dest_client, branch_name)
-
-            # Map Journal
-            src_journal_name = pay['journal_id'][1] if pay['journal_id'] else ''
-            dest_journal_id = False
-            if src_journal_name:
-                journal_search = dest_client.execute_kw('account.journal', 'search', 
-                    [[('name', '=', src_journal_name), ('company_id', '=', dest_company_id)]], {'limit': 1})
-                if not journal_search:
-                     journal_search = dest_client.execute_kw('account.journal', 'search', 
-                        [[('type', 'in', ['bank', 'cash']), ('company_id', '=', dest_company_id)]], {'limit': 1})
-                if journal_search:
-                    dest_journal_id = journal_search[0]
-
-            if not dest_journal_id:
-                 print(f"  Skipping: Journal '{src_journal_name}' not found.")
+        # 3. Migrate Batch
+        for pay in payments:
+            batch_processed_count += 1
+            # Check if this payment already exists in Destination (by Name)
+            # This is crucial to avoid duplicates if re-running or looping
+            existing_pay = dest_client.execute_kw('account.payment', 'search_count', [[('name', '=', pay['name'])]])
+            if existing_pay > 0:
+                 print(f"Skipping {pay['name']} - Already Exists in Destination.")
                  continue
 
-            # Register Payment needs currency
-            currency_data = dest_client.execute_kw('res.company', 'read', [[dest_company_id], ['currency_id']])
-            currency_id = currency_data[0]['currency_id'][0] if currency_data else False
-            
-            # ---------------------------------------------------------
-            # STRATEGY: Try to Pay Invoice directly (Register Payment)
-            # ---------------------------------------------------------
-            invoice_found = False
-            memo = pay.get('ref') or pay['name']
-            
-            # Search for Invoice
-            if memo:
-                # Need to be careful: Odoo 14 'Ref' -> Odoo 19 'Name' or 'Ref'?
-                # User said "Memo should be invoice number".
-                # Invoice Name usually matches.
-                inv_search = dest_client.execute_kw('account.move', 'search_read', 
-                    [[('name', '=', memo), ('move_type', '=', 'out_invoice'), ('state', '=', 'posted'), ('payment_state', '!=', 'paid')]], 
-                    {'fields': ['id', 'name', 'amount_residual'], 'limit': 1}
-                )
-                if inv_search:
-                     invoice_id = inv_search[0]['id']
-                     invoice_name = inv_search[0]['name']
-                     invoice_found = True
-                     print(f"  Found Invoice {invoice_name} (ID: {invoice_id}). Using Register Payment.")
-                     
-                     # Prepare Wizard Context
-                     ctx = {
-                         'active_model': 'account.move',
-                         'active_ids': [invoice_id],
-                     }
-                     
-                     # Create Wizard
-                     wiz_vals = {
-                         'journal_id': dest_journal_id,
-                         'amount': pay['amount'],
-                         'payment_date': pay['date'],
-                         'communication': memo,
-                         'currency_id': currency_id,
-                         'payment_method_line_id': False, # Let default? Or find Manual
-                     }
-                     
-                     # We might need payment_method_line_id for ADCB if it defaults to PDC?
-                     # Let's search for 'manual' method on this journal
-                     pml_search = dest_client.execute_kw('account.payment.method.line', 'search',
-                         [[('journal_id', '=', dest_journal_id), ('code', '=', 'manual')]], {'limit': 1}
-                     )
-                     if pml_search:
-                         wiz_vals['payment_method_line_id'] = pml_search[0]
-                     
-                     # Create Wizard
-                     # Note: In Odoo 14-19, model is account.payment.register
-                     wiz_id = dest_client.execute_kw('account.payment.register', 'create', [wiz_vals], {'context': ctx})
-                     
-                     # Create Payments
-                     res_action = dest_client.execute_kw('account.payment.register', 'action_create_payments', [[wiz_id]], {'context': ctx})
-                     print("  Payment Registered via Wizard.")
-                     
-                     # Now find the created payment to Rename it
-                     # The action usually returns a domain or we can search by memo + amount + date
-                     # Robust way: Search latest payment created today/now for this journal/amount
-                     # Or check the response?
-                     
-                     # Search for the payment we just made
-                     new_pay_search = dest_client.execute_kw('account.payment', 'search_read',
-                        [[('amount', '=', pay['amount']), ('memo', '=', memo), ('journal_id', '=', dest_journal_id)]],
-                        {'fields': ['id', 'name'], 'order': 'id desc', 'limit': 1}
-                     )
-                     
-                     if new_pay_search:
-                         new_payment_id = new_pay_search[0]['id']
-                         current_name = new_pay_search[0]['name']
-                         target_name = pay['name']
+            try:
+                print(f"Processing Payment: {pay.get('name')}")
+                
+                # Map Partner
+                src_partner_name = pay['partner_id'][1] if pay['partner_id'] else False
+                dest_partner_id = False
+                if src_partner_name:
+                    partner_search = dest_client.execute_kw('res.partner', 'search', [[('name', '=', src_partner_name)]], {'limit': 1})
+                    if partner_search:
+                        dest_partner_id = partner_search[0]
+                
+                if not dest_partner_id:
+                    print(f"  Skipping: Partner '{src_partner_name}' not found.")
+                    continue
+
+                # Map Company
+                branch_name = pay.get('branch_id', [0, ''])[1] if pay.get('branch_id') else ''
+                dest_company_id = get_dest_company_id(dest_client, branch_name)
+
+                # Map Journal
+                src_journal_name = pay['journal_id'][1] if pay['journal_id'] else ''
+                dest_journal_id = False
+                if src_journal_name:
+                    journal_search = dest_client.execute_kw('account.journal', 'search', 
+                        [[('name', '=', src_journal_name), ('company_id', '=', dest_company_id)]], {'limit': 1})
+                    if not journal_search:
+                         journal_search = dest_client.execute_kw('account.journal', 'search', 
+                            [[('type', 'in', ['bank', 'cash']), ('company_id', '=', dest_company_id)]], {'limit': 1})
+                    if journal_search:
+                        dest_journal_id = journal_search[0]
+
+                if not dest_journal_id:
+                     print(f"  Skipping: Journal '{src_journal_name}' not found.")
+                     continue
+
+                # Register Payment needs currency
+                currency_data = dest_client.execute_kw('res.company', 'read', [[dest_company_id], ['currency_id']])
+                currency_id = currency_data[0]['currency_id'][0] if currency_data else False
+                
+                # ---------------------------------------------------------
+                # STRATEGY: Try to Pay Invoice directly (Register Payment)
+                # ---------------------------------------------------------
+                invoice_found = False
+                memo = pay.get('ref') or pay['name']
+                
+                # Search for Invoice
+                if memo:
+                    inv_search = dest_client.execute_kw('account.move', 'search_read', 
+                        [[('name', '=', memo), ('move_type', '=', 'out_invoice'), ('state', '=', 'posted'), ('payment_state', '!=', 'paid')]], 
+                        {'fields': ['id', 'name', 'amount_residual'], 'limit': 1}
+                    )
+                    if inv_search:
+                         invoice_id = inv_search[0]['id']
+                         invoice_name = inv_search[0]['name']
+                         invoice_found = True
+                         print(f"  Found Invoice {invoice_name} (ID: {invoice_id}). Using Register Payment.")
                          
-                         if current_name != target_name:
-                             print(f"  Renaming {current_name} -> {target_name}")
-                             dest_client.execute_kw('account.payment', 'write', [[new_payment_id], {'name': target_name}])
+                         # Prepare Wizard Context
+                         ctx = {
+                             'active_model': 'account.move',
+                             'active_ids': [invoice_id],
+                         }
+                         
+                         # Create Wizard
+                         wiz_vals = {
+                             'journal_id': dest_journal_id,
+                             'amount': pay['amount'],
+                             'payment_date': pay['date'],
+                             'communication': memo,
+                             'currency_id': currency_id,
+                             'payment_method_line_id': False, 
+                         }
+                         
+                         pml_search = dest_client.execute_kw('account.payment.method.line', 'search',
+                             [[('journal_id', '=', dest_journal_id), ('code', '=', 'manual')]], {'limit': 1}
+                         )
+                         if pml_search:
+                             wiz_vals['payment_method_line_id'] = pml_search[0]
+                         
+                         # Create Wizard
+                         wiz_id = dest_client.execute_kw('account.payment.register', 'create', [wiz_vals], {'context': ctx})
+                         
+                         # Create Payments
+                         res_action = dest_client.execute_kw('account.payment.register', 'action_create_payments', [[wiz_id]], {'context': ctx})
+                         print("  Payment Registered via Wizard.")
+                         
+                         # Search and Rename
+                         new_pay_search = dest_client.execute_kw('account.payment', 'search_read',
+                            [[('amount', '=', pay['amount']), ('memo', '=', memo), ('journal_id', '=', dest_journal_id)]],
+                            {'fields': ['id', 'name'], 'order': 'id desc', 'limit': 1}
+                         )
+                         
+                         if new_pay_search:
+                             new_payment_id = new_pay_search[0]['id']
+                             current_name = new_pay_search[0]['name']
+                             target_name = pay['name']
                              
-                             # Also update the Journal Entry Name if possible? 
-                             # (Usually Name on Payment updates Name on Move automatically)
-                             
-                         # Validate (User Request)
-                         try:
-                             print(f"  Validating Payment {new_payment_id}...")
-                             dest_client.execute_kw('account.payment', 'action_validate', [[new_payment_id]])
-                             print("  Validated.")
-                             
-                             # Mark as Paid (User Request)
-                             mark_payment_as_cleared(dest_client, new_payment_id)
-                             
-                         except Exception as e:
-                             print(f"  Validation failed (might be already validated): {e}")
-
-            
-            # ---------------------------------------------------------
-            # FALLBACK: Create Detached Payment (if invoice not found)
-            # ---------------------------------------------------------
-            if not invoice_found:
-                print("  Invoice not found. Creating detached payment.")
-                vals = {
-                    'payment_type': 'inbound',
-                    'partner_type': 'customer',
-                    'partner_id': dest_partner_id,
-                    'amount': pay['amount'],
-                    'date': pay['date'],
-                    'name': pay['name'],
-                    'memo': memo,
-                    'journal_id': dest_journal_id,
-                    'company_id': dest_company_id,
-                    'currency_id': currency_id,
-                }
+                             if current_name != target_name:
+                                 print(f"  Renaming {current_name} -> {target_name}")
+                                 dest_client.execute_kw('account.payment', 'write', [[new_payment_id], {'name': target_name}])
+                                 
+                             # Validate
+                             try:
+                                 print(f"  Validating Payment {new_payment_id}...")
+                                 dest_client.execute_kw('account.payment', 'action_validate', [[new_payment_id]])
+                                 print("  Validated.")
+                                 
+                                 # Mark as Paid
+                                 mark_payment_as_cleared(dest_client, new_payment_id)
+                                 
+                             except Exception as e:
+                                 print(f"  Validation failed (might be already validated): {e}")
+    
                 
-                new_payment_id = dest_client.execute_kw('account.payment', 'create', [vals])
-                print(f"  Created Payment ID: {new_payment_id}")
-                
-                 # Force Name
-                dest_client.execute_kw('account.payment', 'write', [[new_payment_id], {'name': pay['name']}])
-
-                # Post
-                res_post = dest_client.execute_kw('account.payment', 'action_post', [[new_payment_id]])
-                print(f"  Post Result: {res_post}")
-
-                # Reconcile (Try standard)
-                reconcile_payment(dest_client, new_payment_id, dest_partner_id)
-
-        except Exception as e:
-            print(f"  Error: {e}")
+                # ---------------------------------------------------------
+                # FALLBACK: Create Detached Payment
+                # ---------------------------------------------------------
+                if not invoice_found:
+                    print("  Invoice not found. Creating detached payment.")
+                    vals = {
+                        'payment_type': 'inbound',
+                        'partner_type': 'customer',
+                        'partner_id': dest_partner_id,
+                        'amount': pay['amount'],
+                        'date': pay['date'],
+                        'name': pay['name'],
+                        'memo': memo,
+                        'journal_id': dest_journal_id,
+                        'company_id': dest_company_id,
+                        'currency_id': currency_id,
+                    }
+                    
+                    new_payment_id = dest_client.execute_kw('account.payment', 'create', [vals])
+                    print(f"  Created Payment ID: {new_payment_id}")
+                    
+                    dest_client.execute_kw('account.payment', 'write', [[new_payment_id], {'name': pay['name']}])
+                    res_post = dest_client.execute_kw('account.payment', 'action_post', [[new_payment_id]])
+                    print(f"  Post Result: {res_post}")
+                    reconcile_payment(dest_client, new_payment_id, dest_partner_id)
+    
+            except Exception as e:
+                print(f"  Error processing payment {pay.get('name')}: {e}")
+        
+        # End of Batch Loop
+        offset += args.limit
+        total_migrated += batch_processed_count
+        print(f"--- Batch Completed. Total processed so far: {total_migrated}. Offset now: {offset} ---\n")
+        time.sleep(1) # Be nice to server
 
 if __name__ == "__main__":
     main()
