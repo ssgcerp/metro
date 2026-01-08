@@ -37,8 +37,8 @@ class OdooClient:
             raise Exception(result['error'])
         
         if 'result' not in result:
-            _logger.error(f"Unexpected JSON-RPC response format (missing 'result' and 'error'): {result}")
-            raise Exception(f"Invalid RPC response: {result}")
+            # _logger.warning(f"Response missing 'result' field, assuming None: {result}")
+            return None
             
         return result['result']
 
