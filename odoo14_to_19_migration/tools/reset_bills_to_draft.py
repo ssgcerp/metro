@@ -178,11 +178,7 @@ def _fix_due_dates(client, move_ids):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Reset Posted Vendor Bills to Draft')
-<<<<<<< HEAD
-    parser.add_argument('--url', default='https://metro.equdaierp.com', help='Odoo URL (default: https://metro.equdaierp.com)')
-=======
     parser.add_argument('--url', default='https://metro.equdaierp.com', help='Odoo URL (default: http://localhost:8079)')
->>>>>>> 8cf40cabc6bca08ad16ea2fac162b831dae25635
     parser.add_argument('--db', default='metrodb', help='Database name (default: metrodb)')
     parser.add_argument('--user', default='admin', help='Username (default: admin)')
     parser.add_argument('--password', default='Amaze@321', help='Password (default: Amaze@321)')

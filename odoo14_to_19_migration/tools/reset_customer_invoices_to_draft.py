@@ -86,11 +86,7 @@ def main():
     parser.add_argument('--user', default='admin', help='Username')
     parser.add_argument('--password', default='Amaze@321', help='Password')
     parser.add_argument('--limit', type=int, default=100, help='Batch size')
-<<<<<<< HEAD
     parser.add_argument('--company', default='6', help='Company Name or ID to filter by')
-=======
-    parser.add_argument('--company', help='Company Name or ID to filter by')
->>>>>>> 4286565cedbd5eb0766d685caf3b13f1e35f2dd7
     
     args = parser.parse_args()
     
