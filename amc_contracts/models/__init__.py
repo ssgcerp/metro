@@ -4,6 +4,8 @@ from . import res_company
 from . import amc_contract_config
 from . import amc_contract_stage
 from . import amc_contract_type_of_service
+from . import amc_contract_asset
+from . import amc_contract_audit_schedule
 from . import amc_contract_registration
 from . import amc_contract_invoice_schedule
 from . import amc_contract_quotation

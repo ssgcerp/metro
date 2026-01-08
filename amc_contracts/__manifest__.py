@@ -61,6 +61,7 @@
     'depends': [
         'base',
         'sale',
+        'purchase',
         'account',
         'contacts',
         'hr',
@@ -69,6 +70,7 @@
         'security/ir.model.access.csv',
         'data/amc_contract_config_data.xml',
         'data/amc_contract_stage_data.xml',
+        'data/ir_sequence_data.xml',
         'views/res_company_views.xml',
         'views/amc_contract_config_views.xml',
         # Load stage views after contract views to ensure model fields are loaded
@@ -83,6 +85,10 @@
         'views/amc_contract_additional_job_views.xml',
         'views/amc_contract_agreement_views.xml',
         'views/amc_contract_expense_views.xml',
+        'views/amc_contract_agreement_views.xml',
+        'views/amc_contract_expense_views.xml',
+        'views/amc_contract_asset_views.xml',
+        'views/amc_contract_audit_schedule_views.xml',
         'views/amc_contract_menus.xml',
     ],
     'assets': {
