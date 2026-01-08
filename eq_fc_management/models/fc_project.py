@@ -58,6 +58,21 @@ class ProjectFC(models.Model):
     is_amc = fields.Boolean(string='Is Amc', default=False, help='Indicates if this is an AMC project')
     is_amc_project = fields.Boolean(string='Is AMC Project', default=False, help='Indicates if this is an AMC project')
 
+    # Members Allocation
+    member_allocation_ids = fields.One2many('project.member.allocation', 'project_id', string='Members Allocation')
+
+    # Smart Button Counts
+    sale_count = fields.Integer(compute='_compute_smart_counts', string="Sales")
+    purchase_count = fields.Integer(compute='_compute_smart_counts', string="Purchases")
+    expense_count = fields.Integer(compute='_compute_smart_counts', string="Expenses")
+    invoice_count = fields.Integer(compute='_compute_smart_counts', string="Invoices")
+    invoice_count = fields.Integer(compute='_compute_smart_counts', string="Invoices")
+    approval_count = fields.Integer(compute='_compute_smart_counts', string="Approvals")
+    document_count = fields.Integer(compute='_compute_smart_counts', string="Documents")
+    delivery_count = fields.Integer(compute='_compute_smart_counts', string="Deliveries")
+    stock_count = fields.Integer(compute='_compute_smart_counts', string="Stocks")
+
+
     @api.onchange('partner_id', 'company_id')
     def _onchange_amc_contract(self):
         for rec in self:
@@ -428,6 +443,208 @@ class ProjectFC(models.Model):
         for record in self:
             if record.invoice_paid > record.invoice_total:
                 raise UserError('Invoice paid amount cannot exceed invoice total amount.')
+    def _compute_counts(self):
+        # Override or extend existing if needed
+        pass
+
+    def _compute_smart_counts(self):
+        for project in self:
+            project.task_count = self.env['project.task'].search_count([('project_id', '=', project.id)])
+            
+            # Safe access to analytic account
+            analytic_account = getattr(project, 'analytic_account_id', False)
+            analytic_id = analytic_account.id if analytic_account else False
+            
+            if analytic_id:
+                project.sale_count = self.env['sale.order'].search_count([('analytic_account_id', '=', analytic_id)])
+                project.purchase_count = self.env['purchase.order'].search_count([('order_line.account_analytic_id', '=', analytic_id)]) # More robust search
+                project.expense_count = self.env['hr.expense'].search_count([('analytic_account_id', '=', analytic_id)])
+                # Invoices: Check invoice lines. This can be complex with distribution dicts in newer Odoo.
+                # Simplified check using ilike on the distribution string representation or one2many if available
+                project.invoice_count = self.env['account.move'].search_count([
+                    ('move_type', 'in', ('out_invoice', 'out_refund')),
+                    ('invoice_line_ids.analytic_distribution', 'ilike', str(analytic_id))
+                ])
+                project.approval_count = 0
+                
+                # Documents (Attachments)
+                project.document_count = self.env['ir.attachment'].search_count([
+                    ('res_model', '=', 'project.project'), ('res_id', '=', project.id)
+                ])
+
+                # Deliveries & Stocks (Linked via Sales/Purchases in Analytic Account)
+                # Find Sale Orders linked to this analytic account
+                sale_ids = self.env['sale.order'].search([('analytic_account_id', '=', analytic_id)]).ids
+                if sale_ids:
+                    project.delivery_count = self.env['stock.picking'].search_count([
+                        ('sale_id', 'in', sale_ids), 
+                        ('picking_type_code', '=', 'outgoing')
+                    ])
+                else:
+                    project.delivery_count = 0
+                
+                # Find Purchase Orders linked to this analytic account
+                # Note: Purchase linking to analytic might vary, checking order line is safer but slower
+                # For count, we might rely on PO header if customized, otherwise complex query.
+                # Simplified: Check POs where any line has the analytic account
+                purchase_ids = self.env['purchase.order'].search([
+                    ('order_line.account_analytic_id', '=', analytic_id)
+                ]).ids
+                if purchase_ids:
+                    project.stock_count = self.env['stock.picking'].search_count([
+                        ('purchase_id', 'in', purchase_ids), 
+                        ('picking_type_code', '=', 'incoming')
+                    ])
+                else:
+                    project.stock_count = 0
+
+            else:
+                # Fallback: Try linking via project_id where possible
+                project.sale_count = self.env['sale.order'].search_count([('project_id', '=', project.id)]) if hasattr(self.env['sale.order'], 'project_id') else 0
+                project.purchase_count = 0 
+                project.expense_count = 0
+                project.invoice_count = 0
+                project.approval_count = 0
+                project.document_count = self.env['ir.attachment'].search_count([
+                    ('res_model', '=', 'project.project'), ('res_id', '=', project.id)
+                ])
+                project.delivery_count = 0
+                project.stock_count = 0
+
+    def action_view_sales(self):
+        self.ensure_one()
+        analytic_account = getattr(self, 'analytic_account_id', False)
+        analytic_id = analytic_account.id if analytic_account else False
+        
+        domain = [('analytic_account_id', '=', analytic_id)] if analytic_id else [('project_id', '=', self.id)]
+        context = {'create': False}
+        if analytic_id:
+             context['default_analytic_account_id'] = analytic_id
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Sales',
+            'res_model': 'sale.order',
+            'view_mode': 'list,form',
+            'domain': domain,
+            'context': context
+        }
+
+    def action_view_purchases(self):
+        self.ensure_one()
+        analytic_account = getattr(self, 'analytic_account_id', False)
+        analytic_id = analytic_account.id if analytic_account else False
+        # Purchase orders often link via lines, but modern Odoo might have header field too. 
+        # Checking lines is safer for analytics.
+        domain = [('order_line.account_analytic_id', '=', analytic_id)] if analytic_id else [('id', '=', 0)]
+        context = {'create': False}
+        if analytic_id:
+             context['default_analytic_account_id'] = analytic_id
+
+        return {
+             'type': 'ir.actions.act_window',
+             'name': 'Purchases',
+             'res_model': 'purchase.order',
+             'view_mode': 'list,form',
+             'domain': domain,
+             'context': context
+        }
+
+    def action_view_expenses(self):
+        self.ensure_one()
+        analytic_account = getattr(self, 'analytic_account_id', False)
+        analytic_id = analytic_account.id if analytic_account else False
+        domain = [('analytic_account_id', '=', analytic_id)] if analytic_id else [('id', '=', 0)]
+        
+        return {
+             'type': 'ir.actions.act_window',
+             'name': 'Expenses',
+             'res_model': 'hr.expense',
+             'view_mode': 'list,form',
+             'domain': domain,
+             'context': {'create': False, 'default_analytic_account_id': analytic_id}
+        }
+
+    def action_view_invoices(self):
+        self.ensure_one()
+        analytic_account = getattr(self, 'analytic_account_id', False)
+        analytic_id = analytic_account.id if analytic_account else False
+        
+        domain = [('move_type', 'in', ('out_invoice', 'out_refund')), ('invoice_line_ids.analytic_distribution', 'ilike', str(analytic_id))] if analytic_id else [('id', '=', 0)]
+
+        return {
+             'type': 'ir.actions.act_window',
+             'name': 'Invoices',
+             'res_model': 'account.move',
+             'view_mode': 'list,form',
+             'domain': domain,
+             'context': {'create': False}
+        }
+
+    def action_view_approvals(self):
+        # Placeholder
+        return {'type': 'ir.actions.act_window_close'}
+
+    def action_view_documents(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Documents',
+            'res_model': 'ir.attachment',
+            'view_mode': 'list,form',
+            'domain': [('res_model', '=', 'project.project'), ('res_id', '=', self.id)],
+            'context': {'create': True, 'default_res_model': 'project.project', 'default_res_id': self.id}
+        }
+
+    def action_view_deliveries(self):
+        self.ensure_one()
+        analytic_account = getattr(self, 'analytic_account_id', False)
+        analytic_id = analytic_account.id if analytic_account else False
+        
+        domain = [('id', '=', 0)]
+        if analytic_id:
+            sale_ids = self.env['sale.order'].search([('analytic_account_id', '=', analytic_id)]).ids
+            if sale_ids:
+                domain = [('sale_id', 'in', sale_ids), ('picking_type_code', '=', 'outgoing')]
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Deliveries',
+            'res_model': 'stock.picking',
+            'view_mode': 'list,form',
+            'domain': domain,
+            'context': {'create': False}
+        }
+
+    def action_view_stocks(self):
+        self.ensure_one()
+        analytic_account = getattr(self, 'analytic_account_id', False)
+        analytic_id = analytic_account.id if analytic_account else False
+        
+        domain = [('id', '=', 0)]
+        if analytic_id:
+            purchase_ids = self.env['purchase.order'].search([('order_line.account_analytic_id', '=', analytic_id)]).ids
+            if purchase_ids:
+                domain = [('purchase_id', 'in', purchase_ids), ('picking_type_code', '=', 'incoming')]
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Stocks',
+            'res_model': 'stock.picking',
+            'view_mode': 'list,form',
+            'domain': domain,
+            'context': {'create': False}
+        }
+
+    def action_view_amc(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'amc.contract',
+            'view_mode': 'form',
+            'res_id': self.amc_contract_id.id,
+            'target': 'current',
+        }
 
 
 class ResBranch(models.Model):

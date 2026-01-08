@@ -28,12 +28,66 @@
                                 invisible="not is_confirmed or is_cancelled"/>
                         <!-- Create Visits: Only show in Confirmed (and not cancelled) -->
                         <button name="action_create_visits" string="Create Visits" type="object" class="btn-primary"
-                                invisible="not is_confirmed or is_cancelled"/>
+                                invisible="not is_confirmed or is_cancelled or visit_frequency != 'manual'"/>
+                        <button name="action_generate_service_schedule" string="Generate Schedule" type="object" class="btn-primary"
+                                invisible="not is_confirmed or is_cancelled or visit_frequency == 'manual'"/>
+                        <button name="action_generate_audit_schedule" string="Generate Audit Schedule" type="object" class="btn-secondary"
+                                invisible="not is_confirmed or is_cancelled or audit_frequency == 'manual'"/>
                         <field name="stage_id" widget="statusbar" statusbar_visible="draft,confirmed,cancelled,blocked,expired"/>
                     </header>
                     <sheet>
                         <div class="oe_button_box" name="button_box">
-                            <button class="oe_stat_button" type="object" name="action_view_timesheet" icon="fa-clock-o">
+                            <!-- Service Schedules (Visits) -->
+                            <button class="oe_stat_button" type="object" name="action_view_schedules" icon="fa-wrench">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="display_visit_count"/></span>
+                                    <span class="o_stat_text">Visits</span>
+                                </div>
+                            </button>
+                            <!-- Audit Schedules -->
+                            <button class="oe_stat_button" type="object" name="action_view_audits" icon="fa-gavel">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="display_audit_count"/></span>
+                                    <span class="o_stat_text">Audits</span>
+                                </div>
+                            </button>
+                            <!-- Quotations -->
+                            <button class="oe_stat_button" type="object" name="action_view_quotations" icon="fa-pencil-square-o">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="display_quotation_count"/></span>
+                                    <span class="o_stat_text">Quotations</span>
+                                </div>
+                            </button>
+                            <!-- Sales -->
+                            <button class="oe_stat_button" type="object" name="action_view_sales" icon="fa-dollar">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="display_sale_count"/></span>
+                                    <span class="o_stat_text">Sales</span>
+                                </div>
+                            </button>
+                            <!-- Purchases -->
+                            <button class="oe_stat_button" type="object" name="action_view_purchases" icon="fa-shopping-cart">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="display_purchase_count"/></span>
+                                    <span class="o_stat_text">Purchases</span>
+                                </div>
+                            </button>
+                            <!-- Expenses -->
+                            <button class="oe_stat_button" type="object" name="action_view_expenses" icon="fa-credit-card">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="display_expense_count"/></span>
+                                    <span class="o_stat_text">Expenses</span>
+                                </div>
+                            </button>
+                            <!-- Invoices -->
+                            <button class="oe_stat_button" type="object" name="action_view_invoices" icon="fa-file-text-o">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="display_invoice_count"/></span>
+                                    <span class="o_stat_text">Invoices</span>
+                                </div>
+                            </button>
+                            
+                            <button class="oe_stat_button" type="object" name="action_view_timesheet" icon="fa-clock-o" invisible="1">
                                 <div class="o_stat_text">
                                     <span class="o_stat_value"><field name="completion_pending"/></span>
                                     <span class="o_stat_text">Pending Visits</span>
@@ -43,6 +97,7 @@
                         <group>
                             <group>
                                 <field name="name" readonly="1" invisible="not name"/>
+                                <field name="analytic_account_id" readonly="1" force_save="1"/>
                                 <field name="customer_id" options="{'no_create': False, 'no_create_edit': False}"/>
                                 <field name="project_site"/>
                                 <field name="contact_id" domain="[('parent_id', '=', customer_id), ('is_company', '=', False)]" 
@@ -57,7 +112,10 @@
                                 <field name="contract_date"/>
                                 <field name="start_date"/>
                                 <field name="end_date"/>
+                                <field name="visit_frequency"/>
                                 <field name="number_of_visits"/>
+                                <field name="audit_frequency"/>
+                                <field name="number_of_audits"/>
                                 <field name="completion_pending" readonly="1"/>
                                 <field name="contract_value"/>
                                 <field name="labour_expense"/>
@@ -361,6 +419,34 @@
                                 <group>
                                     <field name="other_info" nolabel="1" placeholder="Enter additional information here..."/>
                                 </group>
+                            </page>
+                        </notebook>
+                        <notebook position="inside">
+                             <page string="Assets" name="assets">
+                                <field name="asset_ids" nolabel="1">
+                                    <list string="Assets" editable="bottom">
+                                        <field name="code"/>
+                                        <field name="name"/>
+                                        <field name="category"/>
+                                        <field name="location"/>
+                                        <field name="serial_number"/>
+                                        <field name="date_installation" optional="hide"/>
+                                        <field name="warranty_expiry" optional="hide"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Audit Schedules" name="audit_schedules">
+                                <field name="audit_schedule_ids" nolabel="1">
+                                    <list string="Audit Schedules" editable="bottom">
+                                        <field name="audit_date"/>
+                                        <field name="auditor_id" widget="many2one_avatar_user"/>
+                                        <field name="status" widget="badge" 
+                                               decoration-success="status == 'done'" 
+                                               decoration-info="status == 'scheduled'" 
+                                               decoration-muted="status == 'cancel'"/>
+                                        <field name="remarks"/>
+                                    </list>
+                                </field>
                             </page>
                         </notebook>
                     </sheet>

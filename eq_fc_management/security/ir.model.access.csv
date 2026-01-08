@@ -7,3 +7,5 @@ access_res_branch_manager,res.branch.manager,model_res_branch,base.group_user,1,
 access_project_use_stages_manager,project.use.stages.manager,model_project_project,project.group_project_manager,1,1,1,1
 access_project_use_stages_user,project.use.stages.user,model_project_project,project.group_project_user,1,1,1,1
 access_project_admin_stage,project.admin.stage,model_project_project,base.group_system,1,1,1,1
+access_project_member_allocation_manager,project.member.allocation.manager,model_project_member_allocation,project.group_project_manager,1,1,1,1
+access_project_member_allocation_user,project.member.allocation.user,model_project_member_allocation,project.group_project_user,1,1,1,1

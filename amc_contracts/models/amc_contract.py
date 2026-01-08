@@ -28,8 +28,35 @@ class AMCContract(models.Model):
     end_date = fields.Date(string='End Date', required=True, tracking=True)
     
     # Visit Information
+    visit_frequency = fields.Selection([
+        ('monthly', 'Monthly'),
+        ('quarterly', 'Quarterly'),
+        ('half_yearly', 'Half Yearly'),
+        ('yearly', 'Yearly'),
+        ('manual', 'Manual')
+    ], string='Visit Frequency', default='manual', tracking=True)
     number_of_visits = fields.Integer(string='Number of Visits', default=0, tracking=True)
     completion_pending = fields.Integer(string='Completion Pending', compute='_compute_completion_pending', store=True, help='Number of visits pending completion')
+
+    # Audit Information
+    audit_frequency = fields.Selection([
+        ('half_yearly', 'Half Yearly'),
+        ('yearly', 'Yearly'),
+        ('manual', 'Manual')
+    ], string='Audit Frequency', default='manual', tracking=True)
+    number_of_audits = fields.Integer(string='Number of Audits', default=0, tracking=True)
+    
+    # Linked Records
+    analytic_account_id = fields.Many2one('account.analytic.account', string='Analytic Account', copy=False, help='Analytic account for financial tracking')
+    
+    # Smart Button Counts
+    display_sale_count = fields.Integer(compute='_compute_smart_counts')
+    display_purchase_count = fields.Integer(compute='_compute_smart_counts')
+    display_expense_count = fields.Integer(compute='_compute_smart_counts')
+    display_invoice_count = fields.Integer(compute='_compute_smart_counts')
+    display_quotation_count = fields.Integer(compute='_compute_smart_counts')
+    display_visit_count = fields.Integer(compute='_compute_smart_counts')
+    display_audit_count = fields.Integer(compute='_compute_smart_counts')
     
     # Financial Information
     contract_value = fields.Monetary(string='Contract Value', default=0.0, currency_field='currency_id', required=True, tracking=True)
@@ -52,7 +79,10 @@ class AMCContract(models.Model):
     call_out_ids = fields.One2many('amc.contract.call.out', 'contract_id', string='Call Outs')
     additional_job_ids = fields.One2many('amc.contract.additional.job', 'contract_id', string='Additional Jobs')
     agreement_ids = fields.One2many('amc.contract.agreement', 'contract_id', string='Agreements')
+    agreement_ids = fields.One2many('amc.contract.agreement', 'contract_id', string='Agreements')
     expense_ids = fields.One2many('amc.contract.expense', 'contract_id', string='Expenses')
+    asset_ids = fields.One2many('amc.contract.asset', 'contract_id', string='Assets')
+    audit_schedule_ids = fields.One2many('amc.contract.audit.schedule', 'contract_id', string='Audit Schedules')
     
     # Other Information
     other_info = fields.Html(string='Other Info', help='Additional information and notes')
@@ -96,6 +126,49 @@ class AMCContract(models.Model):
         for record in self:
             completed_visits = len(record.service_schedule_ids.filtered(lambda s: s.status == 'completed'))
             record.completion_pending = max(0, record.number_of_visits - completed_visits)
+
+    @api.depends('analytic_account_id', 'service_schedule_ids', 'audit_schedule_ids', 'quotation_ids')
+    def _compute_smart_counts(self):
+        """Compute counts for smart buttons"""
+        for record in self:
+            record.display_visit_count = len(record.service_schedule_ids)
+            record.display_audit_count = len(record.audit_schedule_ids)
+            record.display_quotation_count = len(record.quotation_ids)
+            
+            # Financial Counts based on Analytic Account
+            if record.analytic_account_id:
+                # Sales
+                record.display_sale_count = self.env['sale.order'].search_count([
+                    ('analytic_account_id', '=', record.analytic_account_id.id)
+                ])
+                # Purchases (Check if model and field exist)
+                if 'purchase.order' in self.env:
+                    # Logic: Check if PO has analytic_account_id (header) OR search lines
+                    # Using improved search for lines
+                    record.display_purchase_count = self.env['purchase.order'].search_count([
+                        ('id', 'in', self.env['purchase.order.line'].search([
+                            ('analytic_distribution', 'ilike', str(record.analytic_account_id.id))
+                        ]).mapped('order_id').ids)
+                    ])
+                else:
+                    record.display_purchase_count = 0
+                    
+                # Expenses
+                record.display_expense_count = self.env['hr.expense'].search_count([
+                    ('analytic_distribution', 'ilike', str(record.analytic_account_id.id))
+                ])
+                
+                # Invoices (Customer Invoices + Vendor Bills linked to analytic account?)
+                # Usually we track Revenue (Invoices)
+                record.display_invoice_count = self.env['account.move'].search_count([
+                    ('move_type', 'in', ['out_invoice', 'out_refund']),
+                    ('invoice_line_ids.analytic_distribution', 'ilike', str(record.analytic_account_id.id))
+                ])
+            else:
+                record.display_sale_count = 0
+                record.display_purchase_count = 0
+                record.display_expense_count = 0
+                record.display_invoice_count = 0
 
     @api.depends('stage_id')
     def _compute_state(self):
@@ -268,6 +341,18 @@ class AMCContract(models.Model):
             
             # Update stage to Confirmed
             contract.write({'stage_id': confirmed_stage.id})
+            
+            # Create/Link Analytic Account
+            if not contract.analytic_account_id:
+                # Find a default plan (required in newer Odoo versions)
+                default_plan = self.env['account.analytic.plan'].search([], limit=1)
+                if default_plan:
+                    analytic_account = self.env['account.analytic.account'].create({
+                        'name': self.name or f'AMC/{self.id}',
+                        'partner_id': self.customer_id.id,
+                        'plan_id': default_plan.id,
+                    })
+                    contract.analytic_account_id = analytic_account.id
         
         return True
 
@@ -361,6 +446,111 @@ class AMCContract(models.Model):
             }
         return True
 
+    def action_generate_service_schedule(self):
+        """Generate service schedule based on frequency"""
+        if not self.start_date or not self.end_date:
+            raise UserError('Please set start date and end date first.')
+        
+        visit_records = []
+        current_date = self.start_date
+        
+        if self.visit_frequency == 'manual':
+            return self.action_create_visits()
+            
+        frequency_months = {
+            'monthly': 1,
+            'quarterly': 3,
+            'half_yearly': 6,
+            'yearly': 12
+        }
+        
+        months = frequency_months.get(self.visit_frequency, 0)
+        if not months:
+            return
+            
+        i = 1
+        while current_date <= self.end_date:
+            visit_records.append({
+                'contract_id': self.id,
+                'service_date': current_date,
+                'service_type': f'{dict(self._fields["visit_frequency"].selection).get(self.visit_frequency)} Visit {i}',
+                'status': 'scheduled',
+            })
+            # Add months to current date
+            year = current_date.year + (current_date.month + months - 1) // 12
+            month = (current_date.month + months - 1) % 12 + 1
+            # Handle day clamping (e.g. adjacent to 31st)
+            day = min(current_date.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+            current_date = date(year, month, day)
+            i += 1
+            
+        # Clear existing scheduled visits if needed or just add new ones? 
+        # Usually better to clear explicitly or warn. For now appending.
+        if visit_records:
+            self.env['amc.contract.service.schedule'].create(visit_records)
+            self.number_of_visits = len(self.service_schedule_ids) # Update count
+            
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Success',
+                'message': f'{len(visit_records)} visits generated.',
+                'type': 'success',
+                'sticky': False,
+            }
+        }
+
+    def action_generate_audit_schedule(self):
+        """Generate audit schedule based on frequency"""
+        if not self.start_date or not self.end_date:
+            raise UserError('Please set start date and end date first.')
+            
+        audit_records = []
+        current_date = self.start_date
+        
+        if self.audit_frequency == 'manual':
+             # Manual logic handled separately or UI based
+             return 
+            
+        frequency_months = {
+            'half_yearly': 6,
+            'yearly': 12
+        }
+        months = frequency_months.get(self.audit_frequency, 0)
+        
+        # Start first audit 'months' after start date or on start date? 
+        # Usually audits are periodic. Let's start after period or same day?
+        # Standard: Start same day or + period? Let's assume periodic intervals.
+        
+        i = 1
+        while current_date <= self.end_date:
+            audit_records.append({
+                'contract_id': self.id,
+                'audit_date': current_date,
+                'status': 'scheduled',
+            })
+            year = current_date.year + (current_date.month + months - 1) // 12
+            month = (current_date.month + months - 1) % 12 + 1
+            day = min(current_date.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+            current_date = date(year, month, day)
+            i += 1
+            
+        if audit_records:
+            self.env['amc.contract.audit.schedule'].create(audit_records)
+            self.number_of_audits = len(self.audit_schedule_ids)
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Success',
+                'message': f'{len(audit_records)} audits generated.',
+                'type': 'success',
+                'sticky': False,
+            }
+        }
+
     def action_create_sale(self):
         """Create sale order from contract"""
         # Create sale order from contract
@@ -392,5 +582,89 @@ class AMCContract(models.Model):
                 'type': 'info',
                 'sticky': False,
             }
+        }
+            
+    # Smart Button Actions
+    def action_view_sales(self):
+        self.ensure_one()
+        return {
+            'name': 'Sale Orders',
+            'type': 'ir.actions.act_window',
+            'res_model': 'sale.order',
+            'view_mode': 'list,form',
+            'domain': [('analytic_account_id', '=', self.analytic_account_id.id)],
+            'context': {'default_analytic_account_id': self.analytic_account_id.id, 'default_partner_id': self.customer_id.id}
+        }
+
+    def action_view_purchases(self):
+        self.ensure_one()
+        domain = [('id', 'in', self.env['purchase.order.line'].search([
+                            ('analytic_distribution', 'ilike', str(self.analytic_account_id.id))
+                        ]).mapped('order_id').ids)]
+        return {
+            'name': 'Purchase Orders',
+            'type': 'ir.actions.act_window',
+            'res_model': 'purchase.order',
+            'view_mode': 'list,form',
+            'domain': domain,
+            # Context for creation might be tricky with analytic distribution map, simplified:
+            'context': {'default_partner_id': self.customer_id.id} 
+        }
+
+    def action_view_expenses(self):
+        self.ensure_one()
+        return {
+            'name': 'Expenses',
+            'type': 'ir.actions.act_window',
+            'res_model': 'hr.expense',
+            'view_mode': 'list,form',
+            'domain': [('analytic_distribution', 'ilike', str(self.analytic_account_id.id))],
+            'context': {'default_analytic_distribution': {str(self.analytic_account_id.id): 100}}
+        }
+
+    def action_view_invoices(self):
+        self.ensure_one()
+        return {
+            'name': 'Invoices',
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'view_mode': 'list,form',
+            'domain': [('move_type', 'in', ['out_invoice', 'out_refund']),
+                       ('invoice_line_ids.analytic_distribution', 'ilike', str(self.analytic_account_id.id))],
+            'context': {'default_partner_id': self.customer_id.id, 'default_move_type': 'out_invoice'}
+        }
+
+    def action_view_quotations(self):
+        self.ensure_one()
+        # View linked Quotations (custom model)
+        return {
+            'name': 'Quotations',
+            'type': 'ir.actions.act_window',
+            'res_model': 'amc.contract.quotation',
+            'view_mode': 'list,form',
+            'domain': [('contract_id', '=', self.id)],
+            'context': {'default_contract_id': self.id}
+        }
+        
+    def action_view_schedules(self):
+        self.ensure_one()
+        return {
+            'name': 'Service Schedules',
+            'type': 'ir.actions.act_window',
+            'res_model': 'amc.contract.service.schedule',
+            'view_mode': 'list,form',
+            'domain': [('contract_id', '=', self.id)],
+            'context': {'default_contract_id': self.id}
+        }
+
+    def action_view_audits(self):
+        self.ensure_one()
+        return {
+            'name': 'Audit Schedules',
+            'type': 'ir.actions.act_window',
+            'res_model': 'amc.contract.audit.schedule',
+            'view_mode': 'list,form',
+            'domain': [('contract_id', '=', self.id)],
+            'context': {'default_contract_id': self.id}
         }
 

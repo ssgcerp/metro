@@ -50,6 +50,37 @@
 
 					</header>
 					<sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_amc" type="object" class="oe_stat_button" icon="fa-file-text-o" invisible="not amc_contract_id">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">AMC</span>
+                                </div>
+                            </button>
+                            <button name="action_view_documents" type="object" class="oe_stat_button" icon="fa-file-text-o">
+                                <field name="document_count" widget="statinfo" string="Documents"/>
+                            </button>
+                             <button name="action_view_tasks" type="object" class="oe_stat_button" icon="fa-tasks">
+                                <field name="task_count" widget="statinfo" string="Tasks"/>
+                            </button>
+                             <button name="action_view_deliveries" type="object" class="oe_stat_button" icon="fa-truck">
+                                <field name="delivery_count" widget="statinfo" string="Indents"/>
+                            </button>
+                             <button name="action_view_expenses" type="object" class="oe_stat_button" icon="fa-credit-card">
+                                <field name="expense_count" widget="statinfo" string="Expenses"/>
+                            </button>
+                             <button name="action_view_invoices" type="object" class="oe_stat_button" icon="fa-pencil-square-o">
+                                <field name="invoice_count" widget="statinfo" string="Income"/>
+                            </button>
+                             <button name="action_view_sales" type="object" class="oe_stat_button" icon="fa-usd">
+                                <field name="sale_count" widget="statinfo" string="Sales"/>
+                            </button>
+                             <button name="action_view_stocks" type="object" class="oe_stat_button" icon="fa-cube">
+                                <field name="stock_count" widget="statinfo" string="Products"/>
+                            </button>
+                             <button name="action_view_approvals" type="object" class="oe_stat_button" icon="fa-check-square-o">
+                                <field name="approval_count" widget="statinfo" string="Approvals"/>
+                            </button>
+                        </div>
 						<div class="oe_title">
 							<label for="project_code" string="Project code"/>
 							<h1>
@@ -109,17 +140,35 @@
 										<field name="branch_id" options="{'no_open': True, 'no_create': True}"/>
 										<field name="currency_id" options="{'no_open': True}"/>
 									</group>
-									<group>
-										<field name="project_code" readonly="1"/>
-										<field name="is_confirmed" readonly="1"/>
-									</group>
+						<group>
+									<field name="project_code" readonly="1"/>
+									<field name="is_confirmed" readonly="1"/>
 								</group>
-							</page>
-						</notebook>
-					</sheet>
-				</form>
-			</field>
-		</record>
+							</group>
+                            <separator string="Project Members Allocation"/>
+                            <field name="member_allocation_ids"/>
+						</page>
+					</notebook>
+				</sheet>
+			</form>
+		</field>
+	</record>
+
+    <!-- Project Member Allocation List View -->
+    <record id="view_project_member_allocation_list" model="ir.ui.view">
+        <field name="name">project.member.allocation.list</field>
+        <field name="model">project.member.allocation</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="role_id"/>
+                <field name="allocation_percent" widget="percentage"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="notes" optional="hide"/>
+            </list>
+        </field>
+    </record>
 	</data>
 	<!-- Re-point default actions to open this dashboard form -->
 	<data noupdate="0">
