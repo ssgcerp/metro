@@ -22,6 +22,9 @@
         'sms',
         'account',
         'amc_contracts',
+        'sale',
+        'purchase',
+        'hr_expense',
     ],
     'data': [
         'security/ir.model.access.csv',
