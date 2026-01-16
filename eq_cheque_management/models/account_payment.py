@@ -15,6 +15,12 @@ class AccountPayment(models.Model):
         copy=False,
         default=False,
     )
+    cheque_date = fields.Date(
+        string='Effective Date',
+        help='Date mentioned on the cheque',
+        copy=False,
+        default=False,
+    )
 
     # =========================== Compute functions =========================== #
     @api.depends('payment_method_line_id.code', 'check_number')

@@ -14,6 +14,9 @@
                            invisible="payment_method_code not in ['pdc', 'pdc_in', 'pdc_out']"
                            required="payment_method_code in ['pdc', 'pdc_in', 'pdc_out']"
                            help="Effective date for Post Dated Cheque (PDC)"/>
+                    <field name="cheque_date"
+                           invisible="payment_method_code != 'check_printing'"
+                           help="Date mentioned on the cheque"/>
                     <field name="bank_reference" 
                            readonly="state != 'draft'"
                            help="Bank reference number"/>
