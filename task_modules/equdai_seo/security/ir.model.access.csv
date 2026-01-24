@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_gsc_site,google.search.console.site,model_google_search_console_site,base.group_user,1,1,1,1
+access_gsc_report,google.search.console.report,model_google_search_console_report,base.group_user,1,1,1,1
+access_seo_external_audit,seo.external.audit,model_seo_external_audit,base.group_user,1,1,1,1

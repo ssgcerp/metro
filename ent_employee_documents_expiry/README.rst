@@ -1,10 +1,10 @@
 .. image:: https://img.shields.io/badge/license-OPL--1-red.svg
-    :target: https://www.odoo.com/documentation/18.0/legal/licenses.html#odoo-apps
+    :target: https://www.odoo.com/documentation/17.0/legal/licenses.html#odoo-apps
     :alt: License: OPL-1
 
-Enterprise OpenHRMS Employee Documents
+Enterprise EQ-HR Employee Documents
 =======================================
-Supporting Addon for OpenHRMS, Manages Employee Related Documents.
+Supporting Addon for EQ-HR, Manages Employee Related Documents.
 
 Configuration
 ============
@@ -12,21 +12,22 @@ Configuration
 
 Company
 -------
-* `Cybrosys Techno Solutions <https://cybrosys.com/>`__
+* `Equdai Software Solutions <https://equdai.ae/>`__
 
 License
 =======
 Odoo Proprietary License, Version 1.0 (OPL-1)
-(https://www.odoo.com/documentation/18.0/legal/licenses.html#odoo-apps)
+(https://www.odoo.com/documentation/17.0/legal/licenses.html#odoo-apps)
 
 Credits
 =======
-* Developers:
-            (V18) Arjun S,
-            (V17) Sruthi Pavithran
-            (V16) Archana V
-            Nilmar Shereef,
-  Contact: odoo@cybrosys.com
+* Developers: 	(V17) Sruthi Pavithran
+                (V16) Archana V
+                      Nilmar Shereef,
+
+Contacts
+--------
+* Contact : odoo@equdai.ae
 
 Bug Tracker
 -----------
@@ -34,12 +35,12 @@ Bugs are tracked on GitHub Issues. In case of trouble, please check there if you
 
 Maintainer
 ==========
-.. image:: https://cybrosys.com/images/logo.png
-   :target: https://cybrosys.com
+.. image:: https://equdai.ae/images/logo.png
+   :target: https://equdai.ae
 
-This module is maintained by Cybrosys Technologies.
+This module is maintained by Equdai.
 
-For support and more information, please visit `Our Website <https://cybrosys.com/>`__
+For support and more information, please visit `Our Website <https://equdai.ae/>`__
 
 Further information
 ===================

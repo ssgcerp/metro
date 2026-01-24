@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Workload Pivot View -->
+    <record id="view_task_workload_pivot" model="ir.ui.view">
+        <field name="name">project.task.workload.pivot</field>
+        <field name="model">project.task</field>
+        <field name="arch" type="xml">
+            <pivot string="Workload Analysis" sample="1">
+                <field name="user_ids" type="row"/>
+                <field name="date_deadline" interval="week" type="col"/>
+                <field name="allocated_hours" type="measure"/>
+                <field name="effective_hours" type="measure"/>
+                <field name="remaining_hours" type="measure"/>
+                <field name="color" invisible="1"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Workload Graph View -->
+    <record id="view_task_workload_graph" model="ir.ui.view">
+        <field name="name">project.task.workload.graph</field>
+        <field name="model">project.task</field>
+        <field name="arch" type="xml">
+            <graph string="Workload Analysis" sample="1" type="bar" stacked="1">
+                <field name="user_ids"/>
+                <field name="date_deadline" interval="week"/>
+                <field name="allocated_hours" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Workload Action -->
+    <record id="action_workload_analysis" model="ir.actions.act_window">
+        <field name="name">Workload &amp; Capacity</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">pivot,graph</field>
+        <field name="view_id" ref="view_task_workload_pivot"/>
+        <field name="domain">[('user_ids', '!=', False)]</field>
+        <field name="context">{
+            'search_default_group_by_user': 1, 
+            'search_default_group_by_deadline': 1,
+            'pivot_measures': ['allocated_hours']
+        }</field>
+    </record>
+
+    <!-- Menu Item (Project > Reporting) -->
+    <menuitem id="menu_workload_analysis"
+              name="Workload Analysis"
+              parent="project.menu_project_report"
+              action="action_workload_analysis"
+              sequence="25"/>
+</odoo>

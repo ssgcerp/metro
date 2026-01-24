@@ -22,8 +22,8 @@
         </field>
     </record>
     <!--Tree view of the model hr.document-->
-    <record id='hr_document_view_list' model='ir.ui.view'>
-        <field name="name">hr.document.view.list</field>
+    <record id='hr_document_tree_view' model='ir.ui.view'>
+        <field name="name">hr.document.tree</field>
         <field name="model">hr.document</field>
         <field name="arch" type="xml">
             <list>

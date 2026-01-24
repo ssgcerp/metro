@@ -1,0 +1,51 @@
+# -*- coding: utf-8 -*-
+#############################################################################
+#
+#    Cybrosys Technologies Pvt. Ltd.
+#
+#    Copyright (C) 2024-TODAY Cybrosys Technologies(<https://www.cybrosys.com>).
+#    Author: Jumana Haseen (<https://www.cybrosys.com>)
+#
+#    You can modify it under the terms of the GNU AFFERO
+#    GENERAL PUBLIC LICENSE (AGPL v3), Version 3.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU AFFERO GENERAL PUBLIC LICENSE (AGPL v3) for more details.
+#
+#    You should have received a copy of the GNU AFFERO GENERAL PUBLIC LICENSE
+#    (AGPL v3) along with this program.
+#    If not, see <http://www.gnu.org/licenses/>.
+#
+#############################################################################
+from odoo import api, fields, models
+from datetime import datetime
+
+import logging
+
+_logger = logging.getLogger(__name__)
+
+class MaterialRequisitionApproverStage(models.Model):
+    """This class creates a model 'material.requisition.approver.stage' and adds
+    required fields"""
+    _name = 'material.requisition.approver.stage'
+    _description = 'Material Requisition Approvers Stage Details'
+
+
+    requisition_id = fields.Many2one('purchase.requisition', string='Requisition Id')
+    approver_id = fields.Many2one(
+        'res.groups', 
+        string='Approver',
+    )
+    status = fields.Selection([('0', 'Request Approval'), ('1', 'Approved'),('2', 'Auto Approved'),('3', 'Declined')], 'Status',default='0')
+    send_time = fields.Datetime('Send Time', default=datetime.now())
+    approved_time = fields.Datetime('Approved Time')
+    visible_flag = fields.Boolean(string="visible flag",
+                                              help='Enable this field '
+                                                   'for button visibility')
+    remark = fields.Char(default='Request Approval', string="Remark")
+
+
+
+

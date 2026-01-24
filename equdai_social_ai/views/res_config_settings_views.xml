@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_social_ai" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.social.ai</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='emails']" position="before">
+                <block title="Social AI Content" id="social_ai_settings">
+                    <setting help="Choose your AI Content Generator Provider">
+                        <field name="ai_provider" widget="radio"/>
+                        <div class="row mt16">
+                            <div class="col-12" invisible="ai_provider != 'openai'">
+                                <label for="openai_api_key" string="OpenAI Key"/>
+                                <field name="openai_api_key" password="True"/>
+                            </div>
+                            <div class="col-12" invisible="ai_provider != 'gemini'">
+                                <label for="gemini_api_key" string="Gemini Key"/>
+                                <field name="gemini_api_key" password="True"/>
+                            </div>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

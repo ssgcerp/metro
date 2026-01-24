@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_google_credentials,google.credentials,model_google_credentials,base.group_user,1,1,1,1
+access_google_business_profile,google.business.profile,model_google_business_profile,base.group_user,1,1,1,1
+access_google_review,google.review,model_google_review,base.group_user,1,1,1,1
+access_google_post,google.post,model_google_post,base.group_user,1,1,1,1
+access_google_service,google.service,model_google_service,base.group_user,1,1,1,1

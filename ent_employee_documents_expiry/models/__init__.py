@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 ################################################################################
 #
-#    A part of OpenHRMS Project <https://www.openhrms.com>
+#    A part of EQ-HR Project <https://www.equdai.ae>
 #
-#    Copyright (C) 2025-TODAY Cybrosys Technologies(<https://www.cybrosys.com>).
-#    Author: Cybrosys Techno Solutions (odoo@cybrosys.com)
+#    Copyright (C) 2024-TODAY Equdai(<https://www.equdai.ae>).
+#    Author: Equdai Software Solutions (odoo@equdai.ae)
 #
 #    This program is under the terms of the Odoo Proprietary License v1.0
 #    (OPL-1)
@@ -20,8 +20,8 @@
 #    USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 ################################################################################
+from . import hr_employee_document
 from . import document_type
 from . import hr_document
 from . import hr_employee
-from . import hr_employee_document
 from . import ir_attachment

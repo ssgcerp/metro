@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 ################################################################################
 #
-#    A part of OpenHRMS Project <https://www.openhrms.com>
+#    A part of EQ-HR Project <https://www.equdai.ae>
 #
-#    Copyright (C) 2025-TODAY Cybrosys Technologies(<https://www.cybrosys.com>).
-#    Author: Cybrosys Techno Solutions (odoo@cybrosys.com)
+#    Copyright (C) 2024-TODAY Equdai(<https://www.equdai.ae>).
+#    Author: Equdai Software Solutions (odoo@equdai.ae)
 #
 #    This program is under the terms of the Odoo Proprietary License v1.0
 #    (OPL-1)
@@ -21,7 +21,7 @@
 #
 ################################################################################
 {
-    'name': 'Enterprise Open HRMS Employee Documents',
+    'name': 'Enterprise EQHRMS Employee Documents',
     'version': '19.0.1.0.0',
     'category': 'Generic Modules/Human Resources',
     'summary': """Manages Employee Documents With Expiry Notifications.""",
@@ -30,11 +30,11 @@
      must be saved and used accordingly.This module helps to  store and manage
      the employee related documents like certificates, appraisal reports, 
      passport,license etc""",
-    'live_test_url': 'https://www.youtube.com/watch?v=Wc__1NkMHko&feature=youtu.be',
-    'author': "Cybrosys Techno Solutions,Open HRMS",
-    'company': 'Cybrosys Techno Solutions',
-    'maintainer': 'Cybrosys Techno Solutions',
-    'website': "https://www.openhrms.com",
+    #'live_test_url': 'https://www.youtube.com/watch?v=Wc__1NkMHko&feature=youtu.be',
+    'author': "Equdai Software Solutions,EQHRMS",
+    'company': 'Equdai Software Solutions',
+    'maintainer': 'Equdai Software Solutions',
+    'website': "https://www.equdai.ae",
     'depends': ['hr'],
     'data': [
         'data/ir_cron_data.xml',
@@ -45,12 +45,12 @@
         'views/hr_employee_views.xml',
     ],
     'demo': [
-        'demo/document_type_demo.xml',
-        'demo/hr_work_location_demo.xml',
-        'demo/hr_employee_demo.xml',
-        'demo/hr_employee_document_demo.xml',
+        'data/document_type_demo.xml',
+        'data/hr_work_location_demo.xml',
+        'data/hr_employee_demo.xml',
+        'data/hr_employee_document_demo.xml',
     ],
-    'images': ['static/description/banner.jpg'],
+    'images': ['static/description/banner.png'],
     'license': 'OPL-1',
     'installable': True,
     'auto_install': False,

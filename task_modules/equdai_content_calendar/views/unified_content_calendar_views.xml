@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Calendar View -->
+    <record id="view_unified_content_calendar" model="ir.ui.view">
+        <field name="name">unified.content.calendar.calendar</field>
+        <field name="model">unified.content.calendar</field>
+        <field name="arch" type="xml">
+            <calendar string="Content Calendar" 
+                      date_start="date_start" 
+                      date_stop="date_stop" 
+                      color="platform" 
+                      mode="month"
+                      quick_create="0"
+                      event_open_popup="0">
+                <field name="name"/>
+                <field name="platform"/>
+                <field name="state"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- List View -->
+    <record id="view_unified_content_list" model="ir.ui.view">
+        <field name="name">unified.content.calendar.list</field>
+        <field name="model">unified.content.calendar</field>
+        <field name="arch" type="xml">
+            <list string="Content List" create="false" edit="false" delete="false">
+                <field name="date_start"/>
+                <field name="name"/>
+                <field name="platform"/>
+                <field name="state" widget="badge" 
+                       decoration-info="state == 'draft'" 
+                       decoration-success="state == 'posted'"/>
+                <button name="action_open_record" type="object" string="View" icon="fa-external-link"/>
+            </list>
+        </field>
+    </record>
+
+
+    <!-- Action -->
+    <record id="action_unified_content_calendar" model="ir.actions.act_window">
+        <field name="name">Unified Content Calendar</field>
+        <field name="res_model">unified.content.calendar</field>
+        <field name="view_mode">calendar,list</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Top Level Menu (New Content Hub) -->
+    <menuitem id="menu_unified_content_hub_root" 
+              name="Content Hub" 
+              web_icon="equdai_content_calendar,static/description/icon.png"
+              sequence="20"/>
+
+    <menuitem id="menu_unified_content_calendar" 
+              name="Calendar" 
+              parent="menu_unified_content_hub_root" 
+              action="action_unified_content_calendar" 
+              sequence="10"/>
+
+</odoo>

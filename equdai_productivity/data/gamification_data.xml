@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Goal Definitions -->
+    <record id="definition_tasks_completed" model="gamification.goal.definition">
+        <field name="name">Tasks Completed</field>
+        <field name="description">Number of tasks moved to 'Done' state</field>
+        <field name="computation_mode">count</field>
+        <field name="model_id" ref="project.model_project_task"/>
+        <field name="domain">[('state', '=', '1_done'), ('user_ids', 'in', user.id)]</field>
+        <field name="condition">higher</field>
+        <field name="display_mode">progress</field>
+    </record>
+
+    <record id="definition_gmb_reviews_replied" model="gamification.goal.definition">
+        <field name="name">GMB Reviews Replied</field>
+        <field name="description">Number of Google Business Reviews replied to</field>
+        <field name="computation_mode">count</field>
+        <field name="model_id" ref="equdai_gmb.model_google_review"/>
+        <field name="domain">[('is_replied', '=', True)]</field> <!-- Cannot filter by user easily on review, relying on generic count for now or need write_uid -->
+        <field name="condition">higher</field>
+        <field name="display_mode">progress</field>
+    </record>
+
+    <!-- Monthly Challenge -->
+    <record id="challenge_productivity_monthly" model="gamification.challenge">
+        <field name="name">Monthly Productivity Challenge</field>
+        <field name="period">monthly</field>
+        <field name="visibility_mode">ranking</field>
+        <field name="report_message_frequency">weekly</field>
+        <field name="manager_id" ref="base.user_admin"/>
+        <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/> <!-- Add Admin by default, others need to be added manually or via a wizard -->
+        <field name="state">inprogress</field>
+    </record>
+
+    <!-- Challenge Lines (Linking Goals to Challenge) -->
+    <record id="line_tasks_completed" model="gamification.challenge.line">
+        <field name="challenge_id" ref="challenge_productivity_monthly"/>
+        <field name="definition_id" ref="definition_tasks_completed"/>
+        <field name="target_goal">20</field> <!-- Target: 20 tasks per month -->
+    </record>
+
+    <record id="line_reviews_replied" model="gamification.challenge.line">
+        <field name="challenge_id" ref="challenge_productivity_monthly"/>
+        <field name="definition_id" ref="definition_gmb_reviews_replied"/>
+        <field name="target_goal">50</field> <!-- Target: 50 reviews per month -->
+    </record>
+
+</odoo>

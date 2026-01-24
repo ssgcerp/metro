@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Page List View Extension -->
+    <record id="view_website_pages_tree_inherit_seo" model="ir.ui.view">
+        <field name="name">website.page.list.inherit.seo</field>
+        <field name="model">website.page</field>
+        <field name="inherit_id" ref="website.website_pages_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                 <field name="seo_score" widget="progressbar"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Page Form View Extension -->
+    <record id="view_website_pages_form_inherit_seo" model="ir.ui.view">
+        <field name="name">website.page.form.inherit.seo</field>
+        <field name="model">website.page</field>
+        <field name="inherit_id" ref="website.website_pages_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <field name="seo_notes" widget="html" readonly="1" class="mt-4 p-3 bg-light border rounded"/>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Action for SEO Audit -->
+    <record id="action_website_seo_audit" model="ir.actions.act_window">
+        <field name="name">On-Page SEO Audit</field>
+        <field name="res_model">website.page</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="website.website_pages_tree_view"/>
+        <field name="domain">[('is_published', '=', True)]</field>
+        <field name="context">{'search_default_group_by_url': 0}</field>
+    </record>
+
+    <menuitem id="menu_seo_audit" parent="menu_equdai_seo_root" action="action_website_seo_audit" sequence="30"/>
+
+</odoo>

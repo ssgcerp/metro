@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_social_ai_generator_form" model="ir.ui.view">
+        <field name="name">social.ai.generator.form</field>
+        <field name="model">social.ai.generator</field>
+        <field name="arch" type="xml">
+            <form string="AI Content Generator">
+                <group>
+                    <field name="topic" placeholder="e.g. New Summer Sale launching this Friday!"/>
+                    <group>
+                        <field name="platform"/>
+                        <field name="tone"/>
+                    </group>
+                </group>
+                <field name="generated_content" placeholder="Generated text will appear here..." widget="text" style="height: 200px;"/>
+                <footer>
+                    <button name="action_generate" string="Generate" type="object" class="btn-primary"/>
+                    <button name="action_use_content" string="Use This Content" type="object" class="btn-success" invisible="not generated_content"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_social_ai_generator" model="ir.actions.act_window">
+        <field name="name">AI Content Generator</field>
+        <field name="res_model">social.ai.generator</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

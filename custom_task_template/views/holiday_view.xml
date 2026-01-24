@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    
+    <!-- Holiday Tree View -->
+    <record id="view_task_holiday_tree" model="ir.ui.view">
+        <field name="name">task.holiday.tree</field>
+        <field name="model">task.holiday</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+
+            </list>
+        </field>
+    </record>
+
+    <!-- Holiday Form View -->
+    <record id="view_task_holiday_form" model="ir.ui.view">
+        <field name="name">task.holiday.form</field>
+        <field name="model">task.holiday</field>
+        <field name="arch" type="xml">
+            <form string="Task Holiday">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="select_day" widget="many2many_tags"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+     <record id="action_task_holiday" model="ir.actions.act_window">
+        <field name="name">Holidays</field>
+        <field name="res_model">task.holiday</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p>Create and manage holidays here.</p>
+        </field>
+    </record>
+    <menuitem id="menu_task_holiday_action"
+              name="Holidays"
+              parent="menu_task_settings"
+              action="action_task_holiday"
+              sequence="50"/>
+
+
+</odoo>

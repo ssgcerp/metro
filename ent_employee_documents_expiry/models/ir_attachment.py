@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 ################################################################################
 #
-#    A part of OpenHRMS Project <https://www.openhrms.com>
+#    A part of EQ-HR Project <https://www.equdai.ae>
 #
-#    Copyright (C) 2025-TODAY Cybrosys Technologies(<https://www.cybrosys.com>).
-#    Author: Cybrosys Techno Solutions (odoo@cybrosys.com)
+#    Copyright (C) 2024-TODAY Equdai(<https://www.equdai.ae>).
+#    Author: Equdai Software Solutions (odoo@equdai.ae)
 #
 #    This program is under the terms of the Odoo Proprietary License v1.0
 #    (OPL-1)
@@ -33,11 +33,11 @@ class IrAttachment(models.Model):
                                           column2='doc_id',
                                           string="Attachment",
                                           help="Attachment.",
-                                          invisible=True)
+                                          invisible=1)
     attach_rel_ids = fields.Many2many(comodel_name='hr.document',
                                       relation='attach_ids',
                                       column1='attachment_id3',
                                       column2='document_id',
                                       string="Attachment",
                                       help="Attachments.",
-                                      invisible=True)
+                                      invisible=1)

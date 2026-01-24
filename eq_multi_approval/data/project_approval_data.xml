@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <!--    To make fields approve_boq_project true
+     while installing the module -->
+    <data noupdate="1">
+        <record id="default_project_multi_approval_config"
+                model="project.approval">
+            <field name="approve_boq_project">True</field>
+            <field name="boq_approver_ids" eval="[(6, 0, [ ref('base.user_admin')])]"/>
+            <field name="approve_material_requisition">True</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,16 @@
+id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
+access_task_role,access.task.role,model_task_role,base.group_user,1,1,1,1
+access_task_template_group,access.task.template.group,model_task_template_group,base.group_user,1,1,1,1
+access_task_template_sub_group,access.task.template.sub.group,model_task_template_sub_group,base.group_user,1,1,1,1
+access_task_platform,access.task.platform,model_task_platform,base.group_user,1,1,1,1
+access_task_holiday,access.task.holiday,model_task_holiday,base.group_user,1,1,1,1
+access_task_holiday_day,access.task.holiday.day,model_task_holiday_day,base.group_user,1,1,1,1
+access_task_template,access.task.template,model_task_template,base.group_user,1,1,1,1
+access_task_template_checklist,access.task.template.checklist,model_task_template_checklist,base.group_user,1,1,1,1
+access_apply_task_template_wizard,access.apply.task.template.wizard,model_apply_task_template_wizard,base.group_user,1,1,1,1
+access_project_task_member,access.project.task.member,model_project_task_member,base.group_user,1,1,1,1
+access_project_task_wizard,access.project.task.wizard,model_project_task_wizard,base.group_user,1,1,1,1
+access_project_social_media,access.project.social.media,model_project_social_media,base.group_user,1,1,1,1
+access_project_type,access.project.type,model_project_type,base.group_user,1,1,1,1
+access_task_content_type,access.task.content.type,model_task_content_type,base.group_user,1,1,1,1
+access_task_content_pillar,access.task.content.pillar,model_task_content_pillar,base.group_user,1,1,1,1

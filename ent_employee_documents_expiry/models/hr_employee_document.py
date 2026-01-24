@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 ################################################################################
 #
-#    A part of OpenHRMS Project <https://www.openhrms.com>
+#    A part of EQ-HR Project <https://www.equdai.ae>
 #
-#    Copyright (C) 2025-TODAY Cybrosys Technologies(<https://www.cybrosys.com>).
-#    Author: Cybrosys Techno Solutions (odoo@cybrosys.com)
+#    Copyright (C) 2024-TODAY Equdai(<https://www.equdai.ae>).
+#    Author: Equdai Software Solutions (odoo@equdai.ae)
 #
 #    This program is under the terms of the Odoo Proprietary License v1.0
 #    (OPL-1)
@@ -48,10 +48,10 @@ class HrEmployeeDocuments(models.Model):
                             'body_html': mail_content,
                             'email_to': record.employee_ref_id.work_email,
                         }
-                        mail = self.env['mail.mail'].create(main_content)
-                        mail.send()
+                        self.env['mail.mail'].create(main_content).send()
                 elif record.notification_type == 'multi':
-                    exp_date = record.expiry_date - timedelta(days=record.before_days)
+                    exp_date = fields.Date.from_string(
+                        record.expiry_date) - timedelta(days=record.before_days)
                     if date_now == exp_date or date_now == record.expiry_date:
                         mail_content = ("  Hello  " + record.employee_ref_id.
                                         name + ",<br>Your Document " +
@@ -65,10 +65,10 @@ class HrEmployeeDocuments(models.Model):
                             'body_html': mail_content,
                             'email_to': record.employee_ref_id.work_email,
                         }
-                        mail = self.env['mail.mail'].create(main_content)
-                        mail.send()
+                        self.env['mail.mail'].create(main_content).send()
                 elif record.notification_type == 'everyday':
-                    exp_date = record.expiry_date - timedelta(days=record.before_days)
+                    exp_date = fields.Date.from_string(
+                        record.expiry_date) - timedelta(days=record.before_days)
                     if exp_date <= date_now <= record.expiry_date:
                         mail_content = ("  Hello  " +
                                         record.employee_ref_id.name
@@ -83,10 +83,10 @@ class HrEmployeeDocuments(models.Model):
                             'body_html': mail_content,
                             'email_to': record.employee_ref_id.work_email,
                         }
-                        mail = self.env['mail.mail'].create(main_content)
-                        mail.send()
+                        self.env['mail.mail'].create(main_content).send()
                 elif record.notification_type == 'everyday_after':
-                    exp_date = record.expiry_date + timedelta(days=record.before_days)
+                    exp_date = fields.Date.from_string(
+                        record.expiry_date) + timedelta(days=record.before_days)
                     if record.expiry_date <= date_now <= exp_date:
                         mail_content = ("  Hello  " +
                                         record.employee_ref_id.name +
@@ -101,10 +101,10 @@ class HrEmployeeDocuments(models.Model):
                             'body_html': mail_content,
                             'email_to': record.employee_ref_id.work_email,
                         }
-                        mail = self.env['mail.mail'].create(main_content)
-                        mail.send()
+                        self.env['mail.mail'].create(main_content).send()
                 else:
-                    exp_date = record.expiry_date - timedelta(days=7)
+                    exp_date = fields.Date.from_string(
+                        record.expiry_date) - timedelta(days=7)
                     if date_now == exp_date:
                         mail_content = ("  Hello  " + record.employee_ref_id.
                                         name + ",<br>Your Document " +
@@ -118,14 +118,14 @@ class HrEmployeeDocuments(models.Model):
                             'body_html': mail_content,
                             'email_to': record.employee_ref_id.work_email,
                         }
-                        mail = self.env['mail.mail'].create(main_content)
-                        mail.send()
+                        self.env['mail.mail'].create(main_content).send()
 
     @api.constrains('expiry_date')
     def check_expr_date(self):
         for each in self:
             if each.expiry_date:
-                if each.expiry_date < date.today():
+                exp_date = fields.Date.from_string(each.expiry_date)
+                if exp_date < date.today():
                     raise UserError(_('Your Document Is Expired.'))
 
     name = fields.Char(string='Document Number', required=True, copy=False,
@@ -134,7 +134,7 @@ class HrEmployeeDocuments(models.Model):
                               help="Description about the document")
     expiry_date = fields.Date(string='Expiry Date', copy=False,
                               help="Date of expiry of documents")
-    employee_ref_id = fields.Many2one(comodel_name='hr.employee', invisible=True,
+    employee_ref_id = fields.Many2one(comodel_name='hr.employee', invisible=1,
                                       copy=False)
     doc_attachment_ids = fields.Many2many(comodel_name='ir.attachment',
                                           relation='doc_attach_rel_ids',
@@ -144,7 +144,7 @@ class HrEmployeeDocuments(models.Model):
                                           help='You can attach the copy of your'
                                                'document', copy=False)
     issue_date = fields.Date(string='Issue Date',
-                             default=fields.Date.today,
+                             default=fields.datetime.now(),
                              help="Date of issue of employee documents",
                              copy=False)
     document_type_id = fields.Many2one(comodel_name='document.type',

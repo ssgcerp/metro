@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="view_task_role_tree" model="ir.ui.view">
+        <field name="name">task.role.tree</field>
+        <field name="model">task.role</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Task Role Form View -->
+    <record id="view_task_role_form" model="ir.ui.view">
+        <field name="name">task.role.form</field>
+        <field name="model">task.role</field>
+        <field name="arch" type="xml">
+            <form string="Task Role">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_task_role" model="ir.actions.act_window">
+        <field name="name">Task Roles</field>
+        <field name="res_model">task.role</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p>Create and manage task roles here.</p>
+        </field>
+    </record>
+
+    <!-- Parent Menu: Task Settings -->
+    <menuitem id="menu_task_settings"
+              name="Task Settings"
+              parent="project.menu_main_pm"
+              sequence="50"/>
+
+    <!-- Child Menus -->
+    <menuitem id="menu_task_role"
+              name="Task Role"
+              parent="menu_task_settings"
+              action="action_task_role"
+              sequence="10"/>
+</odoo>

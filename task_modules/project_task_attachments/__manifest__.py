@@ -1,0 +1,44 @@
+# -*- coding: utf-8 -*-
+###############################################################################
+#
+#    Equdai
+#
+#    Copyright (C) 2024-TODAY Equdai(<https://equdai.ae>)
+#    Author: Equdai (odoo@equdai.ae)
+#
+#    You can modify it under the terms of the GNU AFFERO
+#    GENERAL PUBLIC LICENSE (AGPL v3), Version 3.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU AFFERO GENERAL PUBLIC LICENSE (AGPL v3) for more details.
+#
+#    You should have received a copy of the GNU AFFERO GENERAL PUBLIC LICENSE
+#    (AGPL v3) along with this program.
+#    If not, see <http://www.gnu.org/licenses/>.
+#
+###############################################################################
+{
+    'name': "Equdai Project And Task Attachments",
+    'version': '19.0.1.0.0',
+    'category': 'Project',
+    'summary': 'Helps to view all documents attached to Projects/Tasks',
+    'description': """Project and Task Attachments module allows user to view 
+    all the documents attached to projects and tasks. There is a separate
+    menu for viewing project documents and task documents. It is also 
+    possible to attach new documents to project/task from the Documents menu.""",
+    'author': 'Equdai',
+    'company': 'Equdai',
+    'maintainer': 'Equdai',
+    'website': 'https://www.equdai.ae',
+    'depends': ['base', 'project'],
+    'data': [
+        'views/ir_attachment_views.xml'
+    ],
+    'images': ['static/description/banner.png'],
+    'license': 'AGPL-3',
+    'installable': True,
+    'auto_install': False,
+    'application': False,
+}

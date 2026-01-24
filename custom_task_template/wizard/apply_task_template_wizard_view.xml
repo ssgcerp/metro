@@ -1,0 +1,24 @@
+<odoo>
+<record id="view_apply_task_template_wizard_form" model="ir.ui.view">
+    <field name="name">apply.task.template.wizard.form</field>
+    <field name="model">apply.task.template.wizard</field>
+    <field name="arch" type="xml">
+        <form string="Apply Task Template">
+            <group>
+                <group>
+                <field name="template_group_id"/>
+                <field name="template_sub_group_id" domain="[('task_template_group_id', '=', template_group_id)]"/>
+                </group>
+                <group>
+                <field name="project_id"/>
+                <field name="apply_from_date"/>
+                </group>
+            </group>
+            <footer>
+                <button string="Apply" type="object" name="apply_template" class="btn-primary"/>
+                <button string="Cancel" type="object" class="btn-secondary" special="cancel"/>
+            </footer>
+        </form>
+    </field>
+</record>
+</odoo>

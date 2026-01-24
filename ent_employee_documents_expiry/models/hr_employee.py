@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 ################################################################################
 #
-#    A part of OpenHRMS Project <https://www.openhrms.com>
+#    A part of EQ-HR Project <https://www.equdai.ae>
 #
-#    Copyright (C) 2025-TODAY Cybrosys Technologies(<https://www.cybrosys.com>).
-#    Author: Cybrosys Techno Solutions (odoo@cybrosys.com)
+#    Copyright (C) 2024-TODAY Equdai(<https://www.equdai.ae>).
+#    Author: Equdai Software Solutions (odoo@equdai.ae)
 #
 #    This program is under the terms of the Odoo Proprietary License v1.0
 #    (OPL-1)
@@ -30,9 +30,9 @@ class HrEmployee(models.Model):
     def _compute_document_count(self):
         """Compute the number of counts of employee documents"""
         for each in self:
-            each.document_count = self.env[
-                'hr.employee.document'].sudo().search_count(
+            document_ids = self.env['hr.employee.document'].sudo().search(
                 [('employee_ref_id', '=', each.id)])
+            each.document_count = len(document_ids)
 
     def action_document_view(self):
         """Detailed view of employee document"""
@@ -44,7 +44,7 @@ class HrEmployee(models.Model):
             'res_model': 'hr.employee.document',
             'type': 'ir.actions.act_window',
             'view_id': False,
-            'view_mode': 'list,form',
+            'view_mode': 'tree,form',
             'help': _('''<p class="oe_view_nocontent_create">
                            Click to Create for New Documents
                         </p>'''),

@@ -3293,7 +3293,7 @@ msgstr ".يمكن لموظف إدارة الموارد البشرية أو مد�
 #. openerp-web
 #: code:addons/ohrms_core/static/src/xml/link_view.xml:0
 #, python-format
-msgid "Open HRMS"
+msgid "EQHRMS"
 msgstr "افتح نظام إدارة الموارد البشرية"
 
 #. modules: oh_employee_check_list, ohrms_service_request
