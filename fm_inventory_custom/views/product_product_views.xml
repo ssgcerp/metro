@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Inherit Product Product List View -->
+        <record id="view_product_product_tree_inherit_brand" model="ir.ui.view">
+            <field name="name">product.product.tree.inherit.brand</field>
+            <field name="model">product.product</field>
+            <field name="inherit_id" ref="product.product_product_tree_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='categ_id']" position="after">
+                    <field name="brand_id" optional="show"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
+

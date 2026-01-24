@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- AMC Quotation Form View -->
+        <record id="view_amc_quotation_form" model="ir.ui.view">
+            <field name="name">amc.quotation.form</field>
+            <field name="model">amc.quotation</field>
+            <field name="arch" type="xml">
+                <form string="AMC Quotation">
+                    <header>
+                        <button name="action_confirm" string="Confirm" type="object" class="oe_highlight" 
+                                modifiers="{'invisible': [['status', '!=', 'draft']]}"/>
+                        <button name="action_draft" string="Set to Draft" type="object" 
+                                modifiers="{'invisible': [['status', '!=', 'confirmed']]}"/>
+                        <field name="status" widget="statusbar" statusbar_visible="draft,confirmed"/>
+                    </header>
+                    <sheet>
+                        <!-- Customer & Project Info Section -->
+                        <group>
+                            <group>
+                                <field name="customer_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                                <field name="contact_id" options="{'no_create': True, 'no_create_edit': True}" 
+                                       domain="[('parent_id', '=', customer_id), ('is_company', '=', False)]"/>
+                                <field name="project_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                                <field name="site_id" placeholder="Enter project site location"/>
+                            </group>
+                            <group>
+                                <field name="quotation_date"/>
+                                <field name="with_stamp"/>
+                                <field name="invoice_without_header"/>
+                            </group>
+                        </group>
+                        
+                        <!-- Tabs -->
+                        <notebook>
+                            <!-- Quotation Details Tab -->
+                            <page string="Quotation Details" name="quotation_details">
+                                <group>
+                                    <group string="Quotation Details">
+                                        <field name="subject" placeholder="Enter subject"/>
+                                        <field name="validity_id" options="{'no_create': True, 'no_create_edit': True}" 
+                                               placeholder="Select validity period"/>
+                                        <field name="payment_terms_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                                    </group>
+                                    <group string="Summary">
+                                        <field name="number_of_schedules"/>
+                                        <field name="call_outs_included"/>
+                                        <field name="amount" readonly="1"/>
+                                    </group>
+                                </group>
+                                
+                                <!-- Exclusions - Full Width -->
+                                <label for="exclusions" string="Exclusions"/>
+                                <group>
+                                    <field name="exclusions" nolabel="1" placeholder="Enter exclusions"/>
+                                </group>
+                                
+                                <!-- Commercial Part - Full Width HTML Text Box -->
+                                <label for="commercial_part" string="Commercial Part"/>
+                                <group>
+                                    <field name="commercial_part" nolabel="1" placeholder="Enter commercial part details with rich text formatting"/>
+                                </group>
+                            </page>
+                            
+                            <!-- Terms & Conditions Tab -->
+                            <page string="Terms &amp; Conditions" name="terms_conditions">
+                                <group>
+                                    <field name="terms_condition_id" options="{'no_create': True, 'no_create_edit': True}" 
+                                           placeholder="Select terms and conditions"/>
+                                </group>
+                                <label for="terms_condition_description" string="Description"/>
+                                <group>
+                                    <field name="terms_condition_description" nolabel="1" placeholder="Description will be auto-loaded from selected terms and conditions"/>
+                                </group>
+                            </page>
+                            
+                            <!-- Types of Service Tab -->
+                            <page string="Types of Services" name="service_types">
+                                <!-- Service Types List - Full Width -->
+                                <label for="service_type_ids" string="SERVICE TYPES"/>
+                                <field name="service_type_ids" nolabel="1" context="{'default_quotation_id': id}">
+                                    <list string="Service Types" editable="bottom" create="1" delete="1">
+                                        <field name="sequence" widget="handle" column_invisible="1"/>
+                                        <field name="system_type_id" options="{'no_create': True}" required="1"/>
+                                        <field name="name" readonly="1"/>
+                                        <field name="number" readonly="1"/>
+                                        <field name="times" readonly="1"/>
+                                    </list>
+                                </field>
+                                
+                                <!-- Buildings List - Full Width -->
+                                <label for="building_ids" string="BUILDINGS"/>
+                                <field name="building_ids" nolabel="1" context="{'default_quotation_id': id}">
+                                    <list string="Buildings" editable="bottom" create="1" delete="1">
+                                        <field name="sequence" widget="handle" column_invisible="1"/>
+                                        <field name="building_name" required="1"/>
+                                        <field name="location"/>
+                                        <field name="unit_price"/>
+                                    </list>
+                                </field>
+                                
+                                <!-- Products List - Full Width -->
+                                <label for="product_ids" string="Products"/>
+                                <field name="product_ids" nolabel="1" context="{'default_quotation_id': id}">
+                                    <list string="Products" editable="bottom" create="1" delete="1">
+                                        <field name="sequence" widget="handle" column_invisible="1"/>
+                                        <field name="product_id" options="{'no_create': True}" required="1"/>
+                                        <field name="quantity"/>
+                                        <field name="uom_id" readonly="1"/>
+                                    </list>
+                                </field>
+                                
+                                <!-- Scope of Work - Full Width HTML Text Box -->
+                                <label for="scope_of_work" string="Scope of Work"/>
+                                <field name="scope_of_work" nolabel="1" placeholder="Scope of work will be auto-generated from selected services"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- AMC Quotation Tree View -->
+        <record id="view_amc_quotation_tree" model="ir.ui.view">
+            <field name="name">amc.quotation.tree</field>
+            <field name="model">amc.quotation</field>
+            <field name="arch" type="xml">
+                <list string="AMC Quotations">
+                    <field name="name"/>
+                    <field name="customer_id"/>
+                    <field name="quotation_date"/>
+                    <field name="status"/>
+                    <field name="amount" sum="Total"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- AMC Quotation Search View -->
+        <record id="view_amc_quotation_search" model="ir.ui.view">
+            <field name="name">amc.quotation.search</field>
+            <field name="model">amc.quotation</field>
+            <field name="arch" type="xml">
+                <search string="AMC Quotations">
+                    <field name="name"/>
+                    <field name="customer_id"/>
+                    <field name="project_id"/>
+                    <field name="quotation_date"/>
+                    <filter string="Draft" name="draft" domain="[('status', '=', 'draft')]"/>
+                    <filter string="Confirmed" name="confirmed" domain="[('status', '=', 'confirmed')]"/>
+                </search>
+            </field>
+        </record>
+
+        <!-- AMC Quotation Action -->
+        <record id="action_amc_quotation" model="ir.actions.act_window">
+            <field name="name">AMC Quotations</field>
+            <field name="res_model">amc.quotation</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first AMC Quotation!
+                </p>
+                <p>
+                    Create quotations for AMC contracts with customer details, commercial parts, terms and conditions, and service types.
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>

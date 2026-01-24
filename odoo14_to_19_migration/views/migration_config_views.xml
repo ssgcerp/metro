@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_migration_config_form" model="ir.ui.view">
+        <field name="name">odoo14.migration.config.form</field>
+        <field name="model">odoo14.migration.config</field>
+        <field name="arch" type="xml">
+            <form string="Odoo 14 Migration Configuration">
+                <header>
+                    <button name="test_connection" string="Test Connection" type="object" 
+                            class="btn-primary" icon="fa-plug"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="odoo14_url" placeholder="http://odoo14.example.com"/>
+                            <field name="odoo14_database"/>
+                            <field name="odoo14_username"/>
+                            <field name="odoo14_password" password="True"/>
+                        </group>
+                        <group>
+                            <field name="connection_status" readonly="1"/>
+                            <field name="last_connection_test" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_migration_config_list" model="ir.ui.view">
+        <field name="name">odoo14.migration.config.list</field>
+        <field name="model">odoo14.migration.config</field>
+        <field name="arch" type="xml">
+            <list string="Migration Configurations">
+                <field name="odoo14_url"/>
+                <field name="odoo14_database"/>
+                <field name="odoo14_username"/>
+                <field name="connection_status"/>
+                <field name="last_connection_test"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_migration_config" model="ir.actions.act_window">
+        <field name="name">Migration Configuration</field>
+        <field name="res_model">odoo14.migration.config</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new migration configuration
+            </p>
+            <p>
+                Configure the connection to your Odoo 14 instance by providing the URL, database name, username, and password.
+                Use the "Test Connection" button to verify the connection before starting the migration.
+            </p>
+        </field>
+    </record>
+</odoo>
+

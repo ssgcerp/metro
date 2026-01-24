@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="view_amc_contract_from_existing_wizard_form" model="ir.ui.view">
+        <field name="name">amc.contract.from.existing.wizard.form</field>
+        <field name="model">amc.contract.from.existing.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import Contracts from Existing AMC Contracts">
+                <group>
+                    <field name="contract_ids" 
+                           widget="many2many_tags" 
+                           domain="[]"
+                           options="{'no_create': True}"
+                           placeholder="Select existing AMC contracts to create migration records..."/>
+                </group>
+                <div class="alert alert-info" role="alert">
+                    <strong>Instructions:</strong><br/>
+                    Select existing AMC contracts from the system. This will create migration records that you can then process to duplicate or update the contracts.
+                </div>
+                <footer>
+                    <button string="Create Migration Records" name="action_create_migration_records" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Action -->
+    <record id="action_amc_contract_from_existing_wizard" model="ir.actions.act_window">
+        <field name="name">Import from Existing Contracts</field>
+        <field name="res_model">amc.contract.from.existing.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
+

@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard for Excel Upload -->
+    <record id="view_rfq_upload_wizard_form" model="ir.ui.view">
+        <field name="name">rfq.upload.wizard.form</field>
+        <field name="model">rfq.upload.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Upload RFQ Excel">
+                <group>
+                    <field name="config_id" placeholder="Optional: Select configuration for later status checking"/>
+                    <field name="excel_file" filename="excel_filename" required="1"/>
+                </group>
+                <footer>
+                    <button string="Upload" name="action_upload" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rfq_upload_wizard" model="ir.actions.act_window">
+        <field name="name">Upload Excel</field>
+        <field name="res_model">rfq.upload.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Tree View -->
+    <record id="view_rfq_migration_line_tree" model="ir.ui.view">
+        <field name="name">rfq.migration.line.tree</field>
+        <field name="model">rfq.migration.line</field>
+        <field name="arch" type="xml">
+            <list string="RFQ Migration" multi_edit="1" create="0">
+                <field name="uploaded_rfq_number"/>
+                <field name="priority"/>
+                <field name="vendor"/>
+                <field name="project"/>
+                <field name="purchase_representative"/>
+                <field name="order_deadline"/>
+                <field name="excel_status"/>
+                <field name="company"/>
+                <field name="stage"/>
+                <field name="bills_number"/>
+                <field name="odoo14_bill_ids"/>
+                <field name="in_system_rfq_number"/>
+                <field name="status" widget="badge" 
+                       decoration-success="status == 'migrated' or status == 'already_migrated'"
+                       decoration-warning="status == 'pending_migration' or status == 'queued'"
+                       decoration-danger="status == 'error' or status == 'not_found'"
+                       decoration-info="status == 'migrating'"/>
+                <field name="status_message" optional="hide"/>
+                <field name="migration_date" optional="hide"/>
+                <field name="odoo19_rfq_id" optional="hide" widget="many2one"/>
+                <button name="action_check_status" string="Check Status" type="object" 
+                        class="btn-secondary" icon="fa-refresh"/>
+                <button name="action_migrate" string="Migrate" type="object" 
+                        class="btn-primary" icon="fa-download"
+                        invisible="status != 'pending_migration'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_rfq_migration_line_form" model="ir.ui.view">
+        <field name="name">rfq.migration.line.form</field>
+        <field name="model">rfq.migration.line</field>
+        <field name="arch" type="xml">
+            <form string="RFQ Migration Line">
+                <header>
+                    <button name="action_open_upload_wizard" string="Upload Excel" type="object" 
+                            class="oe_highlight" icon="fa-upload"/>
+                    <button name="action_open_upload_wizard" string="Add Excel" type="object" 
+                            class="btn-primary" icon="fa-plus"/>
+                    <button name="action_check_status" string="Check Status" type="object" 
+                            class="btn-secondary" icon="fa-refresh"/>
+                    <button name="action_migrate" string="Migrate" type="object" 
+                            class="btn-primary" icon="fa-download"
+                            invisible="status != 'pending_migration'"/>
+                    <button name="action_reset_stuck" string="Reset Stuck" type="object" 
+                            class="btn-warning" icon="fa-exclamation-triangle"
+                            invisible="status != 'migrating'"
+                            confirm="Are you sure you want to reset this stuck migration to error status?"/>
+                    <field name="status" widget="statusbar" 
+                           statusbar_visible="pending_migration,queued,migrating,migrated"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="RFQ Information">
+                            <field name="uploaded_rfq_number"/>
+                            <field name="in_system_rfq_number"/>
+                            <field name="config_id" required="1"/>
+                        </group>
+                        <group string="Migration Status">
+                            <field name="status"/>
+                            <field name="migration_date"/>
+                            <field name="odoo19_rfq_id"/>
+                        </group>
+                    </group>
+                    <group string="Excel Data">
+                        <group>
+                            <field name="priority"/>
+                            <field name="vendor"/>
+                            <field name="project"/>
+                            <field name="purchase_representative"/>
+                            <field name="order_deadline"/>
+                        </group>
+                        <group>
+                            <field name="excel_status"/>
+                            <field name="company"/>
+                            <field name="created_on"/>
+                            <field name="effective_date"/>
+                            <field name="receipt_date"/>
+                            <field name="stage"/>
+                            <field name="bills_number"/>
+                            <field name="odoo14_bill_ids"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="status_message" nolabel="1"/>
+                        <field name="error_message" nolabel="1" invisible="not error_message"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_rfq_migration_line_search" model="ir.ui.view">
+        <field name="name">rfq.migration.line.search</field>
+        <field name="model">rfq.migration.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="uploaded_rfq_number"/>
+                <field name="priority"/>
+                <field name="vendor"/>
+                <field name="project"/>
+                <field name="purchase_representative"/>
+                <field name="order_deadline"/>
+                <field name="excel_status"/>
+                <field name="company"/>
+                <field name="stage"/>
+                <field name="bills_number"/>
+                <field name="odoo14_bill_ids"/>
+                <field name="in_system_rfq_number"/>
+                <field name="status"/>
+                <filter name="pending" string="Pending Migration" domain="[('status', '=', 'pending_migration')]"/>
+                <filter name="queued" string="Queued" domain="[('status', '=', 'queued')]"/>
+                <filter name="already_migrated" string="Already Migrated" domain="[('status', '=', 'already_migrated')]"/>
+                <filter name="migrated" string="Migrated" domain="[('status', '=', 'migrated')]"/>
+                <filter name="not_found" string="Not Found" domain="[('status', '=', 'not_found')]"/>
+                <filter name="error" string="Error" domain="[('status', '=', 'error')]"/>
+                <filter name="migrating" string="Migrating" domain="[('status', '=', 'migrating')]"/>
+                <separator/>
+                <filter name="needs_action" string="Needs Action" domain="[('status', 'in', ['pending_migration', 'queued', 'not_found', 'error'])]"/>
+            </search>
+        </field>
+    </record>
+    
+    <!-- Server Action for Upload Excel - appears in Action menu (always visible, even with no records) -->
+    <record id="action_server_rfq_upload_excel" model="ir.actions.server">
+        <field name="name">Upload Excel</field>
+        <field name="model_id" ref="model_rfq_migration_line"/>
+        <field name="binding_model_id" ref="model_rfq_migration_line"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+action = env.ref('odoo14_to_19_migration.action_rfq_upload_wizard').read()[0]
+        </field>
+    </record>
+    
+    <!-- Server Action for Add Excel - appears in Action menu (always visible, even with no records) -->
+    <record id="action_server_rfq_add_excel" model="ir.actions.server">
+        <field name="name">Add Excel</field>
+        <field name="model_id" ref="model_rfq_migration_line"/>
+        <field name="binding_model_id" ref="model_rfq_migration_line"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+action = env.ref('odoo14_to_19_migration.action_rfq_upload_wizard').read()[0]
+        </field>
+    </record>
+    
+    <!-- Server Action for Bulk Migrate - appears in Action menu (requires selection) -->
+    <record id="action_server_rfq_bulk_migrate" model="ir.actions.server">
+        <field name="name">Migrate Selected</field>
+        <field name="model_id" ref="model_rfq_migration_line"/>
+        <field name="binding_model_id" ref="model_rfq_migration_line"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    action = records.action_bulk_migrate()
+else:
+    raise UserError("Please select at least one RFQ to migrate")
+        </field>
+    </record>
+
+    <!-- Server Action for Start Queued Migration - appears in Action menu (requires selection) -->
+    <record id="action_server_rfq_start_queued" model="ir.actions.server">
+        <field name="name">Start Queued Migration</field>
+        <field name="model_id" ref="model_rfq_migration_line"/>
+        <field name="binding_model_id" ref="model_rfq_migration_line"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    action = records.action_start_queued_migration()
+else:
+    raise UserError("Please select at least one queued RFQ to start migration")
+        </field>
+    </record>
+
+    <!-- Server Action to Trigger Queue Job Runner - appears in Action menu (always visible) -->
+    <record id="action_server_rfq_trigger_queue_job_runner" model="ir.actions.server">
+        <field name="name">Process Queue Jobs Now</field>
+        <field name="model_id" ref="model_rfq_migration_line"/>
+        <field name="binding_model_id" ref="model_rfq_migration_line"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+action = records.action_trigger_queue_job_runner()
+        </field>
+    </record>
+
+    <!-- Server Action to Reset Stuck Migrations - appears in Action menu (always visible) -->
+    <record id="action_server_rfq_reset_stuck_migrations" model="ir.actions.server">
+        <field name="name">Reset Stuck Migrations</field>
+        <field name="model_id" ref="model_rfq_migration_line"/>
+        <field name="binding_model_id" ref="model_rfq_migration_line"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+result = env['rfq.migration.line'].action_reset_stuck_migrations(stuck_threshold_seconds=30)
+raise UserError(result['message'])
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_migration_rfq" model="ir.actions.act_window">
+        <field name="name">RFQ</field>
+        <field name="res_model">rfq.migration.line</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_rfq_migration_line_search"/>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Upload Excel file to start migration
+            </p>
+            <p>
+                Click <strong>"Upload Excel"</strong> or <strong>"Add Excel"</strong> from the <strong>Action menu (⋮)</strong> in the top right to import RFQ numbers from Excel file.
+                Excel should have RFQ numbers in the first column.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action to Trigger Queue Job Runner (for menu) -->
+    <record id="action_rfq_trigger_queue_job_runner_menu" model="ir.actions.server">
+        <field name="name">Process Queue Jobs Now</field>
+        <field name="model_id" ref="model_rfq_migration_line"/>
+        <field name="state">code</field>
+        <field name="code">
+records = env['rfq.migration.line'].search([])
+action = records.action_trigger_queue_job_runner()
+        </field>
+    </record>
+
+</odoo>
+

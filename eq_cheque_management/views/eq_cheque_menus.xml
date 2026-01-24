@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Main Cheque Management Menu -->
+        <menuitem id="menu_cheque_management"
+                  name="Cheque Management"
+                  parent="account.menu_finance_entries"
+                  sequence="50"/>
+
+        <!-- Incoming Cheques Menu -->
+        <menuitem id="menu_cheque_incoming"
+                  name="Incoming Cheques"
+                  parent="menu_cheque_management"
+                  action="action_eq_cheque_incoming"
+                  sequence="10"/>
+
+        <!-- Outgoing Cheques Menu -->
+        <menuitem id="menu_cheque_outgoing"
+                  name="Outgoing Cheques"
+                  parent="menu_cheque_management"
+                  action="action_eq_cheque_outgoing"
+                  sequence="20"/>
+
+        <!-- Configuration Menu -->
+        <menuitem id="menu_cheque_config"
+                  name="Cheque Configuration"
+                  parent="account.menu_account_config"
+                  action="action_eq_cheque_config"
+                  sequence="100"/>
+
+        <!-- Cheque Printing Menu -->
+        <menuitem id="menu_cheque_printing"
+                  name="Cheque Printing"
+                  parent="menu_cheque_management"
+                  sequence="30"/>
+
+        <!-- Bank Cheque Configuration Menu -->
+        <menuitem id="menu_bank_cheque_config"
+                  name="Bank Cheque Configuration"
+                  parent="menu_cheque_printing"
+                  action="action_bank_cheque"
+                  sequence="10"/>
+
+        <!-- Cheque Book Menu -->
+        <menuitem id="menu_cheque_book"
+                  name="Cheque Books"
+                  parent="menu_cheque_printing"
+                  action="action_cheque_book"
+                  sequence="20"/>
+    </data>
+</odoo>
+

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_migration_wizard_form" model="ir.ui.view">
+        <field name="name">odoo14.migration.wizard.form</field>
+        <field name="model">odoo14.migration.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Odoo 14 to Odoo 19 Migration" class="oe_form_nosheet">
+                <group>
+                    <field name="config_id" options="{'no_create': True, 'no_create_edit': True}" 
+                           domain="[]" required="1"/>
+                </group>
+                
+                <notebook>
+                    <page string="Customers">
+                        <field name="customer_items" nolabel="1">
+                            <list string="Customer Migration Items" delete="0">
+                                <field name="display_name" readonly="1" string="Model"/>
+                                <field name="total_count" readonly="1" string="Total Count" sum="Total"/>
+                                <field name="migrated_count" readonly="1" string="Migrated Count" sum="Total"/>
+                                <button name="action_check" string="Check" type="object" 
+                                        class="btn-primary" icon="fa-search"
+                                        confirm="This will check the data count. Continue?"/>
+                                <button name="action_preview" string="Preview" type="object" 
+                                        class="btn-secondary" icon="fa-eye"
+                                        invisible="total_count == 0"/>
+                                <button name="action_migrate" string="Migrate" type="object" 
+                                        class="btn-primary" icon="fa-download"
+                                        invisible="total_count == 0"/>
+                            </list>
+                        </field>
+                    </page>
+                    
+                    <page string="Vendors">
+                        <field name="vendor_items" nolabel="1">
+                            <list string="Vendor Migration Items" delete="0">
+                                <field name="display_name" readonly="1" string="Model"/>
+                                <field name="total_count" readonly="1" string="Total Count" sum="Total"/>
+                                <field name="migrated_count" readonly="1" string="Migrated Count" sum="Total"/>
+                                <button name="action_check" string="Check" type="object" 
+                                        class="btn-primary" icon="fa-search"
+                                        confirm="This will check the data count. Continue?"/>
+                                <button name="action_preview" string="Preview" type="object" 
+                                        class="btn-secondary" icon="fa-eye"
+                                        invisible="total_count == 0"/>
+                                <button name="action_migrate" string="Migrate" type="object" 
+                                        class="btn-primary" icon="fa-download"
+                                        invisible="total_count == 0"/>
+                            </list>
+                        </field>
+                    </page>
+                    
+                    <page string="Products">
+                        <field name="product_items" nolabel="1">
+                            <list string="Product Migration Items" delete="0">
+                                <field name="display_name" readonly="1" string="Model"/>
+                                <field name="total_count" readonly="1" string="Total Count" sum="Total"/>
+                                <field name="migrated_count" readonly="1" string="Migrated Count" sum="Total"/>
+                                <button name="action_check" string="Check" type="object" 
+                                        class="btn-primary" icon="fa-search"
+                                        confirm="This will check the data count. Continue?"/>
+                                <button name="action_preview" string="Preview" type="object" 
+                                        class="btn-secondary" icon="fa-eye"
+                                        invisible="total_count == 0"/>
+                                <button name="action_migrate" string="Migrate" type="object" 
+                                        class="btn-primary" icon="fa-download"
+                                        invisible="total_count == 0"/>
+                            </list>
+                        </field>
+                    </page>
+                    
+                    <page string="Accounting">
+                        <field name="accounting_items" nolabel="1">
+                            <list string="Accounting Migration Items" delete="0">
+                                <field name="display_name" readonly="1" string="Model"/>
+                                <field name="total_count" readonly="1" string="Total Count" sum="Total"/>
+                                <field name="migrated_count" readonly="1" string="Migrated Count" sum="Total"/>
+                                <button name="action_check" string="Check" type="object" 
+                                        class="btn-primary" icon="fa-search"
+                                        confirm="This will check the data count. Continue?"/>
+                                <button name="action_preview" string="Preview" type="object" 
+                                        class="btn-secondary" icon="fa-eye"
+                                        invisible="total_count == 0"/>
+                                <button name="action_migrate" string="Migrate" type="object" 
+                                        class="btn-primary" icon="fa-download"
+                                        invisible="total_count == 0"/>
+                            </list>
+                        </field>
+                    </page>
+                    
+                    <page string="Migration Status">
+                        <group>
+                            <field name="is_migrating" invisible="1"/>
+                            <field name="migration_progress" widget="progressbar" readonly="1"/>
+                            <field name="migration_status" readonly="1" nolabel="1"/>
+                        </group>
+                        <group string="Migration Results">
+                            <field name="invoices_migrated" readonly="1"/>
+                            <field name="purchase_invoices_migrated" readonly="1"/>
+                            <field name="errors_count" readonly="1"/>
+                        </group>
+                        <group string="Error Log" col="1" invisible="not error_log">
+                            <field name="error_log" readonly="1" nolabel="1" widget="text"/>
+                        </group>
+                    </page>
+                </notebook>
+                
+                <footer>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_migration_wizard" model="ir.actions.act_window">
+        <field name="name">Start Migration</field>
+        <field name="res_model">odoo14.migration.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

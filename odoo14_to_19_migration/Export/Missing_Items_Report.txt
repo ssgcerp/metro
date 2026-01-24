@@ -1,0 +1,9 @@
+MISSING ITEMS REPORT
+====================
+
+MISSING JOURNALS:
+- Vendor Bills
+- Expense Bills
+
+MISSING ACCOUNTS:
+- 101013 SIB 0012064421001 SHJ

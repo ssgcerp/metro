@@ -1,0 +1,8 @@
+
+--- MATCH FOUND ---
+Group Key (Bill Ref): 8460 MFS -RAK - 2572 AMEEN
+Row Number: EXP/2025/08/0207
+Row Ref: 8460 MFS -RAK - 2572 AMEEN
+Mapped Name (to be sent to Odoo): EXP/2025/08/0207
+Mapped Ref (to be sent to Odoo): 8460 MFS -RAK - 2572 AMEEN
+--------------------

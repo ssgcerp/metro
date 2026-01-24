@@ -1,0 +1,565 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- AMC Contract Form View -->
+        <record id="view_amc_contract_form" model="ir.ui.view">
+            <field name="name">amc.contract.form</field>
+            <field name="model">amc.contract</field>
+            <field name="arch" type="xml">
+                <form string="AMC Contract" create="1" edit="1">
+                    <header>
+                        <field name="is_draft" invisible="1"/>
+                        <field name="is_confirmed" invisible="1"/>
+                        <field name="is_cancelled" invisible="1"/>
+                        <!-- Confirm button: Only show in Draft (and not cancelled) -->
+                        <button name="action_confirm" string="Confirm this Contract" type="object" class="btn-primary o_amc_confirm_btn" 
+                                invisible="not is_draft or is_cancelled"/>
+                        <!-- Reset button: Show in all states except Draft (unless cancelled, then show) -->
+                        <button name="action_reset" string="Reset" type="object" class="btn-secondary" 
+                                invisible="is_draft and not is_cancelled"/>
+                        <!-- Cancel button: Hide in Draft and Cancelled stages -->
+                        <button name="action_cancel" string="Cancel this Contract" type="object" class="btn-danger amc-cancel-btn" 
+                                invisible="is_draft or is_cancelled"/>
+                        <!-- Block button: Hide in Draft and Cancelled stages -->
+                        <button name="action_block" string="Block" type="object" class="btn-danger amc-block-btn" 
+                                invisible="is_draft or is_cancelled"/>
+                        <!-- Create Sale: Only show in Confirmed (and not cancelled) -->
+                        <button name="action_create_sale" string="Create Sale" type="object" class="btn-primary"
+                                invisible="not is_confirmed or is_cancelled"/>
+                        <!-- Create Visits: Only show in Confirmed (and not cancelled) -->
+                        <button name="action_create_visits" string="Create Visits" type="object" class="btn-primary"
+                                invisible="not is_confirmed or is_cancelled or visit_frequency != 'manual'"/>
+                        <button name="action_generate_service_schedule" string="Generate Schedule" type="object" class="btn-primary"
+                                invisible="not is_confirmed or is_cancelled or visit_frequency == 'manual'"/>
+                        <button name="action_generate_audit_schedule" string="Generate Audit Schedule" type="object" class="btn-secondary"
+                                invisible="not is_confirmed or is_cancelled or audit_frequency == 'manual'"/>
+                        <field name="stage_id" widget="statusbar" statusbar_visible="draft,confirmed,cancelled,blocked,expired"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <!-- Service Schedules (Visits) -->
+                            <button class="oe_stat_button" type="object" name="action_view_schedules" icon="fa-wrench">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="display_visit_count"/></span>
+                                    <span class="o_stat_text">Visits</span>
+                                </div>
+                            </button>
+                            <!-- Audit Schedules -->
+                            <button class="oe_stat_button" type="object" name="action_view_audits" icon="fa-gavel">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="display_audit_count"/></span>
+                                    <span class="o_stat_text">Audits</span>
+                                </div>
+                            </button>
+                            <!-- Quotations -->
+                            <button class="oe_stat_button" type="object" name="action_view_quotations" icon="fa-pencil-square-o">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="display_quotation_count"/></span>
+                                    <span class="o_stat_text">Quotations</span>
+                                </div>
+                            </button>
+                            <!-- Sales -->
+                            <button class="oe_stat_button" type="object" name="action_view_sales" icon="fa-dollar">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="display_sale_count"/></span>
+                                    <span class="o_stat_text">Sales</span>
+                                </div>
+                            </button>
+                            <!-- Purchases -->
+                            <button class="oe_stat_button" type="object" name="action_view_purchases" icon="fa-shopping-cart">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="display_purchase_count"/></span>
+                                    <span class="o_stat_text">Purchases</span>
+                                </div>
+                            </button>
+                            <!-- Expenses -->
+                            <button class="oe_stat_button" type="object" name="action_view_expenses" icon="fa-credit-card">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="display_expense_count"/></span>
+                                    <span class="o_stat_text">Expenses</span>
+                                </div>
+                            </button>
+                            <!-- Invoices -->
+                            <button class="oe_stat_button" type="object" name="action_view_invoices" icon="fa-file-text-o">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="display_invoice_count"/></span>
+                                    <span class="o_stat_text">Invoices</span>
+                                </div>
+                            </button>
+                            
+                            <button class="oe_stat_button" type="object" name="action_view_timesheet" icon="fa-clock-o" invisible="1">
+                                <div class="o_stat_text">
+                                    <span class="o_stat_value"><field name="completion_pending"/></span>
+                                    <span class="o_stat_text">Pending Visits</span>
+                                </div>
+                            </button>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="name" readonly="1" invisible="not name"/>
+                                <field name="analytic_account_id" readonly="1" force_save="1"/>
+                                <field name="customer_id" options="{'no_create': False, 'no_create_edit': False}"/>
+                                <field name="project_site"/>
+                                <field name="contact_id" domain="[('parent_id', '=', customer_id), ('is_company', '=', False)]" 
+                                       options="{'no_create': True}"/>
+                                <field name="branch_id" options="{'no_create': False}"/>
+                                <field name="sales_contact_id" domain="[('active', '=', True)]" 
+                                       options="{'no_create': True}"/>
+                                <field name="with_header"/>
+                                <field name="with_stamp"/>
+                            </group>
+                            <group>
+                                <field name="contract_date"/>
+                                <field name="start_date"/>
+                                <field name="end_date"/>
+                                <field name="visit_frequency"/>
+                                <field name="number_of_visits"/>
+                                <field name="audit_frequency"/>
+                                <field name="number_of_audits"/>
+                                <field name="completion_pending" readonly="1"/>
+                                <field name="contract_value"/>
+                                <field name="labour_expense"/>
+                                <field name="extra_expense"/>
+                                <field name="total" readonly="1"/>
+                                <field name="extra_expense_remarks" placeholder="Enter remarks for extra expenses..."/>
+                                <button name="action_update_expenses" string="Update" type="object" class="btn-primary"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Types of Services" name="types_of_services">
+                                <field name="type_of_service_ids" nolabel="1">
+                                    <list string="Types of Services" editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="name" required="1"/>
+                                        <field name="number" required="1"/>
+                                        <field name="times" default="Times in Year"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Registration Details" name="registration_details">
+                                <field name="registration_ids" nolabel="1">
+                                    <list string="Registration Details" editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="registration_number"/>
+                                        <field name="registration_date"/>
+                                        <field name="registration_authority"/>
+                                        <field name="expiry_date"/>
+                                        <field name="notes"/>
+                                    </list>
+                                    <form string="Registration Detail">
+                                        <sheet>
+                                            <group>
+                                                <group>
+                                                    <field name="contract_id" readonly="1"/>
+                                                    <field name="registration_number"/>
+                                                    <field name="registration_date"/>
+                                                </group>
+                                                <group>
+                                                    <field name="registration_authority"/>
+                                                    <field name="expiry_date"/>
+                                                </group>
+                                            </group>
+                                            <group>
+                                                <field name="notes" placeholder="Additional notes..."/>
+                                            </group>
+                                        </sheet>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Invoice Schedule" name="invoice_schedule">
+                                <field name="invoice_schedule_ids" nolabel="1">
+                                    <list string="Invoice Schedule">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="invoice_date"/>
+                                        <field name="amount"/>
+                                        <field name="invoice_number"/>
+                                        <field name="invoice_id" widget="many2one"/>
+                                        <field name="state" widget="badge" 
+                                               decoration-success="state == 'paid'" 
+                                               decoration-info="state == 'posted'" 
+                                               decoration-muted="state == 'draft'"/>
+                                        <field name="notes"/>
+                                    </list>
+                                    <form string="Invoice Schedule">
+                                        <sheet>
+                                            <group>
+                                                <group>
+                                                    <field name="contract_id" readonly="1"/>
+                                                    <field name="invoice_date" required="1"/>
+                                                    <field name="amount" required="1"/>
+                                                </group>
+                                                <group>
+                                                    <field name="invoice_number"/>
+                                                    <field name="invoice_id"/>
+                                                    <field name="state"/>
+                                                </group>
+                                            </group>
+                                            <group>
+                                                <field name="notes" placeholder="Notes about this invoice..."/>
+                                            </group>
+                                        </sheet>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Quotation Details" name="quotation_details">
+                                <field name="quotation_ids" nolabel="1">
+                                    <list string="Quotation Details" editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="quotation_number"/>
+                                        <field name="quotation_date"/>
+                                        <field name="quotation_amount"/>
+                                        <field name="sale_order_id" widget="many2one"/>
+                                        <field name="notes"/>
+                                    </list>
+                                    <form string="Quotation Detail">
+                                        <sheet>
+                                            <group>
+                                                <group>
+                                                    <field name="contract_id" readonly="1"/>
+                                                    <field name="quotation_number"/>
+                                                    <field name="quotation_date"/>
+                                                </group>
+                                                <group>
+                                                    <field name="quotation_amount"/>
+                                                    <field name="sale_order_id"/>
+                                                </group>
+                                            </group>
+                                            <group>
+                                                <field name="notes" placeholder="Quotation notes..."/>
+                                            </group>
+                                        </sheet>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Service Schedules" name="service_schedules">
+                                <field name="service_schedule_ids" nolabel="1">
+                                    <list string="Service Schedules">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="service_date" required="1"/>
+                                        <field name="service_type"/>
+                                        <field name="technician_id"/>
+                                        <field name="status" widget="badge"
+                                               decoration-success="status == 'completed'"
+                                               decoration-warning="status == 'in_progress'"
+                                               decoration-info="status == 'scheduled'"
+                                               decoration-muted="status == 'cancelled'"/>
+                                        <field name="notes"/>
+                                    </list>
+                                    <form string="Service Schedule">
+                                        <sheet>
+                                            <group>
+                                                <group>
+                                                    <field name="contract_id" readonly="1"/>
+                                                    <field name="service_date" required="1"/>
+                                                    <field name="service_type"/>
+                                                </group>
+                                                <group>
+                                                    <field name="technician_id"/>
+                                                    <field name="status"/>
+                                                </group>
+                                            </group>
+                                            <group>
+                                                <field name="notes" placeholder="Service notes..."/>
+                                            </group>
+                                        </sheet>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Call Out" name="call_out">
+                                <field name="call_out_ids" nolabel="1">
+                                    <list string="Call Outs">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="call_date" required="1"/>
+                                        <field name="reported_by"/>
+                                        <field name="technician_id"/>
+                                        <field name="status" widget="badge"
+                                               decoration-success="status == 'closed'"
+                                               decoration-info="status == 'resolved'"
+                                               decoration-warning="status == 'in_progress'"
+                                               decoration-muted="status == 'reported'"/>
+                                        <field name="resolution_date"/>
+                                    </list>
+                                    <form string="Call Out">
+                                        <sheet>
+                                            <group>
+                                                <group>
+                                                    <field name="contract_id" readonly="1"/>
+                                                    <field name="call_date" required="1"/>
+                                                    <field name="reported_by"/>
+                                                </group>
+                                                <group>
+                                                    <field name="technician_id"/>
+                                                    <field name="status"/>
+                                                    <field name="resolution_date"/>
+                                                </group>
+                                            </group>
+                                            <group>
+                                                <field name="issue_description" required="1" placeholder="Describe the issue..."/>
+                                            </group>
+                                            <group>
+                                                <field name="resolution_notes" placeholder="Resolution notes..."/>
+                                            </group>
+                                        </sheet>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Additional Jobs" name="additional_jobs">
+                                <field name="additional_job_ids" nolabel="1">
+                                    <list string="Additional Jobs">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="job_date"/>
+                                        <field name="job_description"/>
+                                        <field name="amount"/>
+                                        <field name="technician_id"/>
+                                        <field name="status" widget="badge"
+                                               decoration-success="status == 'billed'"
+                                               decoration-info="status == 'completed'"
+                                               decoration-warning="status == 'in_progress'"
+                                               decoration-muted="status == 'pending'"/>
+                                        <field name="invoice_id" widget="many2one"/>
+                                    </list>
+                                    <form string="Additional Job">
+                                        <sheet>
+                                            <group>
+                                                <group>
+                                                    <field name="contract_id" readonly="1"/>
+                                                    <field name="job_date"/>
+                                                    <field name="technician_id"/>
+                                                </group>
+                                                <group>
+                                                    <field name="amount"/>
+                                                    <field name="status"/>
+                                                    <field name="invoice_id"/>
+                                                </group>
+                                            </group>
+                                            <group>
+                                                <field name="job_description" required="1" placeholder="Job description..."/>
+                                            </group>
+                                            <group>
+                                                <field name="notes" placeholder="Additional notes..."/>
+                                            </group>
+                                        </sheet>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Terms and Condition" name="terms_condition">
+                                <div class="oe_title">
+                                    <h1>Terms and Conditions</h1>
+                                </div>
+                                <group>
+                                    <field name="other_info" nolabel="1" placeholder="Enter terms and conditions here..."/>
+                                </group>
+                            </page>
+                            <page string="Agreement" name="agreement">
+                                <field name="agreement_ids" nolabel="1">
+                                    <list string="Agreements">
+                                        <field name="agreement_type"/>
+                                        <field name="signed_date"/>
+                                        <field name="signed_by"/>
+                                    </list>
+                                    <form string="Agreement">
+                                        <sheet>
+                                            <group>
+                                                <group>
+                                                    <field name="contract_id" readonly="1"/>
+                                                    <field name="agreement_type"/>
+                                                    <field name="signed_date"/>
+                                                    <field name="signed_by"/>
+                                                </group>
+                                            </group>
+                                            <group>
+                                                <field name="agreement_text" nolabel="1" placeholder="Enter agreement text..."/>
+                                            </group>
+                                            <group>
+                                                <field name="attachment_ids" widget="many2many_binary"/>
+                                            </group>
+                                            <group>
+                                                <field name="notes" placeholder="Notes..."/>
+                                            </group>
+                                        </sheet>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Expenses" name="expenses">
+                                <field name="expense_ids" nolabel="1">
+                                    <list string="Expenses">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="expense_date" required="1"/>
+                                        <field name="expense_type"/>
+                                        <field name="description"/>
+                                        <field name="amount" required="1"/>
+                                        <field name="employee_id"/>
+                                        <field name="account_move_id" widget="many2one"/>
+                                    </list>
+                                    <form string="Expense">
+                                        <sheet>
+                                            <group>
+                                                <group>
+                                                    <field name="contract_id" readonly="1"/>
+                                                    <field name="expense_date" required="1"/>
+                                                    <field name="expense_type" required="1"/>
+                                                </group>
+                                                <group>
+                                                    <field name="amount" required="1"/>
+                                                    <field name="employee_id"/>
+                                                    <field name="account_move_id"/>
+                                                </group>
+                                            </group>
+                                            <group>
+                                                <field name="description" required="1" placeholder="Expense description..."/>
+                                            </group>
+                                        </sheet>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Other Info" name="other_info">
+                                <div class="oe_title">
+                                    <h1>Other Information</h1>
+                                </div>
+                                <group>
+                                    <field name="other_info" nolabel="1" placeholder="Enter additional information here..."/>
+                                </group>
+                            </page>
+                        </notebook>
+                        <notebook position="inside">
+                             <page string="Assets" name="assets">
+                                <field name="asset_ids" nolabel="1">
+                                    <list string="Assets" editable="bottom">
+                                        <field name="code"/>
+                                        <field name="name"/>
+                                        <field name="category"/>
+                                        <field name="location"/>
+                                        <field name="serial_number"/>
+                                        <field name="date_installation" optional="hide"/>
+                                        <field name="warranty_expiry" optional="hide"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Audit Schedules" name="audit_schedules">
+                                <field name="audit_schedule_ids" nolabel="1">
+                                    <list string="Audit Schedules" editable="bottom">
+                                        <field name="audit_date"/>
+                                        <field name="auditor_id" widget="many2one_avatar_user"/>
+                                        <field name="status" widget="badge" 
+                                               decoration-success="status == 'done'" 
+                                               decoration-info="status == 'scheduled'" 
+                                               decoration-muted="status == 'cancel'"/>
+                                        <field name="remarks"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- AMC Contract List View -->
+        <record id="view_amc_contract_tree" model="ir.ui.view">
+            <field name="name">amc.contract.tree</field>
+            <field name="model">amc.contract</field>
+            <field name="arch" type="xml">
+                <list string="AMC Contracts">
+                    <field name="name" string="Contract"/>
+                    <field name="start_date"/>
+                    <field name="end_date"/>
+                    <field name="customer_id"/>
+                    <field name="contract_value"/>
+                    <field name="stage_color" column_invisible="1"/>
+                    <field name="stage_id" widget="badge" options="{'color_field': 'stage_color'}"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- AMC Contract Search View -->
+        <record id="view_amc_contract_search" model="ir.ui.view">
+            <field name="name">amc.contract.search</field>
+            <field name="model">amc.contract</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="name"/>
+                    <field name="customer_id"/>
+                    <field name="stage_id"/>
+                    <field name="contract_value"/>
+                    
+                    <filter string="Draft" name="filter_draft" domain="[('stage_id.name', '=', 'Draft')]"/>
+                    <filter string="Confirmed" name="filter_confirmed" domain="[('stage_id.name', '=', 'Confirmed')]"/>
+                    <filter string="Cancelled" name="filter_cancelled" domain="[('is_cancelled', '=', True)]"/>
+                    <filter string="Expired" name="filter_expired" domain="[('is_expired', '=', True)]"/>
+                    <filter string="Active" name="filter_active" domain="[('active', '=', True)]"/>
+                    
+                    <separator/>
+                    <filter string="High Value" name="filter_high_value" domain="[('contract_value', '&gt;', 10000)]"/>
+                    <filter string="Pending Visits" name="filter_pending_visits" domain="[('completion_pending', '&gt;', 0)]"/>
+                    
+                    <group>
+                        <filter string="Stage" name="group_by_stage" context="{'group_by': 'stage_id'}"/>
+                        <filter string="Customer" name="group_by_customer" context="{'group_by': 'customer_id'}"/>
+                        <filter string="Branch" name="group_by_branch" context="{'group_by': 'branch_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- AMC Contract Kanban View -->
+        <record id="view_amc_contract_kanban" model="ir.ui.view">
+            <field name="name">amc.contract.kanban</field>
+            <field name="model">amc.contract</field>
+            <field name="arch" type="xml">
+                <kanban default_group_by="stage_id" class="o_kanban_mobile">
+                    <field name="name"/>
+                    <field name="stage_id"/>
+                    <field name="customer_id"/>
+                    <field name="contract_value"/>
+                    <field name="start_date"/>
+                    <field name="end_date"/>
+                    <progressbar field="stage_id" colors='{"Confirmed": "success", "Draft": "warning", "Cancelled": "danger"}'/>
+                    <templates>
+                        <t t-name="card">
+                            <div class="oe_kanban_card oe_kanban_global_click">
+                                <div class="oe_kanban_content">
+                                    <div class="o_kanban_record_top">
+                                        <div class="o_kanban_record_headings">
+                                            <strong class="o_kanban_record_title">
+                                                <field name="name"/>
+                                            </strong>
+                                        </div>
+                                    </div>
+                                    <div class="o_kanban_record_body">
+                                        <div>
+                                            <field name="customer_id"/>
+                                        </div>
+                                        <div>
+                                            <span>Value: </span><field name="contract_value"/>
+                                        </div>
+                                        <div>
+                                            <span>Dates: </span><field name="start_date"/> - <field name="end_date"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- AMC Contract Action -->
+        <record id="action_amc_contract" model="ir.actions.act_window">
+            <field name="name">AMC Contracts</field>
+            <field name="res_model">amc.contract</field>
+            <field name="view_mode">list,form,kanban</field>
+            <field name="context">{}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first AMC Contract!
+                </p>
+                <p>
+                    Manage Annual Maintenance Contracts with comprehensive tracking and reporting.
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>
+

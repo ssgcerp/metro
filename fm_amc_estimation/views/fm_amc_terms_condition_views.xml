@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- FM AMC Terms and Condition Form View -->
+        <record id="view_fm_amc_terms_condition_form" model="ir.ui.view">
+            <field name="name">fm.amc.terms.condition.form</field>
+            <field name="model">fm.amc.terms.condition</field>
+            <field name="arch" type="xml">
+                <form string="AMC Terms and Condition">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name" placeholder="e.g., Sharjah terms and conditions"/>
+                                <field name="active"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="description" placeholder="Enter terms and conditions..."/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- FM AMC Terms and Condition List View -->
+        <record id="view_fm_amc_terms_condition_tree" model="ir.ui.view">
+            <field name="name">fm.amc.terms.condition.list</field>
+            <field name="model">fm.amc.terms.condition</field>
+            <field name="arch" type="xml">
+                <list string="AMC Terms and Conditions">
+                    <field name="name"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- FM AMC Terms and Condition Search View -->
+        <record id="view_fm_amc_terms_condition_search" model="ir.ui.view">
+            <field name="name">fm.amc.terms.condition.search</field>
+            <field name="model">fm.amc.terms.condition</field>
+            <field name="arch" type="xml">
+                <search string="AMC Terms and Conditions">
+                    <field name="name" string="Name" filter_domain="['|', ('name', 'ilike', self), ('description', 'ilike', self)]"/>
+                    <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                </search>
+            </field>
+        </record>
+
+        <!-- FM AMC Terms and Condition Action -->
+        <record id="action_fm_amc_terms_condition" model="ir.actions.act_window">
+            <field name="name">AMC Terms and Condition</field>
+            <field name="res_model">fm.amc.terms.condition</field>
+            <field name="view_mode">list,form</field>
+            <field name="context">{'search_default_active': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first AMC Terms and Condition!
+                </p>
+                <p>
+                    Define terms and conditions for AMC contracts. You can use rich text formatting to create detailed terms.
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>

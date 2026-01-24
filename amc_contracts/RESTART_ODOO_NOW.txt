@@ -1,0 +1,42 @@
+================================================================================
+IMMEDIATE ACTION REQUIRED
+================================================================================
+
+I've commented out the branch_code field to fix the error.
+
+NOW YOU MUST:
+================================================================================
+
+1. STOP Odoo server completely (close the terminal/window)
+2. START Odoo server again
+3. Refresh your browser
+
+The error should be GONE after restart!
+
+================================================================================
+LATER: To Enable Branch Code Feature
+================================================================================
+
+After Odoo is working:
+
+1. Run this SQL in PostgreSQL:
+   ALTER TABLE res_company ADD COLUMN branch_code VARCHAR(10);
+
+2. Edit: models/res_company.py
+   - Uncomment lines 11-16 (the branch_code field)
+
+3. Edit: models/amc_contract.py  
+   - Uncomment lines 149-155 (the branch_code access code)
+
+4. Edit: __manifest__.py
+   - Add back line 71: 'views/res_company_views.xml',
+
+5. Upgrade the module
+
+================================================================================
+
+
+
+
+
+

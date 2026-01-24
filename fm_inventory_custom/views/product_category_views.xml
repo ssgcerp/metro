@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Inherit Product Category Form View -->
+        <record id="view_product_category_form_inherit_product_type" model="ir.ui.view">
+            <field name="name">product.category.form.inherit.product.type</field>
+            <field name="model">product.category</field>
+            <field name="inherit_id" ref="product.product_category_form_view"/>
+            <field name="arch" type="xml">
+                <!-- Add Product Type field after category name -->
+                <xpath expr="//field[@name='name']" position="after">
+                    <field name="product_type" widget="radio" options="{'horizontal': true}" class="o_small_radio"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
+

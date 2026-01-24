@@ -1,0 +1,14 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_eq_cheque_config_accountant,eq.cheque.config.accountant,model_eq_cheque_config,account.group_account_manager,1,1,1,1
+access_eq_cheque_config_user,eq.cheque.config.user,model_eq_cheque_config,account.group_account_user,1,0,0,0
+access_eq_cheque_incoming_accountant,eq.cheque.incoming.accountant,model_eq_cheque_incoming,account.group_account_manager,1,1,1,1
+access_eq_cheque_incoming_user,eq.cheque.incoming.user,model_eq_cheque_incoming,account.group_account_user,1,1,1,0
+access_eq_cheque_outgoing_accountant,eq.cheque.outgoing.accountant,model_eq_cheque_outgoing,account.group_account_manager,1,1,1,1
+access_eq_cheque_outgoing_user,eq.cheque.outgoing.user,model_eq_cheque_outgoing,account.group_account_user,1,1,1,0
+access_eq_cheque_cron_system,eq.cheque.cron.system,model_eq_cheque_cron,base.group_system,1,1,1,1
+access_bank_cheque_user,bank.cheque.user,model_bank_cheque,account.group_account_user,1,1,1,1
+access_cheque_book_user,cheque.book.user,model_cheque_book,account.group_account_user,1,1,1,1
+access_cheque_leaf_user,cheque.leaf.user,model_cheque_leaf,account.group_account_user,1,1,1,1
+access_cheque_attribute_user,cheque.attribute.user,model_cheque_attribute,account.group_account_user,1,1,1,1
+access_cheque_print_user,cheque.print.user,model_cheque_print,account.group_account_user,1,1,1,1
+

@@ -1,0 +1,7 @@
+Missing RFQs (In Odoo 14 as RFQ but not in Odoo 19)
+===================================================
+MFS-AUH-3660
+MFS-DXB-3731
+MFS-FUJ-3674
+MFS-FUJ-3680
+MFS-FUJ-3692

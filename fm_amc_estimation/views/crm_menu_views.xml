@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Add Estimations menu under CRM -->
+        <menuitem id="menu_fm_amc_estimation" 
+                  name="Estimations"
+                  parent="crm.crm_menu_root"
+                  action="action_fm_amc_estimation"
+                  sequence="10"/>
+        
+        <!-- AMC Quotations Menu - Between AMC Contracts and AMC Settings -->
+        <menuitem id="menu_amc_quotation" 
+                  name="AMC Quotations"
+                  parent="amc_contracts.menu_amc_contracts_root"
+                  action="action_amc_quotation"
+                  sequence="50"/>
+
+        <!-- ================================ -->
+        <!-- SECTION: CONTRACTS (Header)      -->
+        <!-- ================================ -->
+        <menuitem id="menu_amc_settings_section_contracts"
+                  name="--- Contracts ---"
+                  parent="amc_contracts.menu_amc_settings"
+                  sequence="5"/>
+
+        <menuitem id="menu_amc_contract_config"
+                  name="Contract Configuration"
+                  parent="amc_contracts.menu_amc_settings"
+                  action="amc_contracts.action_amc_contract_config"
+                  sequence="6"/>
+
+        <menuitem id="menu_amc_contract_stage"
+                  name="Contract Stages"
+                  parent="amc_contracts.menu_amc_settings"
+                  action="amc_contracts.action_amc_contract_stage"
+                  sequence="7"/>
+
+        <menuitem id="menu_fm_amc_contract_period"
+                  name="Contract Periods"
+                  parent="amc_contracts.menu_amc_settings"
+                  action="action_fm_amc_contract_period"
+                  sequence="8"/>
+
+        <!-- ================================ -->
+        <!-- SECTION: ESTIMATION (Header)     -->
+        <!-- ================================ -->
+        <menuitem id="menu_amc_settings_section_estimations"
+                  name="--- Estimation ---"
+                  parent="amc_contracts.menu_amc_settings"
+                  sequence="20"/>
+
+        <menuitem id="menu_fm_amc_estimation_config"
+                  name="Estimations Format"
+                  parent="amc_contracts.menu_amc_settings"
+                  action="action_fm_amc_estimation_config"
+                  sequence="21"/>
+
+        <menuitem id="menu_fm_amc_estimation_stage"
+                  name="Estimations Stages"
+                  parent="amc_contracts.menu_amc_settings"
+                  action="action_fm_amc_estimation_stage"
+                  sequence="22"/>
+
+        <menuitem id="menu_fm_amc_terms_condition"
+                  name="AMC Terms and Condition"
+                  parent="amc_contracts.menu_amc_settings"
+                  action="action_fm_amc_terms_condition"
+                  sequence="23"/>
+
+        <menuitem id="menu_fm_amc_system_type"
+                  name="AMC System Types"
+                  parent="amc_contracts.menu_amc_settings"
+                  action="action_fm_amc_system_type"
+                  sequence="24"/>
+
+        <!-- ================================ -->
+        <!-- SECTION: QUOTATION (Header)      -->
+        <!-- ================================ -->
+        <menuitem id="menu_amc_settings_section_quotations"
+                  name="--- Quotation ---"
+                  parent="amc_contracts.menu_amc_settings"
+                  sequence="30"/>
+
+        <menuitem id="menu_fm_amc_quotation_config"
+                  name="Quotations Format"
+                  parent="amc_contracts.menu_amc_settings"
+                  action="action_fm_amc_quotation_config"
+                  sequence="31"/>
+
+        <menuitem id="menu_fm_amc_quotation_stage"
+                  name="Quotations Stages"
+                  parent="amc_contracts.menu_amc_settings"
+                  action="action_fm_amc_quotation_stage"
+                  sequence="32"/>
+
+        <!-- ================================ -->
+        <!-- PRODUCT SKU Config (Inventory)   -->
+        <!-- ================================ -->
+        <menuitem id="menu_fm_amc_product_sku_config"
+                  name="Product SKU Configuration"
+                  parent="stock.menu_product_in_config_stock"
+                  action="action_fm_amc_product_sku_config"
+                  sequence="50"/>
+
+    </data>
+</odoo>

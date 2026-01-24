@@ -1,0 +1,11 @@
+Copy and paste this SQL in pgAdmin Query Tool:
+
+ALTER TABLE res_company ADD COLUMN IF NOT EXISTS branch_code VARCHAR(10);
+
+Then RESTART Odoo server!
+
+
+
+
+
+

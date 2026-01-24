@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- FM AMC Contract Period Form View -->
+        <record id="view_fm_amc_contract_period_form" model="ir.ui.view">
+            <field name="name">fm.amc.contract.period.form</field>
+            <field name="model">fm.amc.contract.period</field>
+            <field name="arch" type="xml">
+                <form string="AMC Contract Period">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name" placeholder="e.g., One Year, Two Year, Three Year, Four Year"/>
+                                <field name="number_of_days" placeholder="e.g., 365, 730, 1095, 1460"/>
+                            </group>
+                            <group>
+                                <field name="active"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- FM AMC Contract Period List View -->
+        <record id="view_fm_amc_contract_period_tree" model="ir.ui.view">
+            <field name="name">fm.amc.contract.period.list</field>
+            <field name="model">fm.amc.contract.period</field>
+            <field name="arch" type="xml">
+                <list string="AMC Contract Periods">
+                    <field name="name"/>
+                    <field name="number_of_days"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- FM AMC Contract Period Search View -->
+        <record id="view_fm_amc_contract_period_search" model="ir.ui.view">
+            <field name="name">fm.amc.contract.period.search</field>
+            <field name="model">fm.amc.contract.period</field>
+            <field name="arch" type="xml">
+                <search string="AMC Contract Periods">
+                    <field name="name" string="Name"/>
+                    <field name="number_of_days" string="Number of Days"/>
+                    <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                </search>
+            </field>
+        </record>
+
+        <!-- FM AMC Contract Period Action -->
+        <record id="action_fm_amc_contract_period" model="ir.actions.act_window">
+            <field name="name">Contract Periods</field>
+            <field name="res_model">fm.amc.contract.period</field>
+            <field name="view_mode">list,form</field>
+            <field name="context">{'search_default_active': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first Contract Period!
+                </p>
+                <p>
+                    Define contract periods for AMC contracts. Examples: One Year (365 days), Two Year (730 days), Three Year (1095 days), Four Year (1460 days).
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_customer_migration_wizard_form" model="ir.ui.view">
+        <field name="name">odoo14.customer.migration.wizard.form</field>
+        <field name="model">odoo14.customer.migration.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Customer Migration">
+                <group>
+                    <field name="config_id" options="{'no_create': True, 'no_create_edit': True}" 
+                           domain="[]" required="1"/>
+                </group>
+                
+                <separator string="Migration Items"/>
+                
+                <!-- Row 1: Customers -->
+                <group>
+                    <label for="customers_count" string="Customers"/>
+                    <group>
+                        <button name="action_check_customers" string="Check" type="object" 
+                                class="btn-primary" icon="fa-search"/>
+                        <button name="action_preview_customers" string="Preview" type="object" 
+                                class="btn-secondary" icon="fa-eye"
+                                invisible="customers_count &lt;= 0"/>
+                        <button name="action_migrate_customers" string="Migrate" type="object" 
+                                class="btn-primary" icon="fa-download"
+                                invisible="customers_count &lt;= 0"/>
+                    </group>
+                    <group>
+                        <label for="customers_count" string="Total count:"/>
+                        <field name="customers_count" readonly="1" nolabel="1"/>
+                        <label for="customers_migrated" string="Migrated Count:"/>
+                        <field name="customers_migrated" readonly="1" nolabel="1"/>
+                    </group>
+                </group>
+                
+                <!-- Row 2: Quotations -->
+                <group>
+                    <label for="quotations_count" string="Quotations"/>
+                    <group>
+                        <button name="action_check_quotations" string="Check" type="object" 
+                                class="btn-primary" icon="fa-search"/>
+                        <button name="action_preview_quotations" string="Preview" type="object" 
+                                class="btn-secondary" icon="fa-eye"
+                                invisible="quotations_count &lt;= 0"/>
+                        <button name="action_migrate_quotations" string="Start Migration" type="object" 
+                                class="btn-primary" icon="fa-download"
+                                invisible="quotations_count &lt;= 0 or is_migrating"/>
+                        <button name="action_migrate_quotations" string="Continue Migration" type="object" 
+                                class="btn-primary" icon="fa-forward"
+                                invisible="quotations_count &lt;= 0 or not is_migrating"/>
+                        <button name="action_refresh_view" string="Refresh Status" type="object" 
+                                class="btn-secondary" icon="fa-refresh"
+                                invisible="not is_migrating"/>
+                    </group>
+                    <group>
+                        <label for="start_quotation_number" string="Start From #:"/>
+                        <field name="start_quotation_number" nolabel="1"/>
+                        <label for="quotations_count" string="Total count:"/>
+                        <field name="quotations_count" readonly="1" nolabel="1"/>
+                        <label for="quotations_migrated" string="Migrated Count:"/>
+                        <field name="quotations_migrated" readonly="1" nolabel="1" widget="integer"
+                               class="text-success" style="font-weight: bold; font-size: 18px; color: #28a745;"/>
+                        <label for="quotations_progress" string="Progress:" invisible="quotations_count &lt;= 0"/>
+                        <field name="quotations_progress" widget="progressbar" readonly="1" nolabel="1" 
+                               invisible="quotations_count &lt;= 0" 
+                               options="{'max_value': 100, 'editable': false}"
+                               style="width: 100%; height: 25px;"/>
+                        <label for="migration_status" string="Status:" invisible="not migration_status"/>
+                        <field name="migration_status" readonly="1" nolabel="1" 
+                               invisible="not migration_status" 
+                               widget="text" 
+                               class="text-info"
+                               style="font-weight: bold;"/>
+                        <group>
+                            <button name="action_export_quotation_skipped" string="Download Skipped" type="object"
+                                    class="btn-secondary" icon="fa-file-excel-o"
+                                    invisible="not quotation_skipped_log"/>
+                            <button name="action_export_quotation_errors" string="Download Errors" type="object"
+                                    class="btn-secondary" icon="fa-file-excel-o"
+                                    invisible="not quotation_error_log"/>
+                        </group>
+                        <div invisible="not is_migrating" class="alert alert-info mt-2 mb-2">
+                            <i class="fa fa-spinner fa-spin"/> 
+                            <strong>Migration in progress...</strong> Processing 30 quotations per batch. Use Continue Migration or wait for refresh.
+                        </div>
+                    </group>
+                </group>
+                
+                <!-- Row 3: Sales Orders -->
+                <group>
+                    <label for="sales_orders_count" string="Sales Orders"/>
+                    <group>
+                        <button name="action_check_sales_orders" string="Check" type="object" 
+                                class="btn-primary" icon="fa-search"/>
+                        <button name="action_preview_sales_orders" string="Preview" type="object" 
+                                class="btn-secondary" icon="fa-eye"
+                                invisible="sales_orders_count &lt;= 0"/>
+                        <button name="action_migrate_sales_orders" string="Migrate" type="object" 
+                                class="btn-primary" icon="fa-download"
+                                invisible="sales_orders_count &lt;= 0"/>
+                    </group>
+                    <group>
+                        <label for="sales_orders_count" string="Total count:"/>
+                        <field name="sales_orders_count" readonly="1" nolabel="1"/>
+                        <label for="sales_orders_migrated" string="Migrated Count:"/>
+                        <field name="sales_orders_migrated" readonly="1" nolabel="1"/>
+                    </group>
+                </group>
+                
+                <!-- Row 4: Invoices -->
+                <group>
+                    <label for="invoices_count" string="Invoices"/>
+                    <group>
+                        <button name="action_check_invoices" string="Check" type="object" 
+                                class="btn-primary" icon="fa-search"/>
+                        <button name="action_preview_invoices" string="Preview" type="object" 
+                                class="btn-secondary" icon="fa-eye"
+                                invisible="invoices_count &lt;= 0"/>
+                        <button name="action_migrate_invoices" string="Migrate" type="object" 
+                                class="btn-primary" icon="fa-download"
+                                invisible="invoices_count &lt;= 0"/>
+                    </group>
+                    <group>
+                        <label for="invoices_count" string="Total count:"/>
+                        <field name="invoices_count" readonly="1" nolabel="1"/>
+                        <label for="invoices_migrated" string="Migrated Count:"/>
+                        <field name="invoices_migrated" readonly="1" nolabel="1"/>
+                    </group>
+                </group>
+                
+                <footer>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_customer_migration_wizard" model="ir.actions.act_window">
+        <field name="name">Customers</field>
+        <field name="res_model">odoo14.customer.migration.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

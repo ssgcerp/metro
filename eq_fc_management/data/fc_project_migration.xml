@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="0">
+    <data>
+        <!-- Migration: Set default stage for existing projects -->
+        <function model="project.project" name="_set_default_stage_for_existing_projects"/>
+    </data>
+</odoo>
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,87 @@
+101010 PDC Cheque Paid
+101013 SIB 0012064421001 SHJ
+102014 Other Receivable
+102017 Aslam - Metro Fire Trading Receivables
+104029 Prepaid Schooling Fees
+104042 Prepaid Trade License Expenses
+106002 Furniture and Equipment
+106003 Computer Hardware & Software
+106012 Scaffolding Set
+106013 NOQODI Account
+106014 RICOH MPC 4503 USED Printer
+106016 Office Equipments
+123 L.FOOD EXPENSE
+128001 Security Deposit - Fuj Staff Accommodation
+128002 Civil Defense Fee Receivables ( Customer CD )
+201004 Accrued - Salaries
+201021 Service Charge
+201023 Leave Salaries payables
+201024 Gratuity Payables
+400001 Cost of Goods Sold in Trading
+400050 Office Expenses
+400051 Petrol Expenses - Maad Omran
+400052 Govt. Expenses
+400053 Matrix Mobile App Attendance System
+400074 Drinking Water Expenses
+400100 Salary Expenses
+400102 Transportation Allowance
+400103 Leave Salary
+400104 Air Ticket Expenses
+400108 Training to Employees
+400109 Employee Medical Expenses
+400110 Uniform
+400112 Travelling Expenses
+400115 vehichle renewal fees
+400116 Hiring Charges
+400200 Office Rent
+400201 Warehouse Rent
+400204 Fuel Charges
+400300 Telephone Expenses
+400301 Postage & Courier
+400304 Printing and Stationery Expenses
+400305 Housing Supplies to Employees
+400306 Owners Expenses
+400307 Electricity & Water Expenses
+400309 Software updation and Maint,. Expenses
+400402 Tea, food and Refreshments
+400405 Tools Purchase Expenses
+400406 Rental Equipments and Tools Expenses
+400407 WPS Charge
+400501 Trade License Fees
+400502 Legal fees
+400504 Consultancy Fees
+400600 Other - Advertising Expenses
+400777 Parking Fee Expenses
+400779 MD Personal Expenses
+400780 Office Cleaning Charge
+400801 Cash Shortage
+400900 Staff Safety Items & Benefits
+400901 Visa and Visa Renewal Expenses
+400903 Insurance
+400908 Vehicle Insurance Expenses
+400910 Bank Charges Account
+400923 Cash Discount Loss
+400924 Project Expenses
+400926 Repairs & Maintenance - Building
+400927 Repairs & Maintenance - Vehicles
+400928 Repairs & Maintenance - Equipments
+400930 Accommodation Expenses - Abu Dhabi
+400931 Odoo Subscription Charge
+400932 Workman's Compensation Insurance
+400934 Service Charges - MPM
+400936 Purchase Account
+400937 Vehicle, Visa & Other Fines
+400938 Salik & Darb  Expenses
+400939 Accommodation Expenses - SHARJAH
+400939 Accommodation Expenses - Sharjah
+400940 Office Rent - Abu Dhabi
+400941 Office Rent - FUJAIRAH
+400941 Office Rent - Fujairah
+400942 Purchase Discount
+400944 Employee Accommodation Expenses
+400945 MD Villa Rent
+400947 Oman - Gulf Rock Expenses
+500014 Cash Discount Gain
+999001 Cash Difference Gain
+999002 Cash Difference Loss
+999998 Suspense Account

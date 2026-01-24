@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Demo Brands -->
+        <record id="product_brand_demo_brand1" model="product.brand">
+            <field name="name">Premium Brands</field>
+            <field name="code">PRM</field>
+            <field name="description">High-quality premium brand products</field>
+            <field name="active" eval="True"/>
+        </record>
+        
+        <record id="product_brand_demo_brand2" model="product.brand">
+            <field name="name">Standard Brands</field>
+            <field name="code">STD</field>
+            <field name="description">Standard quality brand products</field>
+            <field name="active" eval="True"/>
+        </record>
+        
+        <record id="product_brand_demo_brand3" model="product.brand">
+            <field name="name">Economy Brands</field>
+            <field name="code">ECO</field>
+            <field name="description">Economy quality brand products</field>
+            <field name="active" eval="True"/>
+        </record>
+        
+        <!-- Demo Products with Brand Variants -->
+        <!-- Note: These will be created as demo products if product module demo data is installed -->
+        <!-- You may need to manually create products and assign brand variants in the UI -->
+    </data>
+</odoo>
+

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_invoice_config_form" model="ir.ui.view">
+        <field name="name">account.invoice.config.form</field>
+        <field name="model">account.invoice.config</field>
+        <field name="arch" type="xml">
+            <form string="Invoice Configuration">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Configuration Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Format Settings (Customer Invoice)">
+                            <field name="prefix"/>
+                            <field name="module_code"/>
+                            <field name="amc_prefix"/>
+                            <field name="separator"/>
+                            <field name="use_branch_code"/>
+                            <field name="use_year"/>
+                            <field name="padding_digits"/>
+                        </group>
+                        <group string="Format Settings (Vendor Bill)">
+                            <field name="bill_prefix"/>
+                            <field name="bill_module_code"/>
+                            <field name="bill_padding_digits"/>
+                        </group>
+                        <group string="Custom Format Templates">
+                            <field name="format_text" placeholder="{prefix}/{modulecode}/{nextnumber}/{year}"/>
+                            <field name="amc_invoice_format_text" placeholder="{prefix}/{amcprefix}/{nextnumber}/{year}"/>
+                            <field name="next_number"/>
+                            <label for="bill_format_text" string="Bill Format Text"/>
+                            <div>
+                                <field name="bill_format_text" placeholder="{prefix}/{modulecode}/{nextnumber}/{year}"/>
+                            </div>
+                            <field name="bill_next_number"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="alert" style="margin-top: 20px;">
+                        <strong>Placeholders:</strong>
+                        <ul>
+                            <li>{prefix} - Prefix</li>
+                            <li>{modulecode} - Module Code</li>
+                            <li>{amcprefix} - AMC Prefix</li>
+                            <li>{branchcode} - Branch Code</li>
+                            <li>{nextnumber} - Sequential Number</li>
+                            <li>{year} - Year</li>
+                        </ul>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_account_invoice_config_tree" model="ir.ui.view">
+        <field name="name">account.invoice.config.tree</field>
+        <field name="model">account.invoice.config</field>
+        <field name="arch" type="xml">
+            <list string="Invoice Configurations">
+                <field name="name"/>
+                <field name="prefix"/>
+                <field name="separator"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_account_invoice_config" model="ir.actions.act_window">
+        <field name="name">Invoice Configuration</field>
+        <field name="res_model">account.invoice.config</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new invoice number configuration
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_account_invoice_config"
+              name="Invoice Configuration"
+              parent="account.menu_finance_configuration"
+              action="action_account_invoice_config"
+              sequence="100"/>
+</odoo>

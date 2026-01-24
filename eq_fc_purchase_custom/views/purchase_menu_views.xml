@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- ================================ -->
+        <!-- SECTION: RFQ (Header)            -->
+        <!-- ================================ -->
+        <menuitem id="menu_purchase_config_section_rfq"
+                  name="--- RFQ ---"
+                  parent="purchase.menu_purchase_config"
+                  sequence="50"/>
+
+        <menuitem id="menu_eq_fc_rfq_stage"
+                  name="RFQ Stages"
+                  parent="purchase.menu_purchase_config"
+                  action="action_eq_fc_rfq_stage"
+                  sequence="51"/>
+
+        <menuitem id="menu_eq_fc_rfq_config"
+                  name="RFQ Configuration"
+                  parent="purchase.menu_purchase_config"
+                  action="action_eq_fc_rfq_config"
+                  sequence="52"/>
+    </data>
+</odoo>
+

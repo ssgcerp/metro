@@ -1,0 +1,252 @@
+2026-01-04 15:02:48 | BILL/2023/01/0005 | Line 2999 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:03:12 | BILL/2023/01/0006 | Line 2975 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:03:16 | BILL/2023/01/0006 | Line 2976 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:03:20 | BILL/2023/01/0006 | Line 2977 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:03:24 | BILL/2023/01/0006 | Line 2978 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:03:28 | BILL/2023/01/0006 | Line 2979 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:03:58 | BILL/2023/01/0007 | Line 1631 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:06:27 | BILL/2023/01/0008 | Line 2982 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:06:32 | BILL/2023/01/0008 | Line 2983 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:06:36 | BILL/2023/01/0008 | Line 2985 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:06:40 | BILL/2023/01/0008 | Line 2986 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:06:44 | BILL/2023/01/0008 | Line 2987 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:06:49 | BILL/2023/01/0008 | Line 2988 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:06:53 | BILL/2023/01/0008 | Line 2989 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:07:18 | BILL/2023/01/0009 | Line 1327 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:07:43 | BILL/2023/01/0010 | Line 1151 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:08:15 | BILL/2023/01/0011 | Line 1585 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:08:19 | BILL/2023/01/0011 | Line 1586 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:08:24 | BILL/2023/01/0011 | Line 1587 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:08:28 | BILL/2023/01/0011 | Line 1588 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:09:02 | BILL/2023/01/0012 | Line 1591 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:09:27 | BILL/2023/01/0013 | Line 3064 failed: Invalid field account.account.company_id in condition ('company_id', '=', 1)
+2026-01-04 15:11:07 | BILL/2023/01/0015 | Line 2491 failed: Invalid field account.account.deprecated in condition ('deprecated', '=', False)
+2026-01-04 15:11:32 | BILL/2023/01/0016 | Line 1822 failed: Invalid field account.account.deprecated in condition ('deprecated', '=', False)
+2026-01-04 15:11:58 | BILL/2023/01/0017 | Line 3419 failed: Invalid field account.account.deprecated in condition ('deprecated', '=', False)
+2026-01-04 15:21:05 | BILL/2023/01/0018 | Line 3329 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:21:31 | BILL/2023/01/0019 | Line 3316 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:21:39 | BILL/2023/01/0019 | Line 3317 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:21:45 | BILL/2023/01/0019 | Line 3318 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:21:52 | BILL/2023/01/0019 | Line 3319 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:21:58 | BILL/2023/01/0019 | Line 3320 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:22:04 | BILL/2023/01/0019 | Line 3321 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:22:11 | BILL/2023/01/0019 | Line 3322 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:22:17 | BILL/2023/01/0019 | Line 3323 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:22:23 | BILL/2023/01/0019 | Line 3324 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:22:29 | BILL/2023/01/0019 | Line 3325 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:22:36 | BILL/2023/01/0019 | Line 3326 failed: Invalid field 'exclude_from_invoice_tab' in 'account.move.line'
+2026-01-04 15:31:21 | BILL/2023/01/0020 | Line 3426 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 15:31:49 | BILL/2023/01/0021 | Line 3203 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 15:32:20 | BILL/2023/01/0022 | Line 3197 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 15:32:46 | BILL/2023/01/0023 | Line 1168 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 15:32:48 | BILL/2023/01/0023 | Line 1169 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (699, 1242, 2, 1, 128, 100, 667, 128, 39417, null, null, null, null, null, null, null, 
+2026-01-04 15:35:26 | BILL/2023/01/0024 | Line 2846 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 15:36:00 | BILL/2023/01/0025 | Line 2827 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 15:36:02 | BILL/2023/01/0025 | Line 2828 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (702, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:04 | BILL/2023/01/0025 | Line 2829 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (703, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:06 | BILL/2023/01/0025 | Line 2830 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (704, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:08 | BILL/2023/01/0025 | Line 2831 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (705, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:10 | BILL/2023/01/0025 | Line 2832 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (706, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:13 | BILL/2023/01/0025 | Line 2833 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (707, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:15 | BILL/2023/01/0025 | Line 2834 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (708, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:17 | BILL/2023/01/0025 | Line 2835 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (709, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:19 | BILL/2023/01/0025 | Line 2836 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (710, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:21 | BILL/2023/01/0025 | Line 2837 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (711, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:23 | BILL/2023/01/0025 | Line 2838 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (712, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:25 | BILL/2023/01/0025 | Line 2839 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (713, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:28 | BILL/2023/01/0025 | Line 2840 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (714, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:30 | BILL/2023/01/0025 | Line 2841 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (715, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:36:32 | BILL/2023/01/0025 | Line 2843 failed: null value in column "display_type" violates not-null constraint
+DETAIL:  Failing row contains (716, 1244, 2, 1, 128, 100, 667, 128, 39419, null, null, null, null, null, null, null, 
+2026-01-04 15:37:05 | BILL/2023/01/0026 | Line 3079 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 15:37:45 | BILL/2023/01/0027 | Line 2612 failed: current transaction is aborted, commands ignored until end of transaction block
+
+2026-01-04 16:38:24 | BILL/2023/02/0003 | Line 986 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-04 16:38:31 | BILL/2023/02/0003 | Line 987 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-04 16:38:37 | BILL/2023/02/0003 | Line 988 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-04 16:38:46 | BILL/2023/02/0003 | Line 989 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 04:38:43 | BILL/2023/02/0025 | Line 3733 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 04:38:50 | BILL/2023/02/0025 | Line 3734 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 04:38:56 | BILL/2023/02/0025 | Line 3735 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 04:39:03 | BILL/2023/02/0025 | Line 3736 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 04:39:09 | BILL/2023/02/0025 | Line 3737 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 04:39:16 | BILL/2023/02/0025 | Line 3738 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 04:39:22 | BILL/2023/02/0025 | Line 3739 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 04:39:29 | BILL/2023/02/0025 | Line 3740 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 04:56:38 | BILL/2023/02/0026 | Line 2089 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 04:56:44 | BILL/2023/02/0026 | Line 2090 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 04:56:51 | BILL/2023/02/0026 | Line 2091 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 04:57:38 | BILL/2023/02/0027 | Line 3177 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:41:32 | BILL/2023/02/0029 | Line 3600 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:41:39 | BILL/2023/02/0029 | Line 3601 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:41:45 | BILL/2023/02/0029 | Line 3602 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:41:51 | BILL/2023/02/0029 | Line 3603 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:41:58 | BILL/2023/02/0029 | Line 3604 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:42:04 | BILL/2023/02/0029 | Line 3605 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:42:11 | BILL/2023/02/0029 | Line 3606 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:42:20 | BILL/2023/02/0029 | Line 3607 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:42:26 | BILL/2023/02/0029 | Line 3608 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:42:33 | BILL/2023/02/0029 | Line 3609 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:42:39 | BILL/2023/02/0029 | Line 3610 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:42:46 | BILL/2023/02/0029 | Line 3611 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:42:52 | BILL/2023/02/0029 | Line 3612 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:54:11 | BILL/2023/02/0032 | Line 2597 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:54:18 | BILL/2023/02/0032 | Line 2598 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:54:24 | BILL/2023/02/0032 | Line 2599 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:54:31 | BILL/2023/02/0032 | Line 2600 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 05:54:37 | BILL/2023/02/0032 | Line 2601 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 06:07:52 | BILL/2023/02/0034 | Line 3067 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 06:08:36 | BILL/2023/02/0035 | Line 2762 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 06:09:19 | BILL/2023/02/0036 | Line 2136 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 06:10:05 | BILL/2023/02/0037 | Line 2590 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 06:10:57 | BILL/2023/02/0038 | Line 2540 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 06:11:49 | BILL/2023/02/0039 | Line 2680 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-05 06:12:38 | BILL/2023/02/0040 | Line 3849 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 11:51:02 | BILL/2023/02/0047 | Line 2586 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 11:51:58 | BILL/2023/02/0048 | Line 2581 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 11:53:01 | BILL/2023/02/0049 | Line 2060 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 11:53:52 | BILL/2023/02/0050 | Line 2130 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 11:54:40 | BILL/2023/02/0051 | Line 2055 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 11:55:42 | BILL/2023/02/0052 | Line 1972 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 11:56:29 | BILL/2023/02/0053 | Line 11101 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 11:56:36 | BILL/2023/02/0053 | Line 11102 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 11:56:42 | BILL/2023/02/0053 | Line 11103 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 11:57:26 | BILL/2023/02/0054 | Line 11106 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 11:57:39 | BILL/2023/02/0054 | Line 11108 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 11:57:45 | BILL/2023/02/0054 | Line 11109 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 11:58:37 | BILL/2023/02/0055 | Line 11097 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 11:59:40 | BILL/2023/02/0056 | Line 17099 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:00:19 | BILL/2023/02/0057 | Line 17092 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:00:31 | BILL/2023/02/0057 | Line 17094 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:01:12 | BILL/2023/02/0058 | Line 17085 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:01:25 | BILL/2023/02/0058 | Line 17087 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:01:38 | BILL/2023/02/0058 | Line 17089 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:11:27 | BILL/2023/03/0002 | Line 3673 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:12:25 | BILL/2023/03/0003 | Line 3668 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:13:28 | BILL/2023/03/0004 | Line 3629 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:14:16 | BILL/2023/03/0005 | Line 3626 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:15:04 | BILL/2023/03/0006 | Line 3700 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:15:55 | BILL/2023/03/0007 | Line 3811 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:16:41 | BILL/2023/03/0008 | Line 3910 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:17:54 | BILL/2023/03/0009 | Line 3838 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:18:41 | BILL/2023/03/0010 | Line 3899 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:19:29 | BILL/2023/03/0011 | Line 3866 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:20:16 | BILL/2023/03/0012 | Line 3895 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:21:14 | BILL/2023/03/0013 | Line 3834 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:22:06 | BILL/2023/03/0014 | Line 3832 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:22:53 | BILL/2023/03/0015 | Line 2696 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:25:21 | BILL/2023/03/0018 | Line 4399 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:26:19 | BILL/2023/03/0019 | Line 4396 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:27:05 | BILL/2023/03/0020 | Line 4389 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:27:11 | BILL/2023/03/0020 | Line 4390 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:27:18 | BILL/2023/03/0020 | Line 4391 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:28:07 | BILL/2023/03/0021 | Line 4156 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:28:55 | BILL/2023/03/0022 | Line 3902 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:31:34 | BILL/2023/03/0025 | Line 3949 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:32:26 | BILL/2023/03/0026 | Line 3952 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:33:17 | BILL/2023/03/0027 | Line 3954 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:34:54 | BILL/2023/03/0029 | Line 3959 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:37:16 | BILL/2023/03/0032 | Line 4492 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:38:55 | BILL/2023/03/0034 | Line 4431 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:39:01 | BILL/2023/03/0034 | Line 4432 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:39:08 | BILL/2023/03/0034 | Line 4433 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:39:14 | BILL/2023/03/0034 | Line 4434 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:39:21 | BILL/2023/03/0034 | Line 4435 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:39:29 | BILL/2023/03/0034 | Line 4436 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:39:36 | BILL/2023/03/0034 | Line 4437 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:39:42 | BILL/2023/03/0034 | Line 4438 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:39:51 | BILL/2023/03/0034 | Line 4439 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:39:57 | BILL/2023/03/0034 | Line 4440 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:40:04 | BILL/2023/03/0034 | Line 4441 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:40:10 | BILL/2023/03/0034 | Line 4442 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:40:17 | BILL/2023/03/0034 | Line 4443 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:40:23 | BILL/2023/03/0034 | Line 4444 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:40:30 | BILL/2023/03/0034 | Line 4445 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:41:08 | BILL/2023/03/0035 | Line 4454 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:41:15 | BILL/2023/03/0035 | Line 4456 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:41:21 | BILL/2023/03/0035 | Line 4459 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:42:09 | BILL/2023/03/0036 | Line 4424 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:45:41 | SI-550100035804 | Line 57204 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:45:42 | SI-550100035804 | Line 57205 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:45:50 | SI-550100035806 | Line 57080 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:46:04 | SI-550100035805 | Line 56982 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:46:06 | SI-550100035805 | Line 56983 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:46:29 | SI-550100035803 | Line 56608 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:48:17 | SI-550100035776 | Line 52841 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:49:11 | SI-550100035750 | Line 50762 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:49:19 | SI-550100035754 | Line 50638 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:49:27 | SI-550100035761 | Line 50138 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:50:41 | SI-550100035763 | Line 49317 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:50:50 | SI-550100035752 | Line 49256 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:50:58 | SI-550100035749 | Line 49251 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:51:16 | SI-550100035760 | Line 49154 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:53:02 | SI-550100035775 | Line 50685 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:53:11 | SI-550100035753 | Line 48478 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 12:53:47 | SI-550100035784 | Line 48295 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:20:04 | SI-550100035783 | Line 47653 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:20:25 | SI-550100035771 | Line 50959 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:20:26 | SI-550100035771 | Line 50960 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:20:26 | SI-550100035771 | Line 50961 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:20:27 | SI-550100035771 | Line 50962 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:20:28 | SI-550100035771 | Line 50963 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:20:29 | SI-550100035771 | Line 50964 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:20:37 | SI-550100035758 | Line 48229 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:20:46 | SI-550100035788 | Line 47674 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:20:47 | SI-550100035788 | Line 47675 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:20:48 | SI-550100035788 | Line 47676 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:20:48 | SI-550100035788 | Line 47677 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:39:45 | SI-550100035804 | Line 57204 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:39:46 | SI-550100035804 | Line 57205 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:39:54 | SI-550100035806 | Line 57080 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:40:08 | SI-550100035805 | Line 56982 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:40:09 | SI-550100035805 | Line 56983 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:40:35 | SI-550100035803 | Line 56608 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:42:20 | SI-550100035776 | Line 52841 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:43:02 | SI-550100035750 | Line 50762 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:43:10 | SI-550100035754 | Line 50638 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:43:18 | SI-550100035761 | Line 50138 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:43:35 | SI-550100035766 | Line 50010 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:44:04 | SI-550100035772 | Line 50658 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:44:30 | SI-550100035773 | Line 50675 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:45:00 | SI-550100035774 | Line 50679 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:45:41 | SI-550100035763 | Line 49317 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:45:50 | SI-550100035752 | Line 49256 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:45:59 | SI-550100035749 | Line 49251 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:46:15 | SI-550100035760 | Line 49154 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:47:53 | SI-550100035775 | Line 50685 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:48:01 | SI-550100035753 | Line 48478 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:48:33 | SI-550100035784 | Line 48295 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:49:24 | SI-550100035783 | Line 47653 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:49:44 | SI-550100035771 | Line 50959 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:49:45 | SI-550100035771 | Line 50960 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:49:45 | SI-550100035771 | Line 50961 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:49:46 | SI-550100035771 | Line 50962 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:49:47 | SI-550100035771 | Line 50963 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:49:47 | SI-550100035771 | Line 50964 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:49:58 | SI-550100035758 | Line 48229 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:50:09 | SI-550100035788 | Line 47674 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:50:10 | SI-550100035788 | Line 47675 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:50:11 | SI-550100035788 | Line 47676 failed: Any journal item on a payable account must have a due date and vice versa.
+2026-01-06 14:50:11 | SI-550100035788 | Line 47677 failed: Any journal item on a payable account must have a due date and vice versa.

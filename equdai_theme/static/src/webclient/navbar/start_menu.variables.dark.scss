@@ -1,0 +1,14 @@
+// == Udoo
+// ============================================================================
+$u-island-background: mix($o-white, $o-gray-200, 10%) !default;
+
+$u-app-icon: linear-gradient(315deg, $o-gray-100, $u-island-background) !default;
+$u-app-icon-shadow: -4px -4px 10px $o-gray-200, 4px 4px 10px $o-gray-100 !default;
+$u-app-icon-shadow-hover: -4px -4px 10px $o-gray-200, 4px 4px 10px $o-gray-100 !default;
+
+$u-sidenav-background: $u-island-background !default;
+
+$u-sidenav-item-active: shade-color($o-gray-900, 10%) !default;
+$u-sidenav-item-active-bg: rgba($o-black, 0.08) !default;
+
+$u-subnav-header: $o-gray-600 !default;

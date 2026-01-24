@@ -1,0 +1,16 @@
+2025-12-20 08:13:58 | Draft | null value in column "start_date" violates not-null constraint
+DETAIL:  Failing row contains (986, 1, 11983, null, 1, null, 0, null, 128, null, 2, 2, Draft, null, null, 2025-12-20, null, null, null, n
+2025-12-20 08:14:59 | Draft | null value in column "start_date" violates not-null constraint
+DETAIL:  Failing row contains (987, 1, 11983, null, 1, null, 0, null, 128, null, 2, 2, Draft, null, null, 2025-12-20, null, null, null, n
+2025-12-20 08:15:23 | Draft | null value in column "start_date" violates not-null constraint
+DETAIL:  Failing row contains (988, 1, 11983, null, 1, null, 0, null, 128, null, 2, 2, Draft, null, null, 2025-12-20, null, null, null, n
+2025-12-20 09:57:42 | Draft | null value in column "start_date" violates not-null constraint
+DETAIL:  Failing row contains (2428, 1, 11983, null, 6, null, 0, null, 128, null, 2, 2, Draft, null, null, 2025-12-20, null, null, null, 
+2025-12-20 09:57:58 | Draft | null value in column "start_date" violates not-null constraint
+DETAIL:  Failing row contains (2429, 1, 11983, null, 6, null, 0, null, 128, null, 2, 2, Draft, null, null, 2025-12-20, null, null, null, 
+2025-12-20 09:58:59 | Draft | null value in column "start_date" violates not-null constraint
+DETAIL:  Failing row contains (2430, 1, 11983, null, 6, null, 0, null, 128, null, 2, 2, Draft, null, null, 2025-12-20, null, null, null, 
+2025-12-20 10:00:00 | Draft | null value in column "start_date" violates not-null constraint
+DETAIL:  Failing row contains (2431, 1, 11983, null, 6, null, 0, null, 128, null, 2, 2, Draft, null, null, 2025-12-20, null, null, null, 
+2025-12-20 10:01:00 | Draft | null value in column "start_date" violates not-null constraint
+DETAIL:  Failing row contains (3006, 1, 11983, null, 6, null, 0, null, 128, null, 2, 2, Draft, null, null, 2025-12-20, null, null, null, 

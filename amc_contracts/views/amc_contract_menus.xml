@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Main Menu -->
+        <menuitem id="menu_amc_contracts_root" 
+                  name="AMC" 
+                  sequence="100"
+                  web_icon="amc_contracts,static/src/image/amc_icon.png"/>
+
+        <!-- AMC Contracts Menu -->
+        <menuitem id="menu_amc_contracts" 
+                  name="AMC Contracts" 
+                  parent="menu_amc_contracts_root" 
+                  action="action_amc_contract" 
+                  sequence="10"/>
+
+        <!-- AMC Settings Menu -->
+        <menuitem id="menu_amc_settings" 
+                  name="AMC Settings" 
+                  parent="menu_amc_contracts_root" 
+                  sequence="90"/>
+
+    </data>
+</odoo>
+

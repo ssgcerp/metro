@@ -1,0 +1,185 @@
+# -*- coding: utf-8 -*-
+
+from odoo import models, fields, api
+
+
+class SaleQuotationConfig(models.Model):
+    _name = 'sale.quotation.config'
+    _description = 'Sale Quotation Configuration'
+    _rec_name = 'name'
+
+    name = fields.Char(string='Configuration Name', required=True, default='Quotation Configuration')
+    
+    # Stage Color Configuration
+    draft_stage_color = fields.Integer(string='Draft Stage Color', default=0)
+    pending_approval_stage_color = fields.Integer(string='Pending Approval Stage Color', default=5)
+    quotation_stage_color = fields.Integer(string='Quotation Stage Color', default=10)
+    quotation_sent_stage_color = fields.Integer(string='Quotation Sent Stage Color', default=3)
+    sales_order_stage_color = fields.Integer(string='Sales Order Stage Color', default=4)
+    cancelled_stage_color = fields.Integer(string='Cancelled Stage Color', default=1)
+    
+    # Quotation Number Format Configuration
+    prefix = fields.Char(string='Prefix', default='QUO', required=True, help='Prefix for quotation numbers (e.g., QUO)')
+    module_code = fields.Char(string='Module Code', default='QUO', required=True, help='Module code (e.g., QUO)')
+    amc_prefix = fields.Char(string='AMC Prefix', default='AMC', required=True, help='Prefix to use when AMC contract is linked (e.g., AMC)')
+    use_branch_code = fields.Boolean(string='Use Branch Code', default=True, help='Include branch code in quotation number')
+    use_year = fields.Boolean(string='Use Year', default=True, help='Include year in quotation number')
+    padding_digits = fields.Integer(string='Padding Digits', default=4, required=True, help='Number of digits for sequential number (e.g., 4 = 0001, 1213)')
+    
+    # Separator
+    separator = fields.Char(string='Separator', default='/', required=True, help='Separator between format parts')
+    
+    # Custom Format
+    format_text = fields.Char(
+        string='Format Text',
+        help='Custom format template. Use placeholders: {prefix}, {modulecode}, {branchcode}, {nextnumber}, {year}. Example: {prefix}/{modulecode}/{branchcode}/{nextnumber}/{year}'
+    )
+    amc_quotation_format_text = fields.Char(
+        string='Format Text for AMC Quotations',
+        help='Custom format template specifically for AMC Quotations. Use placeholders: {prefix}, {modulecode}, {amcprefix}, {branchcode}, {nextnumber}, {year}. Example: {prefix}/{amcprefix}/{modulecode}/{branchcode}/{nextnumber}/{year}'
+    )
+    next_number = fields.Integer(
+        string='Next Number',
+        help='Manually set the next sequential number. Leave empty to use automatic sequence.'
+    )
+    
+    active = fields.Boolean(string='Active', default=True)
+
+    _sql_constraints = [
+        ('name_uniq', 'unique(name)', 'Configuration name must be unique!'),
+    ]
+
+    @api.model
+    def get_config(self):
+        """Get active configuration or create default"""
+        config = self.search([('active', '=', True)], limit=1)
+        if not config:
+            config = self.create({'name': 'Default Quotation Configuration'})
+        return config
+    
+    def generate_quotation_number(self, branch_code=None, year=None, use_amc_format=False):
+        """Generate quotation number based on configuration
+        
+        Args:
+            branch_code: Branch code to include in the number
+            year: Year to include in the number
+            use_amc_format: If True, use AMC quotation format (when AMC contract is linked)
+        
+        Returns:
+            Custom quotation number string if format_text is configured, None otherwise
+            (None means fall back to Odoo's default sequence numbering)
+        
+        Logic:
+            1. First check if 'format_text' (standard) or 'amc_quotation_format_text' (AMC) is provided
+            2. If format text is provided, use it to generate custom quotation number
+            3. If no format text is provided, return None to use Odoo's default numbering
+        """
+        config = self
+        
+        # Check if custom format is configured
+        # For AMC quotations, check amc_quotation_format_text
+        # For standard quotations, check format_text
+        format_text_to_use = None
+        if use_amc_format:
+            format_text_to_use = config.amc_quotation_format_text or None
+        else:
+            format_text_to_use = config.format_text or None
+        
+        # If no custom format is specified, return None to use Odoo's default numbering
+        if not format_text_to_use:
+            return None
+        
+        # Get sequence number based on whether this is an AMC quotation or not
+        if use_amc_format:
+            # Use AMC quotation sequence
+            sequence_obj = self.env['ir.sequence'].search([
+                ('code', '=', 'sale.quotation.sequence.amc')
+            ], limit=1)
+        else:
+            # Use standard quotation sequence
+            sequence_obj = self.env['ir.sequence'].search([
+                ('code', '=', 'sale.quotation.sequence')
+            ], limit=1)
+        
+        if not sequence_obj:
+            # Create the appropriate sequence if it doesn't exist
+            sequence_name = 'Sale Quotation Sequence (AMC)' if use_amc_format else 'Sale Quotation Sequence'
+            sequence_code = 'sale.quotation.sequence.amc' if use_amc_format else 'sale.quotation.sequence'
+            sequence_obj = self.env['ir.sequence'].create({
+                'name': sequence_name,
+                'code': sequence_code,
+                'prefix': '',
+                'suffix': '',
+                'padding': 0,
+                'number_next': 1,
+                'number_increment': 1,
+                'company_id': False,
+            })
+        
+        if config.next_number and config.next_number > 0:
+            sequence = config.next_number
+            # Update next_number for next use
+            config.write({'next_number': sequence + 1})
+        else:
+            next_number = sequence_obj.next_by_id()
+            # Convert to integer
+            try:
+                sequence = int(next_number) if next_number else 1
+            except (ValueError, TypeError):
+                sequence = 1
+        
+        # Generate quotation number using the custom format text
+        if use_amc_format:
+            # Pass AMC prefix for AMC quotations
+            return config._generate_from_format_text(format_text_to_use, branch_code, year, sequence, config, amc_prefix=config.amc_prefix)
+        else:
+            return config._generate_from_format_text(format_text_to_use, branch_code, year, sequence, config)
+    
+    def _generate_from_format_text(self, format_text, branch_code, year, sequence, config, amc_prefix=None):
+        """Generate quotation number from custom format text
+        
+        Replace placeholders in format_text:
+        - {prefix} or {PREFIX}
+        - {modulecode} or {MODULECODE}
+        - {amcprefix} or {AMCPREFIX} - AMC prefix (if provided)
+        - {branchcode} or {BRANCHCODE}
+        - {nextnumber} or {NEXTNUMBER}
+        - {year} or {YEAR}
+        """
+        import re
+        
+        # Get padded sequence
+        padded_sequence = str(sequence).zfill(config.padding_digits)
+        
+        # Prepare replacement values
+        replacements = {
+            'prefix': config.prefix or '',
+            'modulecode': config.module_code or '',
+            'branchcode': branch_code or '',
+            'nextnumber': padded_sequence,
+            'year': str(year) if year else '',
+        }
+        
+        # Add AMC prefix if provided
+        if amc_prefix is not None:
+            replacements['amcprefix'] = amc_prefix or config.amc_prefix or ''
+        
+        # Replace placeholders (case-insensitive)
+        result = format_text
+        for key, value in replacements.items():
+            # Replace both {key} and {KEY} patterns
+            pattern = r'\{' + re.escape(key) + r'\}'
+            result = re.sub(pattern, value, result, flags=re.IGNORECASE)
+        
+        # Clean up any empty sections (double separators)
+        separator = config.separator or '/'
+        if separator:
+            # Remove double separators
+            double_sep = separator + separator
+            while double_sep in result:
+                result = result.replace(double_sep, separator)
+            # Remove leading/trailing separators
+            result = result.strip(separator)
+        
+        return result
+

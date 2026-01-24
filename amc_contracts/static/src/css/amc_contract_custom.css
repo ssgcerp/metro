@@ -1,0 +1,63 @@
+/* AMC Contract Custom Styles */
+
+/* Red buttons for Cancel and Block */
+.btn-danger.amc-cancel-btn,
+.btn-danger.amc-block-btn {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: #fff !important;
+}
+
+.btn-danger.amc-cancel-btn:hover,
+.btn-danger.amc-block-btn:hover {
+    background-color: #c82333 !important;
+    border-color: #bd2130 !important;
+}
+
+/* Green button for Confirm */
+.o_amc_confirm_btn {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+    color: #fff !important;
+}
+
+.o_amc_confirm_btn:hover {
+    background-color: #218838 !important;
+    border-color: #1e7e34 !important;
+}
+
+.o_amc_confirm_btn:focus,
+.o_amc_confirm_btn:active {
+    background-color: #1e7e34 !important;
+    border-color: #1c7430 !important;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.5) !important;
+}
+
+/* Status badge colors from stage color field */
+.o_list_view .o_field_badge {
+    /* Apply colors based on stage color */
+}
+
+/* Color mapping for stage colors (0-11) - Odoo standard colors */
+.o_list_view .o_field_badge[style*="background-color"] {
+    /* Will use inline style from badge widget if available */
+}
+
+/* Alternative: Use data attributes if badge widget supports it */
+.o_list_view td[name="stage_id"] .o_field_badge {
+    /* Target badge in stage_id column */
+}
+
+/* Color values for Odoo badge colors */
+.o_list_view .o_field_badge.color_0 { background-color: #FFFFFF !important; color: #000000 !important; }
+.o_list_view .o_field_badge.color_1 { background-color: #00A09D !important; color: #FFFFFF !important; }
+.o_list_view .o_field_badge.color_2 { background-color: #DE3831 !important; color: #FFFFFF !important; }
+.o_list_view .o_field_badge.color_3 { background-color: #EC7C5B !important; color: #FFFFFF !important; }
+.o_list_view .o_field_badge.color_4 { background-color: #A24689 !important; color: #FFFFFF !important; }
+.o_list_view .o_field_badge.color_5 { background-color: #7C7FA8 !important; color: #FFFFFF !important; }
+.o_list_view .o_field_badge.color_6 { background-color: #4F9FD8 !important; color: #FFFFFF !important; }
+.o_list_view .o_field_badge.color_7 { background-color: #00C8D0 !important; color: #FFFFFF !important; }
+.o_list_view .o_field_badge.color_8 { background-color: #43A047 !important; color: #FFFFFF !important; }
+.o_list_view .o_field_badge.color_9 { background-color: #7BC142 !important; color: #000000 !important; }
+.o_list_view .o_field_badge.color_10 { background-color: #FBC02D !important; color: #000000 !important; }
+.o_list_view .o_field_badge.color_11 { background-color: #F39C12 !important; color: #FFFFFF !important; }

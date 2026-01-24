@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Purchase Order Line Tree View - Customized for RFQ Product Lines -->
+        <!-- Standalone view with very high priority - Odoo will use this automatically -->
+        <record id="view_purchase_order_line_tree_custom_v2" model="ir.ui.view">
+            <field name="name">purchase.order.line.tree.custom</field>
+            <field name="model">purchase.order.line</field>
+            <field name="arch" type="xml">
+                <list string="Order Lines" editable="bottom">
+                    <field name="brand_id" string="Brand"/>
+                    <field name="product_id" string="Product"/>
+                    <field name="name" string="Description"/>
+                    <field name="product_qty" string="Quantity"/>
+                    <field name="qty_received" string="Received Quantity"/>
+                    <field name="qty_invoiced" string="Billed Quantity"/>
+                    <field name="product_uom_id" string="UoM"/>
+                    <field name="price_unit" string="Unit Price"/>
+                    <field name="tax_ids" string="Taxes" widget="many2many_tags"/>
+                    <field name="price_subtotal" string="Subtotal"/>
+                </list>
+            </field>
+            <field name="priority" eval="99"/>
+        </record>
+        
+        <!-- Purchase Project Request Line List View -->
+        <record id="view_purchase_project_request_line_tree" model="ir.ui.view">
+            <field name="name">purchase.project.request.line.tree</field>
+            <field name="model">purchase.project.request.line</field>
+            <field name="priority" eval="16"/>
+            <field name="arch" type="xml">
+                <list string="Project Requests" editable="bottom">
+                    <field name="order_date"/>
+                    <field name="requested_project_id"/>
+                    <field name="requested_product"/>
+                    <field name="requested_qty"/>
+                    <field name="requested_user"/>
+                </list>
+            </field>
+        </record>
+        
+        <!-- Purchase Delivery Order Line List View -->
+        <record id="view_purchase_delivery_order_line_tree" model="ir.ui.view">
+            <field name="name">purchase.delivery.order.line.tree</field>
+            <field name="model">purchase.delivery.order.line</field>
+            <field name="priority" eval="16"/>
+            <field name="arch" type="xml">
+                <list string="Delivery Orders" editable="bottom">
+                    <field name="order_date"/>
+                    <field name="delivery_number"/>
+                </list>
+            </field>
+        </record>
+    </data>
+</odoo>
+

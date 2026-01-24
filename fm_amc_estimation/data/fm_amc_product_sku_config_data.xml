@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Product SKU Configuration Default Data -->
+        <record id="fm_amc_product_sku_config_default" model="fm.amc.product.sku.config">
+            <field name="name">Default Product SKU Configuration</field>
+            <field name="estimation_sku_prefix">EST-SKU</field>
+            <field name="default_sku_prefix">SKU</field>
+            <field name="sku_padding_digits">6</field>
+            <field name="sku_separator">-</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+</odoo>
+

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_customer_preview_form" model="ir.ui.view">
+        <field name="name">odoo14.customer.preview.form</field>
+        <field name="model">odoo14.customer.preview</field>
+        <field name="arch" type="xml">
+            <form string="Customer Preview" create="0" delete="0">
+                <header>
+                    <button name="action_previous" string="Previous" type="object" 
+                            class="btn-secondary" icon="fa-arrow-left"
+                            invisible="current_index &lt;= 0"/>
+                    <button name="action_next" string="Next" type="object" 
+                            class="btn-secondary" icon="fa-arrow-right"
+                            invisible="current_index &gt;= total_count - 1"/>
+                    <field name="current_index" invisible="1"/>
+                    <field name="total_count" invisible="1"/>
+                    <field name="display_position" readonly="1" nolabel="1" invisible="not display_position"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="customer_name"/>
+                            <field name="customer_email"/>
+                            <field name="customer_phone"/>
+                            <field name="customer_mobile"/>
+                        </group>
+                        <group>
+                            <field name="customer_street"/>
+                            <field name="customer_city"/>
+                            <field name="customer_state"/>
+                            <field name="customer_country"/>
+                        </group>
+                    </group>
+                    <group string="Full Data (JSON)" invisible="not customer_data_json">
+                        <field name="customer_data_json" widget="text"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
+

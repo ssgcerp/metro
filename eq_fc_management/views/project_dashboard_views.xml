@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+	<data>
+		<record id="view_project_dashboard_form" model="ir.ui.view">
+			<field name="name">project.project.dashboard.form</field>
+			<field name="model">project.project</field>
+			<field name="priority" eval="30"/>
+			<field name="arch" type="xml">
+				<form string="Project Dashboard" create="false" class="o_project_dashboard">
+					<header>
+					
+						<!-- Stage Statusbar -->
+						
+						<field name="stage_id" widget="statusbar" options="{'clickable': False}" modifiers="{'readonly': [('id', '!=', False)]}"/>
+						<!-- Action Buttons (visibility computed on project_dashboard.py) -->
+
+
+
+    <!-- Action Buttons (visibility from model compute) -->
+    <button name="action_next_stage"
+            string="Next"
+            type="object"
+            class="btn btn-secondary"
+            modifiers="{'invisible': [('show_next_button','=', False)]}"/>
+
+    <button name="action_confirm_project"
+            string="Confirm"
+            type="object"
+            class="btn btn-primary"
+            modifiers="{'invisible': [('show_confirm_button','=', False)]}"/>
+
+    <button name="action_cancel_project"
+            string="Cancel"
+            type="object"
+            class="btn btn-outline-danger"
+            modifiers="{'invisible': [('show_cancel_button','=', False)]}"/>
+
+    <button name="action_start_project"
+            string="Start Project"
+            type="object"
+            class="btn btn-success"
+            modifiers="{'invisible': [('show_start_button','=', False)]}"/>
+
+    <button name="action_complete_project"
+            string="Complete Project"
+            type="object"
+            class="btn btn-primary"
+            modifiers="{'invisible': [('show_complete_button','=', False)]}"/>
+
+
+					</header>
+					<sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_amc" type="object" class="oe_stat_button" icon="fa-file-text-o" invisible="not amc_contract_id">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">AMC</span>
+                                </div>
+                            </button>
+                            <button name="action_view_documents" type="object" class="oe_stat_button" icon="fa-file-text-o">
+                                <field name="document_count" widget="statinfo" string="Documents"/>
+                            </button>
+                             <button name="action_view_tasks" type="object" class="oe_stat_button" icon="fa-tasks">
+                                <field name="task_count" widget="statinfo" string="Tasks"/>
+                            </button>
+                             <button name="action_view_deliveries" type="object" class="oe_stat_button" icon="fa-truck">
+                                <field name="delivery_count" widget="statinfo" string="Indents"/>
+                            </button>
+                             <button name="action_view_expenses" type="object" class="oe_stat_button" icon="fa-credit-card">
+                                <field name="expense_count" widget="statinfo" string="Expenses"/>
+                            </button>
+                             <button name="action_view_invoices" type="object" class="oe_stat_button" icon="fa-pencil-square-o">
+                                <field name="invoice_count" widget="statinfo" string="Income"/>
+                            </button>
+                             <button name="action_view_sales" type="object" class="oe_stat_button" icon="fa-usd">
+                                <field name="sale_count" widget="statinfo" string="Sales"/>
+                            </button>
+                             <button name="action_view_stocks" type="object" class="oe_stat_button" icon="fa-cube">
+                                <field name="stock_count" widget="statinfo" string="Products"/>
+                            </button>
+                             <button name="action_view_approvals" type="object" class="oe_stat_button" icon="fa-check-square-o">
+                                <field name="approval_count" widget="statinfo" string="Approvals"/>
+                            </button>
+                        </div>
+						<div class="oe_title">
+							<label for="project_code" string="Project code"/>
+							<h1>
+								<field name="project_code" class="oe_inline" readonly="1" placeholder="DRAFT"/>
+							</h1>
+						</div>
+						<group>
+							<group>
+
+							<field name="stage_id" string="Current Stage"/>
+								<field name="name" string="Project Name" placeholder="Project Name"/>
+								<field name="partner_id" string="Customer" options="{'no_open': True}" required="1"/>
+								<field name="company_id" options="{'no_open': True}"/>
+								<field name="amc_contract_id" options="{'no_open': True, 'no_create': True}"/>
+								<field name="branch_id" options="{'no_open': True, 'no_create': True}"/>
+							</group>
+							<group>
+								<field name="is_confirmed" readonly="1"/>
+								<field name="currency_id" readonly="1"/>
+								<field name="active" widget="boolean_toggle"/>
+								<field name="is_amc"/>
+								<field name="is_amc_project"/>
+							</group>
+						</group>
+						<notebook>
+							<page string="Project Summary">
+								<group col="4">
+									<group>
+										<field name="create_date" readonly="1"/>
+										<field name="invoice_total"/>
+										<field name="invoice_paid"/>
+									</group>
+									<group>
+										<field name="invoice_pending" readonly="1"/>
+										<field name="actual_cost"/>
+										<field name="estimated_cost"/>
+									</group>
+									<group>
+										<field name="actual_profit" readonly="1"/>
+										<field name="estimated_profit"/>
+										<field name="profit_percent" readonly="1"/>
+									</group>
+									<group>
+										<field name="cost_overrun" readonly="1"/>
+										<field name="cost_overrun_percent" readonly="1"/>
+										<field name="stage_id" readonly="1"/>
+									</group>
+								</group>
+								<group>
+									<field name="description" placeholder="Project description..."/>
+								</group>
+							</page>
+							<page string="Settings">
+								<group>
+									<group>
+										<field name="company_id" options="{'no_open': True}"/>
+										<field name="branch_id" options="{'no_open': True, 'no_create': True}"/>
+										<field name="currency_id" options="{'no_open': True}"/>
+									</group>
+						<group>
+									<field name="project_code" readonly="1"/>
+									<field name="is_confirmed" readonly="1"/>
+								</group>
+							</group>
+                            <separator string="Project Members Allocation"/>
+                            <field name="member_allocation_ids"/>
+						</page>
+					</notebook>
+				</sheet>
+			</form>
+		</field>
+	</record>
+
+    <!-- Project Member Allocation List View -->
+    <record id="view_project_member_allocation_list" model="ir.ui.view">
+        <field name="name">project.member.allocation.list</field>
+        <field name="model">project.member.allocation</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="role_id"/>
+                <field name="allocation_percent" widget="percentage"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="notes" optional="hide"/>
+            </list>
+        </field>
+    </record>
+	</data>
+	<!-- Re-point default actions to open this dashboard form -->
+	<data noupdate="0">
+		<record id="project.open_view_project_all_group_stage" model="ir.actions.act_window">
+			<field name="context" eval="{'form_view_ref': 'eq_fc_management.view_project_dashboard_form'}"/>
+		</record>
+		<record id="project.open_view_project_all" model="ir.actions.act_window">
+			<field name="context" eval="{'form_view_ref': 'eq_fc_management.view_project_dashboard_form'}"/>
+		</record>
+		<record id="project.open_view_project_all_config" model="ir.actions.act_window">
+			<field name="context" eval="{'form_view_ref': 'eq_fc_management.view_project_dashboard_form'}"/>
+		</record>
+	</data>
+</odoo>

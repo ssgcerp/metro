@@ -1,0 +1,60 @@
+/* Financial Control Project Custom Styles */
+
+/* Label styling for cost and profit indicators */
+.label-success {
+    background-color: #28a745 !important;
+    color: white !important;
+}
+
+.label-warning {
+    background-color: #ffc107 !important;
+    color: #333 !important;
+}
+
+.label-danger {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+.label {
+    display: inline-block;
+    padding: 0.25em 0.6em;
+    font-size: 75%;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.25rem;
+}
+
+.mt8 {
+    margin-top: 8px;
+}
+
+/* Ensure consistent styling across themes */
+.oe_read_only .label {
+    margin-top: 5px;
+}
+
+/* Financial tracking section styling */
+.financial_tracking .group {
+    margin-bottom: 15px;
+}
+
+/* Project code field styling */
+.field_project_code {
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+
+
+
+
+
+
+
+
+

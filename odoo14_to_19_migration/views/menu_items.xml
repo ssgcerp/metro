@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_migration_root"
+              name="Odoo 14 Migration"
+              sequence="100"/>
+
+    <menuitem id="menu_migration_customers"
+              name="Customers"
+              parent="menu_migration_root"
+              sequence="5"/>
+
+    <menuitem id="menu_migration_customers_quotation"
+              name="Quotation"
+              parent="menu_migration_customers"
+              action="action_migration_quotation"
+              sequence="10"/>
+
+    <menuitem id="menu_migration_customers_upload_excel"
+              name="Upload Excel (Quotation)"
+              parent="menu_migration_customers"
+              action="action_quotation_upload_wizard"
+              sequence="15"/>
+
+    <menuitem id="menu_migration_customers_invoices"
+              name="Customer Invoices"
+              parent="menu_migration_customers"
+              action="action_migration_customer_invoice"
+              sequence="20"/>
+
+    <menuitem id="menu_migration_customers_invoices_upload_excel"
+              name="Upload Excel (Customer Invoice)"
+              parent="menu_migration_customers"
+              action="action_customer_invoice_upload_wizard"
+              sequence="22"/>
+
+    <menuitem id="menu_migration_customers_customers"
+              name="Customers"
+              parent="menu_migration_customers"
+              sequence="30"/>
+
+    <menuitem id="menu_migration_customers_process_queue_jobs"
+              name="Process Queue Jobs Now"
+              parent="menu_migration_customers"
+              action="action_trigger_queue_job_runner_menu"
+              sequence="25"/>
+
+    <!-- AMC Contracts - Separate Top Level Menu -->
+    <menuitem id="menu_migration_amc_contracts"
+              name="AMC Contracts"
+              parent="menu_migration_root"
+              sequence="15"/>
+
+    <menuitem id="menu_migration_amc_contracts_list"
+              name="AMC Contracts"
+              parent="menu_migration_amc_contracts"
+              action="action_amc_contract_migration"
+              sequence="10"/>
+
+    <menuitem id="menu_migration_amc_contracts_upload_excel"
+              name="Upload Excel"
+              parent="menu_migration_amc_contracts"
+              action="action_amc_contract_upload_wizard"
+              sequence="15"/>
+
+    <menuitem id="menu_migration_amc_contracts_from_existing"
+              name="Import from Existing Contracts"
+              parent="menu_migration_amc_contracts"
+              action="action_amc_contract_from_existing_wizard"
+              sequence="17"/>
+
+    <menuitem id="menu_migration_amc_contracts_process_queue_jobs"
+              name="Process Queue Jobs Now"
+              parent="menu_migration_amc_contracts"
+              action="action_trigger_queue_job_runner_amc_menu"
+              sequence="20"/>
+
+    <menuitem id="menu_migration_amc_system_types"
+              name="AMC System Types"
+              parent="menu_migration_amc_contracts"
+              action="action_migration_amc_system_type"
+              sequence="25"/>
+
+    <menuitem id="menu_migration_amc_system_types_upload_excel"
+              name="Upload Excel"
+              parent="menu_migration_amc_contracts"
+              action="action_amc_system_type_upload_wizard"
+              sequence="30"/>
+
+    <!-- Estimations - Separate Top Level Menu -->
+    <menuitem id="menu_migration_estimations"
+              name="Estimations"
+              parent="menu_migration_root"
+              sequence="20"/>
+
+    <menuitem id="menu_migration_estimations_list"
+              name="Estimations"
+              parent="menu_migration_estimations"
+              action="action_migration_estimation"
+              sequence="10"/>
+
+    <menuitem id="menu_migration_estimations_upload_excel"
+              name="Upload Excel"
+              parent="menu_migration_estimations"
+              action="action_estimation_upload_wizard"
+              sequence="15"/>
+
+    <menuitem id="menu_migration_estimations_process_queue_jobs"
+              name="Process Queue Jobs Now"
+              parent="menu_migration_estimations"
+              action="action_estimation_trigger_queue_job_runner_menu"
+              sequence="20"/>
+
+    <!-- RFQ (Purchase Orders) - Separate Top Level Menu -->
+    <menuitem id="menu_migration_rfq"
+              name="RFQ"
+              parent="menu_migration_root"
+              sequence="25"/>
+
+    <menuitem id="menu_migration_rfq_list"
+              name="RFQ"
+              parent="menu_migration_rfq"
+              action="action_migration_rfq"
+              sequence="10"/>
+
+    <menuitem id="menu_migration_rfq_upload_excel"
+              name="Upload Excel"
+              parent="menu_migration_rfq"
+              action="action_rfq_upload_wizard"
+              sequence="15"/>
+
+    <menuitem id="menu_migration_rfq_process_queue_jobs"
+              name="Process Queue Jobs Now"
+              parent="menu_migration_rfq"
+              action="action_rfq_trigger_queue_job_runner_menu"
+              sequence="20"/>
+
+    <!-- Projects - Separate Top Level Menu -->
+    <menuitem id="menu_migration_projects"
+              name="Projects"
+              parent="menu_migration_root"
+              sequence="22"/>
+
+    <menuitem id="menu_migration_projects_list"
+              name="Projects"
+              parent="menu_migration_projects"
+              action="action_project_migration"
+              sequence="10"/>
+
+    <menuitem id="menu_migration_projects_upload_excel"
+              name="Upload Excel"
+              parent="menu_migration_projects"
+              action="action_project_upload_wizard"
+              sequence="15"/>
+
+    <!-- CRM Leads - Separate Top Level Menu -->
+    <menuitem id="menu_migration_crm_leads"
+              name="CRM Leads"
+              parent="menu_migration_root"
+              sequence="25"/>
+
+    <menuitem id="menu_migration_crm_leads_list"
+              name="CRM Leads"
+              parent="menu_migration_crm_leads"
+              action="action_migration_crm_lead"
+              sequence="10"/>
+
+    <menuitem id="menu_migration_crm_leads_upload_excel"
+              name="Upload Excel"
+              parent="menu_migration_crm_leads"
+              action="action_crm_lead_upload_wizard"
+              sequence="15"/>
+
+    <menuitem id="menu_migration_crm_leads_process_queue_jobs"
+              name="Process Queue Jobs Now"
+              parent="menu_migration_crm_leads"
+              action="action_crm_lead_trigger_queue_job_runner_menu"
+              sequence="20"/>
+
+    <menuitem id="menu_migration_config"
+              name="Migration Configuration"
+              parent="menu_migration_root"
+              action="action_migration_config"
+              sequence="10"/>
+
+    <menuitem id="menu_migration_company_mapping"
+              name="Company Mapping"
+              parent="menu_migration_config"
+              action="action_branch_company_mapping"
+              sequence="15"/>
+
+    <menuitem id="menu_migration_start"
+              name="Start Migration"
+              parent="menu_migration_root"
+              sequence="20"/>
+
+    <menuitem id="menu_customer_migration"
+              name="Customers"
+              parent="menu_migration_start"
+              action="action_customer_migration_wizard"
+              sequence="10"/>
+
+    <menuitem id="menu_employee_migration"
+              name="Employees"
+              parent="menu_migration_start"
+              action="action_employee_migration_wizard"
+              sequence="15"/>
+
+    <!-- Vendors - Separate Top Level Menu -->
+    <menuitem id="menu_migration_vendors"
+              name="Vendors"
+              parent="menu_migration_root"
+              sequence="30"/>
+
+    <menuitem id="menu_migration_vendors_bills"
+              name="Vendor Bills"
+              parent="menu_migration_vendors"
+              action="action_migration_vendor_bill"
+              sequence="10"/>
+
+    <menuitem id="menu_migration_vendors_bills_upload_excel"
+              name="Upload Excel (Vendor Bill)"
+              parent="menu_migration_vendors"
+              action="action_vendor_bill_upload_wizard"
+              sequence="12"/>
+
+    <menuitem id="menu_migration_vendors_process_queue_jobs"
+              name="Process Queue Jobs Now"
+              parent="menu_migration_vendors"
+              action="action_trigger_queue_job_runner_menu"
+              sequence="15"/>
+
+    <!-- Vendors, Products, Accounting will be added later -->
+</odoo>

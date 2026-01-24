@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Cheque Configuration Form View -->
+        <record id="view_eq_cheque_config_form" model="ir.ui.view">
+            <field name="name">eq.cheque.config.form</field>
+            <field name="model">eq.cheque.config</field>
+            <field name="arch" type="xml">
+                <form string="Cheque Management Configuration">
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="company_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                            </h1>
+                        </div>
+
+                        <group>
+                            <group string="PDC Account Configuration" col="2">
+                                <field name="pdc_receivable_account_id" options="{'no_create': True}"/>
+                                <field name="pdc_payable_account_id" options="{'no_create': True}"/>
+                                <field name="pdc_clearing_account_id" options="{'no_create': True}"/>
+                                <field name="cheque_bounce_charges_account_id" options="{'no_create': True}"/>
+                            </group>
+
+                            <group string="Default Journals" col="2">
+                                <field name="default_incoming_journal_id" domain="[('type', '=', 'bank')]" options="{'no_create': True}"/>
+                                <field name="default_outgoing_journal_id" domain="[('type', '=', 'bank')]" options="{'no_create': True}"/>
+                            </group>
+                        </group>
+
+                        <group>
+                            <group string="Sequences" col="2">
+                                <field name="incoming_sequence_id" options="{'no_create': True}"/>
+                                <field name="outgoing_sequence_id" options="{'no_create': True}"/>
+                            </group>
+
+                            <group string="Settings" col="2">
+                                <field name="allow_cancel_journal_entries"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Cheque Configuration List View -->
+        <record id="view_eq_cheque_config_list" model="ir.ui.view">
+            <field name="name">eq.cheque.config.list</field>
+            <field name="model">eq.cheque.config</field>
+            <field name="arch" type="xml">
+                <list string="Cheque Configurations">
+                    <field name="company_id"/>
+                    <field name="pdc_receivable_account_id"/>
+                    <field name="pdc_payable_account_id"/>
+                    <field name="default_incoming_journal_id"/>
+                    <field name="default_outgoing_journal_id"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Action for Cheque Configuration -->
+        <record id="action_eq_cheque_config" model="ir.actions.act_window">
+            <field name="name">Cheque Configuration</field>
+            <field name="res_model">eq.cheque.config</field>
+            <field name="view_mode">list,form</field>
+        </record>
+    </data>
+</odoo>
+

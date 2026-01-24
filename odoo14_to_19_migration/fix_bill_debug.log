@@ -1,0 +1,105 @@
+11:38:06 -      [Debug Line 225663] Acc: 400924 (ID: 462), Type: expense_direct_cost
+11:38:06 -      [Line 225663] Standard (expense_direct_cost - 400924). Clearing Date.
+11:38:07 -      [Debug Line 225665] Acc: False (ID: 169), Type: equity_unaffected
+11:38:07 -      [Line 225665] Standard (equity_unaffected - False). Clearing Date.
+12:04:16 -      [Debug] Processing Bill ID: 71780, Line IDs: [225663, 225665]
+12:04:16 -      [Debug Line 225663] Acc: 400924 (ID: 462), Type: expense_direct_cost
+12:04:16 -      [Line 225663] Standard (expense_direct_cost - 400924). Clearing Date.
+12:04:16 -      [Debug Line 225665] Acc: False (ID: 169), Type: equity_unaffected
+12:04:16 -      [Line 225665] Standard (equity_unaffected - False). Clearing Date.
+12:07:28 -      [Debug] Reading lines with Active Company ID: 6
+12:07:28 -      [Debug] Processing Bill ID: 71780, Line IDs: [225663, 225665]
+12:07:28 -      [Debug Line 225663] Acc: 400924 (ID: 462), Type: expense_direct_cost
+12:07:28 -      [Line 225663] Standard (expense_direct_cost - 400924). Clearing Date.
+12:07:29 -      [Debug Line 225665] Acc: False (ID: 169), Type: equity_unaffected
+12:07:29 -      [Line 225665] Standard (equity_unaffected - False). Clearing Date.
+12:10:08 -      [Debug] Reading lines with Active Company ID: 6
+12:10:08 -      [Debug] Processing Bill ID: 71780, Line IDs: [225663, 225665]
+12:10:08 -      [Debug Line 225663] Acc: 400924 (ID: 462), Type: expense_direct_cost
+12:10:08 -      [Line 225663] Standard (expense_direct_cost - 400924). Clearing Date.
+12:10:08 -      [Warning] No matching account for code 'False' or Name 'Payable' in new company.
+12:10:08 -      [Resolved] Mapped to fallback account '201002 - Payables' (Same Type: liability_payable)
+12:10:08 -      [Debug Line 225665] Acc: 201002 (ID: 55), Type: liability_payable
+12:10:08 -      [Line 225665] Payable/Receivable (liability_payable). Setting Date: 2025-02-24
+12:10:08 -      [Debug] Executing atomic write (Name reset to '/')...
+12:10:09 -      [Debug] Write Success.
+12:11:08 -      [Debug] Reading lines with Active Company ID: 6
+12:11:08 -      [Debug] Processing Bill ID: 71779, Line IDs: [225660, 225662]
+12:11:08 -      [Debug Line 225660] Acc: 400924 (ID: 462), Type: expense_direct_cost
+12:11:08 -      [Line 225660] Standard (expense_direct_cost - 400924). Clearing Date.
+12:11:08 -      [Warning] No matching account for code 'False' or Name 'Payable' in new company.
+12:11:08 -      [Resolved] Mapped to fallback account '201002 - Payables' (Same Type: liability_payable)
+12:11:08 -      [Debug Line 225662] Acc: 201002 (ID: 55), Type: liability_payable
+12:11:08 -      [Line 225662] Payable/Receivable (liability_payable). Setting Date: 2025-02-24
+12:11:08 -      [Debug] Executing atomic write (Name reset to '/')...
+12:11:09 -      [Debug] Write Success.
+12:11:10 -      [Debug] Reading lines with Active Company ID: 6
+12:11:10 -      [Debug] Processing Bill ID: 71453, Line IDs: [224525, 224527]
+12:11:10 -      [Debug Line 224525] Acc: 400936 (ID: 474), Type: expense_direct_cost
+12:11:10 -      [Line 224525] Standard (expense_direct_cost - 400936). Clearing Date.
+12:11:10 -      [Warning] No matching account for code 'False' or Name 'Payable' in new company.
+12:11:11 -      [Resolved] Mapped to fallback account '201002 - Payables' (Same Type: liability_payable)
+12:11:11 -      [Debug Line 224527] Acc: 201002 (ID: 55), Type: liability_payable
+12:11:11 -      [Line 224527] Payable/Receivable (liability_payable). Setting Date: 2025-08-12
+12:11:11 -      [Debug] Executing atomic write (Name reset to '/')...
+12:11:11 -      [Debug] Write Success.
+12:11:12 -      [Debug] Reading lines with Active Company ID: 6
+12:11:12 -      [Debug] Processing Bill ID: 71278, Line IDs: [223951, 223953]
+12:11:13 -      [Debug Line 223951] Acc: 400924 (ID: 462), Type: expense_direct_cost
+12:11:13 -      [Line 223951] Standard (expense_direct_cost - 400924). Clearing Date.
+12:11:13 -      [Warning] No matching account for code 'False' or Name 'Payable' in new company.
+12:11:13 -      [Resolved] Mapped to fallback account '201002 - Payables' (Same Type: liability_payable)
+12:11:13 -      [Debug Line 223953] Acc: 201002 (ID: 55), Type: liability_payable
+12:11:13 -      [Line 223953] Payable/Receivable (liability_payable). Setting Date: 2025-11-05
+12:11:13 -      [Debug] Executing atomic write (Name reset to '/')...
+12:11:13 -      [Debug] Write Success.
+12:11:14 -      [Debug] Reading lines with Active Company ID: 6
+12:11:15 -      [Debug] Processing Bill ID: 71277, Line IDs: [223948, 223950]
+12:11:15 -      [Debug Line 223948] Acc: 400924 (ID: 462), Type: expense_direct_cost
+12:11:15 -      [Line 223948] Standard (expense_direct_cost - 400924). Clearing Date.
+12:11:15 -      [Warning] No matching account for code 'False' or Name 'Payable' in new company.
+12:11:15 -      [Resolved] Mapped to fallback account '201002 - Payables' (Same Type: liability_payable)
+12:11:15 -      [Debug Line 223950] Acc: 201002 (ID: 55), Type: liability_payable
+12:11:15 -      [Line 223950] Payable/Receivable (liability_payable). Setting Date: 2025-11-05
+12:11:15 -      [Debug] Executing atomic write (Name reset to '/')...
+12:11:16 -      [Debug] Write Success.
+12:11:17 -      [Debug] Reading lines with Active Company ID: 6
+12:11:17 -      [Debug] Processing Bill ID: 71817, Line IDs: [225842, 225844]
+12:11:17 -      [Debug Line 225842] Acc: 400304 (ID: 405), Type: expense
+12:11:17 -      [Line 225842] Standard (expense - 400304). Clearing Date.
+12:11:17 -      [Warning] No matching account for code 'False' or Name 'Payable' in new company.
+12:11:18 -      [Resolved] Mapped to fallback account '201002 - Payables' (Same Type: liability_payable)
+12:11:18 -      [Debug Line 225844] Acc: 201002 (ID: 55), Type: liability_payable
+12:11:18 -      [Line 225844] Payable/Receivable (liability_payable). Setting Date: 2025-01-23
+12:11:18 -      [Debug] Executing atomic write (Name reset to '/')...
+12:11:18 -      [Debug] Write Success.
+12:11:19 -      [Debug] Reading lines with Active Company ID: 6
+12:11:19 -      [Debug] Processing Bill ID: 71392, Line IDs: [224341, 224343]
+12:11:19 -      [Debug Line 224341] Acc: 400936 (ID: 474), Type: expense_direct_cost
+12:11:19 -      [Line 224341] Standard (expense_direct_cost - 400936). Clearing Date.
+12:11:20 -      [Warning] No matching account for code 'False' or Name 'Payable' in new company.
+12:11:20 -      [Resolved] Mapped to fallback account '201002 - Payables' (Same Type: liability_payable)
+12:11:20 -      [Debug Line 224343] Acc: 201002 (ID: 55), Type: liability_payable
+12:11:20 -      [Line 224343] Payable/Receivable (liability_payable). Setting Date: 2025-08-21
+12:11:20 -      [Debug] Executing atomic write (Name reset to '/')...
+12:11:20 -      [Debug] Write Success.
+12:11:22 -      [Debug] Reading lines with Active Company ID: 6
+12:11:22 -      [Debug] Processing Bill ID: 71248, Line IDs: [223859, 223861]
+12:11:22 -      [Debug Line 223859] Acc: 400924 (ID: 462), Type: expense_direct_cost
+12:11:22 -      [Line 223859] Standard (expense_direct_cost - 400924). Clearing Date.
+12:11:22 -      [Warning] No matching account for code 'False' or Name 'Payable' in new company.
+12:11:22 -      [Resolved] Mapped to fallback account '201002 - Payables' (Same Type: liability_payable)
+12:11:22 -      [Debug Line 223861] Acc: 201002 (ID: 55), Type: liability_payable
+12:11:22 -      [Line 223861] Payable/Receivable (liability_payable). Setting Date: 2025-11-07
+12:11:22 -      [Debug] Executing atomic write (Name reset to '/')...
+12:11:23 -      [Debug] Write Success.
+12:11:24 -      [Debug] Reading lines with Active Company ID: 6
+12:11:24 -      [Debug] Processing Bill ID: 71217, Line IDs: [223760, 223762]
+12:11:24 -      [Debug Line 223760] Acc: 400402 (ID: 413), Type: expense
+12:11:24 -      [Line 223760] Standard (expense - 400402). Clearing Date.
+12:11:24 -      [Warning] No matching account for code 'False' or Name 'Payable' in new company.
+12:11:24 -      [Resolved] Mapped to fallback account '201002 - Payables' (Same Type: liability_payable)
+12:11:24 -      [Debug Line 223762] Acc: 201002 (ID: 55), Type: liability_payable
+12:11:24 -      [Line 223762] Payable/Receivable (liability_payable). Setting Date: 2025-11-04
+12:11:24 -      [Debug] Executing atomic write (Name reset to '/')...
+12:11:25 -      [Debug] Write Success.
