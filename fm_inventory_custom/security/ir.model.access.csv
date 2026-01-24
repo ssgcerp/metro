@@ -1,8 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_product_brand_manager,product.brand.manager,fm_inventory_custom.model_product_brand,stock.group_stock_manager,1,1,1,1
-access_product_brand_user,product.brand.user,fm_inventory_custom.model_product_brand,stock.group_stock_user,1,0,0,0
-access_product_brand_variant_manager,product.brand.variant.manager,fm_inventory_custom.model_product_brand_variant,stock.group_stock_manager,1,1,1,1
-access_product_brand_variant_user,product.brand.variant.user,fm_inventory_custom.model_product_brand_variant,stock.group_stock_user,1,1,0,0
-access_product_brand_stock_manager,product.brand.stock.manager,fm_inventory_custom.model_product_brand_stock,stock.group_stock_manager,1,1,1,1
-access_product_brand_stock_user,product.brand.stock.user,fm_inventory_custom.model_product_brand_stock,stock.group_stock_user,1,1,1,0
-

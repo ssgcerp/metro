@@ -1,4 +1,0 @@
-2025-12-21 15:22:50 | PRJ# 01435 | null value in column "partner_id" violates not-null constraint
-DETAIL:  Failing row contains (2004, null, 3466, 10, null, 4, null, 38, 1, null, 1, 1, null, portal, to_define, null, null, {"en_US": "**
-2025-12-21 15:22:59 | Drafted | null value in column "partner_id" violates not-null constraint
-DETAIL:  Failing row contains (2006, null, 3468, 10, null, 1, null, 35, 1, null, 1, 1, null, portal, to_define, null, null, {"en_US": "[P

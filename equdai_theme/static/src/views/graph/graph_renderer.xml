@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<templates xml:space="preserve">
-    <!-- GraphRenderer template inheritance removed due to Odoo 19 compatibility issues -->
-    <!-- The graph styling is handled via CSS and JavaScript instead -->
-</templates>
