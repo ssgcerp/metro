@@ -29,6 +29,12 @@
                     <field name="attention_note" placeholder="Enter attention note here..."/>
                 </xpath>
                 
+                <!-- Add Create Bill button -->
+                <xpath expr="//header" position="inside">
+                    <button name="action_create_invoice" string="Create Bill" type="object" class="oe_highlight" 
+                            invisible="state not in ('purchase', 'done') or invoice_status == 'invoiced'"/>
+                </xpath>
+
                 <!-- Replace state statusbar with RFQ Stage statusbar -->
                 <xpath expr="//header//field[@name='state']" position="replace">
                     <field name="rfq_stage_id" widget="statusbar" readonly="1"/>
