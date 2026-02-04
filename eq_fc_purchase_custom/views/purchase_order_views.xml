@@ -31,6 +31,7 @@
                 
                 <!-- Add Create Bill button explicitly before statusbar -->
                 <xpath expr="//header" position="inside">
+                    <field name="invoice_status" invisible="1"/>
                     <button name="action_create_invoice" string="Create Bill" type="object" class="oe_highlight" 
                             invisible="state not in ('purchase', 'done') or invoice_status in ('invoiced', 'no')"/>
                 </xpath>

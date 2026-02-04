@@ -32,3 +32,18 @@ class AccountMove(models.Model):
         if self.purchase_id:
             self.po_number = self.purchase_id.name
 
+    @api.constrains('name', 'journal_id', 'state', 'date')
+    def _constrains_date_sequence(self):
+        """
+        Override to allow out-of-order dates for Vendor Bills.
+        Standard Odoo prevents posting a bill with an earlier date if a later bill exists in the sequence.
+        We bypass this for Vendor Bills to allow flexible entry.
+        """
+        # Filter moves that are NOT Vendor Bills/Refunds
+        moves_to_check = self.filtered(lambda m: m.move_type not in ('in_invoice', 'in_refund'))
+        
+        # Only call super (standard validation) for non-vendor bills
+        if moves_to_check:
+            super(AccountMove, moves_to_check)._constrains_date_sequence()
+
+
