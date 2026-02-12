@@ -24,7 +24,7 @@ class PurchaseOrder(models.Model):
     # Other Information Fields
     verified_by = fields.Char(string='Verified by', readonly=True, help="Person who verified the order")
     approved_by = fields.Char(string='Approved by', readonly=True, help="Person who approved the order")
-    project_code = fields.Many2one('project.project', string='Project Code', help="Related project")
+    project_code = fields.Many2one('project.project', string='Project', help="Related project")
     project = fields.Char(string='Project Name', compute='_compute_project_name', store=True, help="Project name")
     order_contact = fields.Char(string='Order Contact', help="Contact person for the order")
     contact_no = fields.Char(string='Contact no', help="Contact number")

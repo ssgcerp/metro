@@ -32,6 +32,7 @@
         'sale',
         'account',  # Required for account.move (vendor bills)
         'fm_inventory_custom',  # Required for product.brand model
+        'eq_fc_management',
     ],
     'data': [
         'security/ir.model.access.csv',

@@ -8,6 +8,10 @@
             <field name="inherit_id" ref="purchase.purchase_order_form"/>
             <field name="arch" type="xml">
                 <!-- Add custom fields after partner_ref -->
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="project_code" string="Project" options="{'no_create': True, 'no_create_edit': True}"/>
+                </xpath>
+
                 <xpath expr="//field[@name='partner_ref']" position="after">
                     <field name="attention"/>
                     <field name="delivery_address"/>
@@ -91,7 +95,6 @@
                                     <!-- branch_id field removed as it doesn't exist in standard purchase.order model -->
                                     <field name="verified_by" readonly="1"/>
                                     <field name="approved_by" readonly="1"/>
-                                    <field name="project_code" options="{'no_create': True, 'no_create_edit': True}"/>
                                     <field name="project" readonly="1"/>
                                     <field name="order_contact"/>
                                     <field name="contact_no"/>
@@ -118,7 +121,7 @@
             <field name="arch" type="xml">
                 <!-- Add project_code to tree view if needed -->
                 <xpath expr="//field[@name='partner_id']" position="after">
-                    <field name="project_code" optional="show"/>
+                    <field name="project_code" string="Project" optional="show"/>
                 </xpath>
             </field>
         </record>
