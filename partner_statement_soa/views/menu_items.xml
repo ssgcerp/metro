@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_partner_statement_soa_root"
+              name="Partner Statements"
+              parent="account.menu_finance_reports"
+              sequence="20"/>
+
+    <menuitem id="menu_partner_statement_wizard"
+              name="Partner Statement"
+              parent="menu_partner_statement_soa_root"
+              action="action_partner_statement_wizard"
+              sequence="10"/>
+</odoo>

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_partner_statement" model="ir.actions.report">
+        <field name="name">Partner Statement</field>
+        <field name="model">partner.statement.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">partner_statement_soa.report_partner_statement_document</field>
+        <field name="report_file">partner_statement_soa.report_partner_statement_document</field>
+        <field name="print_report_name">'Statement - %s' % object.company_id.name</field>
+        <field name="binding_model_id" ref="model_partner_statement_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_partner_statement_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="data" t-value="o._get_report_data()"/>
+                <t t-foreach="o.partner_ids" t-as="partner">
+                    <t t-set="p_data" t-value="data.get(partner.id)"/>
+                    <t t-call="web.external_layout">
+                        <div class="page">
+                            <div class="row">
+                                <div class="col-6">
+                                    <strong>Partner:</strong><br/>
+                                    <span t-field="partner.name"/><br/>
+                                    <span t-field="partner.street"/><br/>
+                                    <span t-field="partner.city"/>, <span t-field="partner.country_id.name"/><br/>
+                                    <span t-field="partner.vat"/>
+                                </div>
+                                <div class="col-6 text-end">
+                                    <h2>Statement of Account</h2>
+                                    <p>
+                                        <strong>Date:</strong> <span t-esc="o.date_to"/><br/>
+                                        <strong>Period:</strong> <span t-esc="o.date_from"/> to <span t-esc="o.date_to"/>
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <br/>
+                            
+                            <table class="table table-sm o_main_table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Doc No.</th>
+                                        <th>Ref</th>
+                                        <th>Due Date</th>
+                                        <th class="text-end">Amount (Curr.)</th>
+                                        <th class="text-end">Debit</th>
+                                        <th class="text-end">Credit</th>
+                                        <th class="text-end" t-if="o.show_running_balance">Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="fw-bold">
+                                        <td colspan="5">Opening Balance</td>
+                                        <td colspan="2"/>
+                                        <td class="text-end" t-if="o.show_running_balance">
+                                            <span t-esc="p_data['opening_balance']" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
+                                        </td>
+                                    </tr>
+                                    <tr t-foreach="p_data['lines']" t-as="line">
+                                        <td><span t-esc="line['date']"/></td>
+                                        <td><span t-esc="line['move_name']"/></td>
+                                        <td><span t-esc="line['ref'] or line['name']"/></td>
+                                        <td><span t-esc="line['due_date']"/></td>
+                                        <td class="text-end">
+                                            <span t-if="line['currency_id'] != o.company_id.currency_id" t-esc="line['amount_currency']" t-options='{"widget": "monetary", "display_currency": line["currency_id"]}'/>
+                                        </td>
+                                        <td class="text-end"><span t-esc="line['debit']" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                        <td class="text-end"><span t-esc="line['credit']" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                        <td class="text-end" t-if="o.show_running_balance">
+                                            <span t-esc="line['running_balance']" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
+                                        </td>
+                                    </tr>
+                                    <tr class="fw-bold fs-5">
+                                        <td colspan="7" class="text-end">Closing Balance</td>
+                                        <td class="text-end">
+                                            <span t-esc="p_data['closing_balance']" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <div class="row mt-4" t-if="o.show_aging and p_data.get('aging')">
+                                <div class="col-12">
+                                    <h4>Aging Analysis</h4>
+                                    <table class="table table-bordered table-sm text-center">
+                                        <thead>
+                                            <tr>
+                                                <th>Not Due</th>
+                                                <th>0 - 30</th>
+                                                <th>31 - 60</th>
+                                                <th>61 - 90</th>
+                                                <th>91 - 120</th>
+                                                <th>120+</th>
+                                                <th>Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><span t-esc="p_data['aging']['not_due']" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                                <td><span t-esc="p_data['aging']['0_30']" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                                <td><span t-esc="p_data['aging']['31_60']" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                                <td><span t-esc="p_data['aging']['61_90']" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                                <td><span t-esc="p_data['aging']['91_120']" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                                <td><span t-esc="p_data['aging']['120_plus']" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                                <td class="fw-bold"><span t-esc="p_data['aging']['total']" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-4">
+                                <div class="col-12 text-center text-muted">
+                                    <small>This is a system generated statement.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                    <!-- Page break for multiple partners (except last one) -->
+                    <p style="page-break-after:always;"/> 
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

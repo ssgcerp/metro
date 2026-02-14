@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Define the Columns -->
+    <record id="partner_statement_col_date" model="account.report.column">
+        <field name="name">Date</field>
+        <field name="expression_label">date</field>
+        <field name="sortable" eval="True"/>
+    </record>
+    <record id="partner_statement_col_journal" model="account.report.column">
+        <field name="name">Journal</field>
+        <field name="expression_label">journal</field>
+    </record>
+    <record id="partner_statement_col_ref" model="account.report.column">
+        <field name="name">Internal Reference</field>
+        <field name="expression_label">ref</field>
+    </record>
+    <record id="partner_statement_col_label" model="account.report.column">
+        <field name="name">Label</field>
+        <field name="expression_label">label</field>
+    </record>
+    <record id="partner_statement_col_due" model="account.report.column">
+        <field name="name">Due Date</field>
+        <field name="expression_label">due_date</field>
+    </record>
+     <record id="partner_statement_col_amount_curr" model="account.report.column">
+        <field name="name">Amount Currency</field>
+        <field name="expression_label">amount_currency</field>
+    </record>
+    <record id="partner_statement_col_debit" model="account.report.column">
+        <field name="name">Debit</field>
+        <field name="expression_label">debit</field>
+    </record>
+    <record id="partner_statement_col_credit" model="account.report.column">
+        <field name="name">Credit</field>
+        <field name="expression_label">credit</field>
+    </record>
+    <record id="partner_statement_col_balance" model="account.report.column">
+        <field name="name">Balance</field>
+        <field name="expression_label">balance</field>
+    </record>
+
+    <!-- Define the Report -->
+    <record id="partner_statement_report" model="account.report">
+        <field name="name">Partner Statement (Dynamic)</field>
+        <field name="filter_date_range" eval="True"/>
+        <field name="filter_period_comparison" eval="False"/>
+        <field name="filter_show_draft" eval="False"/>
+        <field name="filter_unfold_all" eval="True"/>
+        <field name="filter_partner" eval="True"/>
+        <field name="custom_handler_model_id" ref="model_partner_statement_report_handler"/>
+        <field name="column_ids" eval="[
+            (6, 0, [
+                ref('partner_statement_col_date'),
+                ref('partner_statement_col_journal'),
+                ref('partner_statement_col_ref'),
+                ref('partner_statement_col_label'),
+                ref('partner_statement_col_due'),
+                ref('partner_statement_col_amount_curr'),
+                ref('partner_statement_col_debit'),
+                ref('partner_statement_col_credit'),
+                ref('partner_statement_col_balance'),
+            ])
+        ]"/>
+    </record>
+    
+    <!-- Action/Menu -->
+    <record id="action_partner_statement_report_dynamic" model="ir.actions.client">
+        <field name="name">Partner Statement (Dynamic)</field>
+        <field name="tag">account_report</field>
+        <field name="context" eval="{'report_id': ref('partner_statement_report')}"/>
+    </record>
+
+    <menuitem id="menu_partner_statement_report_dynamic"
+              name="Partner Statement (Dynamic)"
+              action="action_partner_statement_report_dynamic"
+              parent="menu_partner_statement_soa_root"
+              sequence="5"/>
+</odoo>

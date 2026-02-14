@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="portal_my_home_menu_statement" name="Portal layout : statement menu entries" inherit_id="portal.portal_breadcrumbs" priority="20">
+        <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
+            <li t-if="page_name == 'statement'" class="breadcrumb-item active">
+                Statement of Account
+            </li>
+        </xpath>
+    </template>
+
+    <template id="portal_my_home_statement" name="Show Statement" inherit_id="portal.portal_my_home" priority="20">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">Statement of Account</t>
+                <t t-set="url" t-value="'/my/statement'"/>
+                <t t-set="placeholder_count" t-value="'1'"/>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="portal_my_statement" name="My Statement">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Statement of Account</t>
+            </t>
+            
+            <div class="row mt-3">
+                <div class="col-12">
+                    <form action="/my/statement" method="get">
+                        <div class="row g-3 align-items-center">
+                            <div class="col-auto">
+                                <label for="date_from" class="col-form-label">From</label>
+                            </div>
+                            <div class="col-auto">
+                                <input type="date" name="date_from" class="form-control" t-att-value="date_from"/>
+                            </div>
+                            <div class="col-auto">
+                                <label for="date_to" class="col-form-label">To</label>
+                            </div>
+                            <div class="col-auto">
+                                <input type="date" name="date_to" class="form-control" t-att-value="date_to"/>
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-secondary">Filter</button>
+                            </div>
+                             <div class="col-auto ms-auto">
+                                <a t-attf-href="/my/statement/download?date_from={{date_from}}&amp;date_to={{date_to}}" class="btn btn-primary">
+                                    <i class="fa fa-download"/> Download PDF
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="alert alert-info mt-3">
+                Select dates and click Download PDF to view your detailed statement.
+            </div>
+        </t>
+    </template>
+</odoo>

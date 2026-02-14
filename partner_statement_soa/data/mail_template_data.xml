@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="email_template_partner_statement" model="mail.template">
+            <field name="name">Partner Statement: Send by email</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="subject">Statement of Account - {{ object.name }}</field>
+            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="partner_to">{{ object.id }}</field>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+                        Dear <t t-out="object.name or ''"/>,
+                        <br/><br/>
+                        Please find attached your Statement of Account.
+                        <br/><br/>
+                        If you have any questions, please do not hesitate to contact us.
+                        <br/><br/>
+                        Best regards,
+                        <br/>
+                        <t t-out="object.company_id.name or ''"/>
+                    </p>
+                </div>
+            </field>
+            <field name="lang">{{ object.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+    </data>
+</odoo>

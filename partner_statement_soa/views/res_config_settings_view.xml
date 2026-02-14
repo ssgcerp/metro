@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.partner.statement</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='account_vendor_bills']" position="after">
+                <block title="Partner Statements" id="partner_statements">
+                    <setting help="Automatically send monthly statements to partners." company_dependent="1">
+                        <field name="soa_enable_auto_email"/>
+                        <div class="content-group" invisible="not soa_enable_auto_email">
+                            <div class="row mt16">
+                                <label for="soa_day_of_month" class="col-lg-3 o_light_label"/>
+                                <field name="soa_day_of_month"/>
+                            </div>
+                            <div class="row mt16">
+                                <label for="soa_statement_type" class="col-lg-3 o_light_label"/>
+                                <field name="soa_statement_type"/>
+                            </div>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>
