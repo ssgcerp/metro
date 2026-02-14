@@ -16,6 +16,7 @@
                 <xpath expr="//field[@name='payment_reference']" position="after">
                     <field name="location" optional="show"/>
                     <field name="amc_contract_id" optional="show"/>
+                    <field name="project_id" optional="show"/>
                     <field name="create_do" string="Create DO" widget="boolean_toggle"/>
                 </xpath>
                 

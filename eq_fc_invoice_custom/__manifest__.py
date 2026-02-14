@@ -26,6 +26,7 @@
         'base',
         'account',
         'amc_contracts',  # Required for AMC Contract field
+        'project',
     ],
     'data': [
         'security/ir.model.access.csv',

@@ -25,6 +25,13 @@ class AccountMove(models.Model):
         help="AMC Contract for this customer. Only contracts for the selected customer are shown."
     )
     
+    project_id = fields.Many2one(
+        'project.project',
+        string='Project',
+        domain="[('partner_id', '=', partner_id)]",
+        help="Project linked to this invoice. Filtered by customer."
+    )
+    
     move_line_ids = fields.One2many(related='line_ids', string='Journal Items (Legacy Alias)')
 
     @api.model_create_multi
@@ -110,6 +117,7 @@ class AccountMove(models.Model):
 
     @api.onchange('partner_id')
     def _onchange_partner_id(self):
-        """Clear AMC Contract when customer changes"""
+        """Clear AMC Contract and Project when customer changes"""
         self.amc_contract_id = False
+        self.project_id = False
 
