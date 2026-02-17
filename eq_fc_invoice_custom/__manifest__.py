@@ -25,6 +25,7 @@
     'depends': [
         'base',
         'account',
+        'account_reports',
         'amc_contracts',  # Required for AMC Contract field
         'project',
     ],
@@ -33,6 +34,12 @@
         'views/account_move_views.xml',
         'views/invoice_config_view.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'eq_fc_invoice_custom/static/src/xml/account_report_filters.xml',
+            'eq_fc_invoice_custom/static/src/js/account_report_filters.js',
+        ],
+    },
     'installable': True,
     'application': False,
     'auto_install': False,
