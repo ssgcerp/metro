@@ -286,8 +286,8 @@ class SaleOrder(models.Model):
         if needs_number and format_configured:
             # Get branch code from company if available
             branch_code = None
-            if self.company_id and hasattr(self.company_id, 'code'):
-                branch_code = self.company_id.code
+            if self.company_id and hasattr(self.company_id, 'branch_code') and self.company_id.branch_code:
+                branch_code = self.company_id.branch_code
             elif self.company_id:
                 # Try to get code from company name or use a default
                 branch_code = getattr(self.company_id, 'abbreviation', None) or self.company_id.name[:3].upper() if self.company_id.name else None

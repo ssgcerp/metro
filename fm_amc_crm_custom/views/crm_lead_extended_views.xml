@@ -7,8 +7,12 @@
             <field name="model">crm.lead</field>
             <field name="inherit_id" ref="crm.crm_lead_view_form"/>
             <field name="arch" type="xml">
-                <!-- Add lead_number as the first field -->
+                <!-- Add lead_sequence and lead_number as the first fields -->
                 <xpath expr="//field[@name='name']" position="before">
+                    <h2 class="d-flex gap-2">
+                        <field name="lead_sequence" readonly="1" invisible="lead_sequence == 'New'"/>
+                    </h2>
+                    <field name="lead_sequence" invisible="1"/>
                     <field name="lead_number" string="Lead Number"/>
                 </xpath>
                 <!-- Add fields after the contact information section -->

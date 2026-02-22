@@ -29,6 +29,7 @@
         'views/sale_quotation_decline_wizard_views.xml',
         'views/sale_quotation_stage_views.xml',
         'views/sale_quotation_config_views.xml',
+        'views/crm_lead_config_views.xml',
         'views/sale_order_extended_views.xml',
         'views/crm_menu_views.xml',
         'views/crm_lead_extended_views.xml',
