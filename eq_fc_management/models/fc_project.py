@@ -25,7 +25,6 @@ class ProjectFC(models.Model):
         tracking=True,
         help='Project stage',
         group_expand='_read_group_stage_ids',
-        groups=False,
     )
     # Visibility flags: not stored, default False so they render hidden until compute runs
     stage_allow_confirm = fields.Boolean(compute='_compute_stage_action_flags', string='Stage Allows Confirm', readonly=True)
@@ -396,9 +395,8 @@ class ProjectFC(models.Model):
         return True
 
     @api.model
-    def _read_group_stage_ids(self, stages, domain, order):
+    def _read_group_stage_ids(self, stages, domain, order=None):
         """Ensure the status bar displays all active stages for the company."""
-        Stage = stages.sudo().with_context(active_test=False)
         company_id = self.env.context.get('company_id') or self.env.company.id
         search_domain = [
             ('active', '=', True),
@@ -406,8 +404,8 @@ class ProjectFC(models.Model):
             ('company_id', '=', False),
             ('company_id', '=', company_id),
         ]
-        result = Stage.search(search_domain, order='sequence, id')
-        return result if result else stages
+        stage_ids = stages._search(search_domain, order=order or 'sequence, id')
+        return stages.browse(stage_ids)
 
     def _is_amc_project(self):
         self.ensure_one()
