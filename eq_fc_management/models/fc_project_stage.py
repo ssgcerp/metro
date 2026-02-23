@@ -21,6 +21,7 @@ class FCProjectStage(models.Model):
     is_completed_stage = fields.Boolean(string='Completed Stage', default=False, help='Mark this stage as a completed stage.')
     is_cancel_stage = fields.Boolean(string='Cancellation Stage', default=False, help='Stage representing a cancelled project.')
     sms_template_id = fields.Many2one('sms.template', string='SMS Template', help='Template to send SMS notifications when project reaches this stage')
+    mail_template_id = fields.Many2one('mail.template', string='Email Template', domain=[('model', '=', 'project.project')], help="If set, an email will be sent to the customer when the project reaches this step.")
     active = fields.Boolean(string='Active', default=True)
     color = fields.Integer(string='Color', default=0, help='Color used in kanban view')
     company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
