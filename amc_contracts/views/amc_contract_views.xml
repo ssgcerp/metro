@@ -97,6 +97,7 @@
                         <group>
                             <group>
                                 <field name="name" readonly="1" invisible="not name"/>
+                                <field name="heading" placeholder="Quotation Heading..."/>
                                 <field name="analytic_account_id" readonly="1" force_save="1"/>
                                 <field name="customer_id" options="{'no_create': False, 'no_create_edit': False}"/>
                                 <field name="project_site"/>
@@ -110,6 +111,11 @@
                             </group>
                             <group>
                                 <field name="contract_date"/>
+                                <field name="quotation_date"/>
+                                <field name="lpo_number"/>
+                                <field name="lpo_date"/>
+                                <field name="revision_number"/>
+                                <field name="validity_text"/>
                                 <field name="start_date"/>
                                 <field name="end_date"/>
                                 <field name="visit_frequency"/>
@@ -126,6 +132,44 @@
                             </group>
                         </group>
                         <notebook>
+                            <page string="Estimation Lines" name="estimation_lines">
+                                <field name="estimation_product_ids" nolabel="1">
+                                    <list string="Estimation Lines" editable="bottom">
+                                        <field name="product_id" required="1"/>
+                                        <field name="name"/>
+                                        <field name="product_qty"/>
+                                        <field name="uom_id"/>
+                                        <field name="unit_cost"/>
+                                        <field name="service_cost"/>
+                                        <field name="net_cost" optional="hide"/>
+                                        <field name="profit" optional="hide"/>
+                                        <field name="profit_percent" optional="hide"/>
+                                        <field name="unit_selling_price"/>
+                                        <field name="service_subtotal"/>
+                                        <field name="selling_price"/>
+                                        <field name="unit_total"/>
+                                        <field name="total_selling_service" sum="Total Selling Service"/>
+                                    </list>
+                                </field>
+                                <group class="oe_subtotal_footer oe_right" colspan="2" name="estimation_total">
+                                    <field name="quotation_service_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="quotation_expense_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="quotation_amc_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <div class="oe_subtotal_footer_separator oe_inline o_td_label">
+                                        <label for="quotation_total_value"/>
+                                    </div>
+                                    <field name="quotation_total_value" nolabel="1" class="oe_subtotal_footer_separator" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                </group>
+                            </page>
+                            <page string="Scope" name="scope">
+                                <field name="scope" nolabel="1" placeholder="Enter Scope of Work..."/>
+                            </page>
+                            <page string="Exclusions" name="exclusions">
+                                <field name="exclusions" nolabel="1" placeholder="Enter Exclusions..."/>
+                            </page>
+                            <page string="Commercial Part" name="commercial_part">
+                                <field name="commercial_part_data" nolabel="1" placeholder="Enter Commercial Part Data..."/>
+                            </page>
                             <page string="Types of Services" name="types_of_services">
                                 <field name="type_of_service_ids" nolabel="1">
                                     <list string="Types of Services" editable="bottom">
