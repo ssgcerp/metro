@@ -15,5 +15,4 @@ from . import amc_contract_additional_job
 from . import amc_contract_agreement
 from . import amc_contract_expense
 from . import amc_contract
-from . import amc_contract_quotation_fields
 

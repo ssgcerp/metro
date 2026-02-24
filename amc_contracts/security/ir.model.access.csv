@@ -13,9 +13,7 @@ access_amc_contract_call_out,amc.contract.call.out,model_amc_contract_call_out,b
 access_amc_contract_additional_job,amc.contract.additional.job,model_amc_contract_additional_job,base.group_user,1,1,1,1
 access_amc_contract_agreement,amc.contract.agreement,model_amc_contract_agreement,base.group_user,1,1,1,1
 access_amc_contract_expense,amc.contract.expense,model_amc_contract_expense,base.group_user,1,1,1,1
-access_amc_contract_asset,amc.contract.asset,model_amc_contract_asset,base.group_user,1,1,1,1
-access_amc_contract_audit_schedule,amc.contract.audit.schedule,model_amc_contract_audit_schedule,base.group_user,1,1,1,1
-access_amc_contract_estimation_line,amc.contract.estimation.line,model_amc_contract_estimation_line,base.group_user,1,1,1,1
+
 
 
 
