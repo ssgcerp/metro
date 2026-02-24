@@ -86,13 +86,14 @@ class FMAMCQuotation(models.Model):
         for record in self:
             record.amount_total = record.amount
     
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
         """Generate quotation reference"""
-        if vals.get('name', _('New')) == _('New') or not vals.get('name'):
-            # Generate quotation number similar to estimation
-            vals['name'] = self.env['ir.sequence'].next_by_code('fm.amc.quotation') or _('New')
-        return super(FMAMCQuotation, self).create(vals)
+        for vals in vals_list:
+            if vals.get('name', _('New')) == _('New') or not vals.get('name'):
+                # Generate quotation number similar to estimation
+                vals['name'] = self.env['ir.sequence'].next_by_code('fm.amc.quotation') or _('New')
+        return super(FMAMCQuotation, self).create(vals_list)
     
     def action_create_contract(self):
         """Create contract from quotation"""
