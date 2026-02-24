@@ -143,13 +143,14 @@ class AMCQuotation(models.Model):
         
         return res
     
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
         """Generate quotation reference"""
-        if vals.get('name', _('New')) == _('New') or not vals.get('name'):
-            # Generate quotation number
-            vals['name'] = self.env['ir.sequence'].next_by_code('amc.quotation') or _('New')
-        return super(AMCQuotation, self).create(vals)
+        for vals in vals_list:
+            if vals.get('name', _('New')) == _('New') or not vals.get('name'):
+                # Generate quotation number
+                vals['name'] = self.env['ir.sequence'].next_by_code('amc.quotation') or _('New')
+        return super(AMCQuotation, self).create(vals_list)
     
     def action_confirm(self):
         """Confirm quotation"""
