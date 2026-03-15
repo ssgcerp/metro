@@ -2330,27 +2330,24 @@ class VendorBillMigrationLine(models.Model):
                                 extracted_tax_ids = []
                             
                             if not extracted_tax_ids:
-                                # Odoo 14 explicitly had NO taxes on this line
-                                _logger.info("ℹ️ Line %s had NO taxes in Odoo 14. Enforcing no taxes.", line_id)
-                                line_vals['tax_ids'] = [(5, 0, 0)]  # Command 5: Clear all taxes
+                                _logger.info("ℹ️ Line %s had NO taxes in Odoo 14. Applying default company tax anyway.", line_id)
                             else:
-                                # Odoo 14 HAD taxes. Select default company tax as requested.
                                 _logger.info("🔍 Line %s has taxes in Odoo 14: %s. Selecting default Odoo 19 tax...", line_id, extracted_tax_ids)
-                                
-                                # Use company default purchase tax
-                                if bill.company_id.account_purchase_tax_id:
-                                    line_vals['tax_ids'] = [(6, 0, [bill.company_id.account_purchase_tax_id.id])]
-                                    _logger.info("✅ Selected default company purchase tax (ID: %s)", bill.company_id.account_purchase_tax_id.id)
-                                else:
-                                    # Fallback to any active purchase tax
-                                    fallback_tax = self.env['account.tax'].search([
-                                        ('company_id', '=', bill.company_id.id),
-                                        ('type_tax_use', '=', 'purchase'),
-                                        ('amount', '>', 0)
-                                    ], limit=1, order='amount desc')
-                                    if fallback_tax:
-                                        line_vals['tax_ids'] = [(6, 0, [fallback_tax.id])]
-                                        _logger.info("✅ Selected fallback purchase tax (ID: %s)", fallback_tax.id)
+                            
+                            # Always apply company default purchase tax
+                            if bill.company_id.account_purchase_tax_id:
+                                line_vals['tax_ids'] = [(6, 0, [bill.company_id.account_purchase_tax_id.id])]
+                                _logger.info("✅ Applied default company purchase tax (ID: %s)", bill.company_id.account_purchase_tax_id.id)
+                            else:
+                                # Fallback to any active purchase tax
+                                fallback_tax = self.env['account.tax'].search([
+                                    ('company_id', '=', bill.company_id.id),
+                                    ('type_tax_use', '=', 'purchase'),
+                                    ('amount', '>', 0)
+                                ], limit=1, order='amount desc')
+                                if fallback_tax:
+                                    line_vals['tax_ids'] = [(6, 0, [fallback_tax.id])]
+                                    _logger.info("✅ Applied fallback purchase tax (ID: %s)", fallback_tax.id)
                             
                             # Map purchase_line_id for linking to purchase order lines
                             if line_info.get('purchase_line_id') and bill_vals.get('purchase_id'):
