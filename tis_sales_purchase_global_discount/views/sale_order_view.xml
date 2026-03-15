@@ -17,15 +17,9 @@
                     <field name="analytic_id" groups="analytic.group_analytic_accounting" readonly="state != 'draft'"/>
                 </group>
             </xpath>
-            <xpath expr="//field[@name='order_line']" position="after">
-                <group string="Discount Summary" class="oe_subtotal_footer oe_right">
-                    <field name="amount_discount" widget='monetary' options="{'currency_field': 'currency_id'}"/>
-                    <div class="oe_subtotal_footer_separator oe_inline o_td_label">
-                        <label for="amount_total_with_discount"/>
-                    </div>
-                    <field name="amount_total_with_discount" nolabel="1" class="oe_subtotal_footer_separator"
-                           widget='monetary' options="{'currency_field': 'currency_id'}"/>
-                </group>
+            <xpath expr="//field[@name='tax_totals']" position="before">
+                <field name="amount_discount" widget='monetary' options="{'currency_field': 'currency_id'}"/>
+                <field name="amount_total_with_discount" widget='monetary' options="{'currency_field': 'currency_id'}"/>
             </xpath>
         </field>
     </record>

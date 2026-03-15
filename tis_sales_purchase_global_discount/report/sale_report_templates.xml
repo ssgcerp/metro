@@ -2,7 +2,7 @@
 <odoo>
     <template id="report_saleorder_document_global_discount" inherit_id="sale.report_saleorder_document">
         <!-- Insert discount rows before tax totals -->
-        <xpath expr="//table[@class='o_total_table table table-borderless']/t" position="before">
+        <xpath expr="//t[@t-call='sale.document_tax_totals']" position="before">
             <tr>
                 <td><strong>Total</strong></td>
                 <td class="text-end">

@@ -12,30 +12,17 @@ from ast import literal_eval
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
-    @api.depends('order_line.price_total', 'order_line.price_tax', 'discount_type', 'discount_rate', 'is_tax_after_discount', 'amount_untaxed', 'amount_tax')
+    @api.depends('discount_type', 'discount_rate', 'amount_untaxed')
     def _compute_amount_all(self):
         for order in self:
             order.amount_grand = order.amount_untaxed
-            order.amount_total_with_discount = order.amount_grand
             if (order.discount_type == 'percent'):
                 order.amount_discount = round((order.amount_grand * order.discount_rate / 100), 2)
             elif (order.discount_type == 'amount'):
                 order.amount_discount = order.discount_rate
             else:
                 order.amount_discount = 0.0
-            if (order.amount_grand >= order.amount_discount):
-                order.amount_total_with_discount = order.amount_grand - order.amount_discount
-                if order.is_tax_after_discount:
-                    # Recompute tax based on discounted amount
-                    order.amount_tax = round((order.amount_total_with_discount * 5) / 100, 2)
-                # else: keep the original amount_tax from order lines
-                # Compute the final total with discount
-                order.amount_total = round((order.amount_untaxed + order.amount_tax) - order.amount_discount, 2)
-            else:
-                order.amount_total_with_discount = order.amount_grand
-                # Keep original amount_total if discount is invalid
-                if not order.amount_total:
-                    order.amount_total = order.amount_untaxed + order.amount_tax
+            order.amount_total_with_discount = order.amount_grand - order.amount_discount
 
     type = fields.Selection([('discount', 'Discount'), ('retention', 'Retention')], 'Type', readonly=True)
     discount_type = fields.Selection([('percent', 'Percentage'), ('amount', 'Amount')], 'Discount Type', readonly=True)
@@ -47,8 +34,6 @@ class SaleOrder(models.Model):
                                    store=True, readonly=True, compute='_compute_amount_all', tracking=True)
     amount_grand = fields.Float(string='Total', digits=(16, 2),
                                 store=True, readonly=True, compute='_compute_amount_all', tracking=True)
-    amount_total = fields.Float(string='Net Total', digits=(16, 2),
-                                store=True, readonly=True, compute='_compute_amount_all')
     amount_total_with_discount = fields.Float('Total', readonly=True, compute='_compute_amount_all')
     is_tax_after_discount = fields.Boolean(string='Tax After Discount', readonly=True)
 
@@ -70,11 +55,12 @@ class SaleOrder(models.Model):
                                       default='False'))
             print('444444444444', default_retention_product)
             if self.amount_tax:
-                tax_id = self.order_line.mapped('tax_id')[0]
+                mapped_taxes = self.order_line.mapped('tax_id')
+                tax_id = mapped_taxes[0] if mapped_taxes else False
                 self.order_line = [(0, 0, {'product_id': default_retention_product,
                                            'product_uom_qty': -1,
                                            'price_unit': self.retention_rate,
-                                           'tax_id': [(6, 0, [tax_id.id])]})]
+                                           'tax_id': [(6, 0, [tax_id.id])] if tax_id else False})]
             else:
                 self.order_line = [(0, 0, {'product_id': default_retention_product,
                                            'product_uom_qty': -1,
@@ -86,7 +72,6 @@ class SaleOrder(models.Model):
     def _prepare_invoice(self):
         res = super(SaleOrder, self)._prepare_invoice()
         if self.amount_discount > 0:
-            print('wwwwwwwwwwwwww')
             res.update({
                 'type': self.type or '',
                 'discount_type': self.discount_type or '',
@@ -97,20 +82,6 @@ class SaleOrder(models.Model):
                 'analytic_id': self.analytic_id.id or '',
                 'amount_grand': self.amount_grand,
                 'amount_discount': self.amount_discount,
-                'amount_tax': self.amount_tax,
-                # 'invoice_line_ids': [(0, 0, {
-                #     'price_unit': -self.amount_discount,
-                #     'debit': self.amount_discount,
-                #     'credit': 0,
-                #     'quantity': 1,
-                #     'amount_currency': -self.amount_discount,
-                #     'currency_id': self.currency_id.id if self.currency_id != self.company_id.currency_id else False,
-                #     'account_id': int(self.env['ir.config_parameter'].get_param
-                #                       ('tis_sales_purchase_global_discount.def_discount_sales_account_id')),
-                #     'analytic_account_id': self.analytic_id.id if self.analytic_id else '',
-                #     'partner_id': self.partner_id.id,
-                #     'exclude_from_invoice_tab': True
-                # })]
             })
         else:
             res.update({
@@ -123,20 +94,6 @@ class SaleOrder(models.Model):
                 'analytic_id': self.analytic_id.id or '',
                 'amount_grand': self.amount_grand,
                 'amount_discount': self.amount_discount,
-                'amount_tax': self.amount_tax,
-                # 'invoice_line_ids': [(0, 0, {
-                #     'price_unit': -self.amount_discount,
-                #     'debit': self.amount_discount,
-                #     'credit': 0,
-                #     'quantity': 1,
-                #     'amount_currency': -self.amount_discount,
-                #     'currency_id': self.currency_id.id if self.currency_id != self.company_id.currency_id else False,
-                #     'account_id': int(self.env['ir.config_parameter'].get_param
-                #                       ('tis_sales_purchase_global_discount.def_discount_sales_account_id')),
-                #     'analytic_account_id': self.analytic_id.id if self.analytic_id else '',
-                #     'partner_id': self.partner_id.id,
-                #     'exclude_from_invoice_tab': True
-                # })]
             })
 
         return res
