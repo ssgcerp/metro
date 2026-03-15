@@ -123,6 +123,9 @@ def main():
     for bill in o14_bills:
         if bill['name'] not in o19_bill_names:
             missing_bills.append(bill)
+            if len(missing_bills) >= 10:
+                logger.info("LIMIT REACHED: Trail run limited to 10 bills for tax testing.")
+                break
 
     logger.info(f"Identified {len(missing_bills)} missing bills to migrate.")
 

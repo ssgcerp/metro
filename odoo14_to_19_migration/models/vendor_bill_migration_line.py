@@ -1763,41 +1763,21 @@ class VendorBillMigrationLine(models.Model):
                             elif isinstance(product_id, int) and product_id > 0:
                                 product_id_valid = True
                         
-                        # CRITICAL: Only proceed if we have a valid positive product_id
-                        if not product_id_valid or not product_id or product_id <= 0:
-                            _logger.debug("   Skipping line %s (no valid product_id: %s) - name: '%s'", 
-                                        line_id, product_id, (line.get('name', '') or 'N/A')[:50])
-                            continue
-                        
-                        # Check quantity and price - round to 2 decimal places to avoid floating point precision issues
+                        # Check quantity and price
                         quantity = line.get('quantity', 0.0) or 0.0
                         price_unit = line.get('price_unit', 0.0) or 0.0
                         
-                        # Round to 2 decimal places for comparison (standard currency precision)
+                        # Round to 2 decimal places for comparison
                         quantity = round(float(quantity), 2)
                         price_unit = round(float(price_unit), 2)
                         
-                        if quantity <= 0.0 or price_unit <= 0.0:
-                            _logger.debug("   Skipping line %s (quantity=%s or price=%s is zero) - name: '%s'", 
-                                        line_id, quantity, price_unit, (line.get('name', '') or 'N/A')[:50])
-                            continue
-                        
-                        # CRITICAL: Check for duplicate product_id (regardless of qty/price)
-                        # This prevents migrating the same product multiple times (e.g., product line + description line)
-                        if product_id in seen_combinations:
-                            # This is a duplicate product - skip it
-                            existing_line_id = seen_combinations[product_id]
-                            _logger.warning("⏭️ Skipping duplicate line %s (same product_id=%s as line %s) - keeping first occurrence only", 
-                                          line_id, product_id, existing_line_id)
-                            _logger.warning("   Current line: qty=%s, price=%s, name='%s'", 
-                                          quantity, price_unit, (line.get('name', '') or 'N/A')[:50])
-                            continue
-                        
-                        # First occurrence of this product_id - keep it
-                        seen_combinations[product_id] = line_id
-                        line_ids_to_migrate.append(line_id)
-                        _logger.debug("   ✅ Including line %s (product_id=%s, qty=%s, price=%s)", 
-                                    line_id, product_id, quantity, price_unit)
+                        # Include line if it has a product OR if it has a description with qty/price
+                        if product_id_valid or (quantity != 0.0 and price_unit != 0.0):
+                            line_ids_to_migrate.append(line_id)
+                            _logger.debug("   ✅ Including line %s (product_id=%s, qty=%s, price=%s)", 
+                                        line_id, product_id if product_id_valid else 'None', quantity, price_unit)
+                        else:
+                            _logger.debug("   Skipping line %s (no product and zero qty/price)", line_id)
                     
                     if len(all_lines) != len(line_ids_to_migrate):
                         skipped_count = len(all_lines) - len(line_ids_to_migrate)
@@ -1957,116 +1937,48 @@ class VendorBillMigrationLine(models.Model):
                             except:
                                 pass  # Non-critical, continue migration
                         try:
+                            # CRITICAL: Fetch line data from Odoo 14
                             line_data = client.search_read(
                                 'account.move.line',
-                                [('id', '=', line_id), ('move_id', '=', bill_data['id'])],
-                                ['product_id', 'name', 'quantity', 'price_unit', 'discount', 'tax_ids', 
-                                 'account_id', 'sequence', 'purchase_line_id', 'brand_id', 'company_id', 'display_type',
-                                 'tax_line_id', 'tax_base_amount'],  # Add tax_line_id to identify tax lines
+                                [('id', '=', line_id)],
+                                ['name', 'quantity', 'price_unit', 'discount', 'account_id', 
+                                 'product_id', 'tax_ids', 'purchase_line_id', 'brand_id',
+                                 'display_type', 'sequence', 'tax_line_id'],
                                 limit=1
                             )
+                            
                             if line_data and len(line_data) > 0:
                                 line_info = line_data[0]
-                                # Skip section/note lines - only migrate product lines
-                                # Only skip if display_type is explicitly set to 'line_section' or 'line_note'
+                                
+                                # Skip section/note lines
                                 display_type = line_info.get('display_type')
                                 if display_type and display_type in ('line_section', 'line_note'):
-                                    _logger.info("⏭️ Skipping line %s (display_type='%s' - section/note line)", 
-                                               line_id, display_type)
+                                    _logger.info("⏭️ Skipping line %s (display_type='%s')", line_id, display_type)
                                     failed_lines += 1
                                     continue
-                                
-                                # CRITICAL: Filter out tax lines and system-generated lines FIRST
-                                # Tax lines have tax_line_id set
-                                is_tax_line = bool(line_info.get('tax_line_id'))
                                 
                                 # Skip tax lines
-                                if is_tax_line:
-                                    _logger.info("⏭️ Skipping line %s (tax line - tax_line_id=%s)", 
-                                               line_id, line_info.get('tax_line_id'))
+                                if line_info.get('tax_line_id'):
+                                    _logger.info("⏭️ Skipping line %s (tax line)", line_id)
                                     failed_lines += 1
                                     continue
                                 
-                                # CRITICAL: Extract and validate product_id - MUST be a valid positive integer
+                                # Use validated product_id for mapping
                                 product_id_raw = line_info.get('product_id')
-                                product_id_valid = False
-                                product_id_value = None
-                                
-                                if product_id_raw:
-                                    if isinstance(product_id_raw, (list, tuple)) and len(product_id_raw) > 0:
-                                        # Many2one format: [id, name]
-                                        extracted_id = product_id_raw[0]
-                                        if isinstance(extracted_id, int) and extracted_id > 0:
-                                            product_id_value = extracted_id
-                                            product_id_valid = True
-                                    elif isinstance(product_id_raw, int) and product_id_raw > 0:
-                                        product_id_value = product_id_raw
-                                        product_id_valid = True
-                                
-                                # CRITICAL: ONLY migrate lines that have a VALID product_id (positive integer)
-                                # Skip ALL lines without valid product_id (descriptions, notes, system lines, etc.)
-                                if not product_id_valid or not product_id_value:
-                                    _logger.info("⏭️ Skipping line %s (no valid product_id: %s) - description/note/system line", 
-                                               line_id, product_id_raw)
-                                    _logger.info("   Line name: '%s'", (line_info.get('name', '') or 'N/A')[:100])
-                                    failed_lines += 1
-                                    continue
-                                
-                                # CRITICAL: Skip lines with zero quantity or zero price FIRST
-                                # Real product lines should have quantity > 0 and price_unit > 0
-                                # This ensures we prioritize actual product lines over description lines
-                                line_quantity = line_info.get('quantity', 0.0) or 0.0
-                                line_price = line_info.get('price_unit', 0.0) or 0.0
-                                
-                                if line_quantity <= 0.0 or line_price <= 0.0:
-                                    _logger.info("⏭️ Skipping line %s (quantity=%s or price=%s is zero - likely description/duplicate line)", 
-                                                line_id, line_quantity, line_price)
-                                    _logger.info("   Line name: '%s'", (line_info.get('name', '') or 'N/A')[:100])
-                                    failed_lines += 1
-                                    continue
-                                
-                                # CRITICAL: Check if we've already migrated a line with this product_id
-                                # This prevents duplicate product lines (e.g., product line + description line with same product)
-                                # BUT only check AFTER validating quantity/price > 0, so we prioritize real product lines
-                                if product_id_value in processed_product_ids:
-                                    _logger.warning("⏭️ Skipping line %s (product_id=%s already migrated) - duplicate product line", 
-                                                  line_id, product_id_value)
-                                    _logger.warning("   Line name: '%s', qty=%s, price=%s", 
-                                                  (line_info.get('name', '') or 'N/A')[:100], line_quantity, line_price)
-                                    failed_lines += 1
-                                    continue
-                                
-                                # Extract account_id
-                                has_account = False
-                                account_id_raw = line_info.get('account_id')
-                                if account_id_raw:
-                                    if isinstance(account_id_raw, (list, tuple)) and len(account_id_raw) > 0:
-                                        has_account = bool(account_id_raw[0])
-                                    elif isinstance(account_id_raw, int):
-                                        has_account = bool(account_id_raw)
-                                
-                                # Skip lines without account (invalid lines)
-                                if not has_account:
-                                    _logger.warning("⚠️ Line %s has product_id but no account_id, skipping", line_id)
-                                    failed_lines += 1
-                                    continue
-                                
-                                # Mark this product_id as processed BEFORE creating the line
-                                # This ensures we don't create duplicate lines for the same product
-                                processed_product_ids.add(product_id_value)
-                                
-                                # Use the validated product_id_value for logging and mapping
-                                product_id_from_odoo14 = product_id_value
-                                
-                                _logger.info("📋 Fetched line %s/%s data: name='%s', qty=%s, price=%s, product_id=%s, account_id=%s", 
+                                product_id_from_odoo14 = False
+                                if product_id_raw and isinstance(product_id_raw, (list, tuple)):
+                                    product_id_from_odoo14 = product_id_raw[0]
+                                elif isinstance(product_id_raw, int):
+                                    product_id_from_odoo14 = product_id_raw
+
+                                _logger.info("📋 Fetched line %s/%s data: name='%s', qty=%s, price=%s, product_id=%s", 
                                             line_idx + 1, total_lines,
                                             (line_info.get('name', '') or 'Line')[:50], 
                                             line_info.get('quantity', 1.0),
                                             line_info.get('price_unit', 0.0),
-                                            product_id_from_odoo14 or 'None',
-                                            line_info.get('account_id'))
+                                            product_id_from_odoo14 or 'None')
                             else:
-                                _logger.warning("⚠️ Line %s not found in Odoo 14 for bill %s, skipping", line_id, bill_data.get('name', 'N/A'))
+                                _logger.warning("⚠️ Line %s not found in Odoo 14", line_id)
                                 failed_lines += 1
                                 continue
                             
@@ -2440,65 +2352,23 @@ class VendorBillMigrationLine(models.Model):
                                 _logger.info("ℹ️ Line %s had NO taxes in Odoo 14. Enforcing no taxes.", line_id)
                                 line_vals['tax_ids'] = [(5, 0, 0)]  # Command 5: Clear all taxes
                             else:
-                                # Odoo 14 HAD taxes. Fetch them!
-                                _logger.info("🔍 Line %s has taxes in Odoo 14: %s. Fetching details...", line_id, extracted_tax_ids)
-                                try:
-                                    tax_data_list = client.search_read(
-                                        'account.tax',
-                                        [('id', 'in', extracted_tax_ids)],
-                                        ['name', 'amount', 'type_tax_use'],
-                                        limit=10
-                                    )
-                                    for tax_data in tax_data_list:
-                                        tax_name = tax_data.get('name', '')
-                                        tax_amount = tax_data.get('amount', 0.0)
-                                        # Search in Odoo 19 by name and company
-                                        matching_tax = self.env['account.tax'].search([
-                                            ('company_id', '=', bill.company_id.id),
-                                            ('name', '=', tax_name),
-                                            ('type_tax_use', '=', 'purchase')
-                                        ], limit=1)
-                                        
-                                        if not matching_tax:
-                                            # Relax the type_tax_use if exact match fails
-                                            matching_tax = self.env['account.tax'].search([
-                                                ('company_id', '=', bill.company_id.id),
-                                                ('name', '=', tax_name)
-                                            ], limit=1)
-                                        
-                                        if not matching_tax:
-                                            # Fallback to amount matching
-                                            matching_tax = self.env['account.tax'].search([
-                                                ('company_id', '=', bill.company_id.id),
-                                                ('amount', '=', tax_amount),
-                                                ('type_tax_use', '=', 'purchase')
-                                            ], limit=1)
-                                        
-                                        if matching_tax:
-                                            taxes |= matching_tax
-                                            _logger.info("✅ Mapped Odoo 14 tax '%s' to Odoo 19 tax '%s' (ID: %s)", tax_name, matching_tax.name, matching_tax.id)
-                                        else:
-                                            _logger.warning("⚠️ Could not find equivalent for Odoo 14 tax '%s' in Odoo 19", tax_name)
-                                            
-                                except Exception as err:
-                                    _logger.error("❌ Failed to fetch/map taxes from Odoo 14: %s", str(err))
+                                # Odoo 14 HAD taxes. Select default company tax as requested.
+                                _logger.info("🔍 Line %s has taxes in Odoo 14: %s. Selecting default Odoo 19 tax...", line_id, extracted_tax_ids)
                                 
-                                # Set the exact matched taxes
-                                if taxes:
-                                    line_vals['tax_ids'] = [(6, 0, taxes.ids)]
+                                # Use company default purchase tax
+                                if bill.company_id.account_purchase_tax_id:
+                                    line_vals['tax_ids'] = [(6, 0, [bill.company_id.account_purchase_tax_id.id])]
+                                    _logger.info("✅ Selected default company purchase tax (ID: %s)", bill.company_id.account_purchase_tax_id.id)
                                 else:
-                                    # Absolute fallback: if mapping failed completely, use company default purchase tax
-                                    _logger.warning("⚠️ Tax mapping failed. Falling back to Company Default Purchase Tax.")
-                                    if bill.company_id.account_purchase_tax_id:
-                                        line_vals['tax_ids'] = [(6, 0, [bill.company_id.account_purchase_tax_id.id])]
-                                    else:
-                                        fallback_tax = self.env['account.tax'].search([
-                                            ('company_id', '=', bill.company_id.id),
-                                            ('type_tax_use', '=', 'purchase'),
-                                            ('amount', '>', 0)
-                                        ], limit=1, order='amount desc')
-                                        if fallback_tax:
-                                            line_vals['tax_ids'] = [(6, 0, [fallback_tax.id])]
+                                    # Fallback to any active purchase tax
+                                    fallback_tax = self.env['account.tax'].search([
+                                        ('company_id', '=', bill.company_id.id),
+                                        ('type_tax_use', '=', 'purchase'),
+                                        ('amount', '>', 0)
+                                    ], limit=1, order='amount desc')
+                                    if fallback_tax:
+                                        line_vals['tax_ids'] = [(6, 0, [fallback_tax.id])]
+                                        _logger.info("✅ Selected fallback purchase tax (ID: %s)", fallback_tax.id)
                             
                             # Map purchase_line_id for linking to purchase order lines
                             if line_info.get('purchase_line_id') and bill_vals.get('purchase_id'):
