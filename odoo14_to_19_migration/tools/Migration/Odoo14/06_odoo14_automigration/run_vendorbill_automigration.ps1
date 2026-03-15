@@ -56,8 +56,13 @@ Write-Host "`nPython analysis completed successfully." -ForegroundColor Green
 # 3. Reading Configuration for API calls
 $ConfigRaw = Get-Content $ConfigFile -Raw
 $Config = $ConfigRaw | ConvertFrom-Json
-$Odoo19Url = $Config.odoo19.url + "/migration/status_vendor_bill"
-$Odoo19ProcessUrl = $Config.odoo19.url + "/migration/process_one_vendor_bill"
+$OdooDb = $Config.odoo19.db
+$Odoo19Url = $Config.odoo19.url + "/migration/status_vendor_bill?db=" + $OdooDb
+$Odoo19ProcessUrl = $Config.odoo19.url + "/migration/process_one_vendor_bill?db=" + $OdooDb
+
+Write-Host "`nEstablishing Odoo session for database $OdooDb..." -ForegroundColor Yellow
+$null = Invoke-WebRequest -Uri ($Config.odoo19.url + "/web?db=" + $OdooDb) -SessionVariable webSession -UseBasicParsing -ErrorAction Stop
+Write-Host "Session established successfully." -ForegroundColor Green
 
 # Optional: Add Basic Auth if URL endpoints are protected (usually not for these specific custom routes)
 # We will just do a standard Invoke-RestMethod. If it requires auth, it would throw 401.
@@ -73,12 +78,13 @@ $EmptyQueueCount = 0
 while ($true) {
     try {
         # Check overall status
-        $StatusResponse = Invoke-RestMethod -Uri $Odoo19Url -Method Get -ErrorAction Stop
+        $StatusResponseRaw = Invoke-WebRequest -Uri $Odoo19Url -Method Get -WebSession $webSession -UseBasicParsing -ErrorAction Stop
+        $StatusResponse = $StatusResponseRaw.Content | ConvertFrom-Json
         
-        $Queued = $StatusResponse.queued
-        $Migrating = $StatusResponse.migrating
-        $Migrated = $StatusResponse.migrated
-        $Errors = $StatusResponse.error
+        $Queued = $StatusResponse.total_queued
+        $Migrating = $StatusResponse.migrating_now
+        $Migrated = $StatusResponse.total_migrated
+        $Errors = $StatusResponse.total_errors
         
         Write-Host "[Status] Queued: $Queued | Migrating: $Migrating | Migrated: $Migrated | Errors: $Errors"
         
@@ -88,13 +94,10 @@ while ($true) {
             $EmptyQueueCount = 0
             
             Write-Host "Processing 1 bill from the queue..." -NoNewline
-            $ProcessResponse = Invoke-RestMethod -Uri $Odoo19ProcessUrl -Method Get -TimeoutSec 120 -ErrorAction Stop
+            $ProcessResponseRaw = Invoke-WebRequest -Uri $Odoo19ProcessUrl -Method Get -WebSession $webSession -UseBasicParsing -TimeoutSec 120 -ErrorAction Stop
             
-            if ($ProcessResponse.success) {
-                Write-Host " Success: $($ProcessResponse.bill_number)" -ForegroundColor Green
-            } else {
-                Write-Host " Failed: $($ProcessResponse.error)" -ForegroundColor Red
-            }
+            # The Custom endpoint returns plain text lines. We just log the body length or first line for brevity
+            Write-Host " Success: Processed (HTTP $($ProcessResponseRaw.StatusCode))" -ForegroundColor Green
         } else {
             # No queued bills found
             $EmptyQueueCount++

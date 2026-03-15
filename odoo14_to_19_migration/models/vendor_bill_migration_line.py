@@ -1722,7 +1722,7 @@ class VendorBillMigrationLine(models.Model):
                 all_lines = client.search_read(
                     'account.move.line',
                     [('move_id', '=', bill_data['id'])],
-                    ['id', 'product_id', 'name', 'quantity', 'price_unit', 'display_type', 'tax_line_id'],
+                    ['id', 'product_id', 'name', 'quantity', 'price_unit', 'display_type', 'tax_line_id', 'tax_ids'],
                     limit=200
                 )
                 
@@ -2422,119 +2422,83 @@ class VendorBillMigrationLine(models.Model):
                                         _logger.error("❌ CRITICAL: No account found for line %s - line cannot be created without account_id", line_id)
                                         raise UserError(f'Cannot create vendor bill line without account_id. Bill: {bill.name}, Line: {line_id}')
                             
-                            # Map tax_ids - Use Company Default Purchase Tax
-                            # FIX 2024-01-06: User requested to ALWAYS use the Default Purchase Tax of the company
-                            # "product tax, should be default Purchase Tax of the company , don't change other"
+                            # CRITICAL TAX FIX: Explicitly map exact taxes from Odoo 14
                             taxes = self.env['account.tax']
+                            o14_tax_ids = line_info.get('tax_ids')
                             
-                            # For product lines, apply the Company's Default Purchase Tax
-                            if line_vals.get('product_id'):
-                                if bill.company_id.account_purchase_tax_id:
-                                    taxes = bill.company_id.account_purchase_tax_id
-                                    _logger.info("✅ Applied Company Default Purchase Tax '%s' (ID: %s) to line %s", 
-                                               taxes.name, taxes.id, line_id)
+                            # Normalize o14_tax_ids
+                            if o14_tax_ids:
+                                if isinstance(o14_tax_ids, (list, tuple)):
+                                    extracted_tax_ids = [t for t in o14_tax_ids if isinstance(t, int)]
                                 else:
-                                    _logger.warning("⚠️ No Default Purchase Tax configured for company '%s'", bill.company_id.name)
-                            
-                            if taxes:
-                                line_vals['tax_ids'] = [(6, 0, taxes.ids)]
-                            
-                            # Priority 2: If no tax from line, check product's default purchase tax in Odoo 14
-                            if not taxes and line_vals.get('product_id'):
-                                try:
-                                    product_id_odoo14 = line_info.get('product_id')
-                                    if isinstance(product_id_odoo14, (list, tuple)) and len(product_id_odoo14) > 0:
-                                        product_id_odoo14 = product_id_odoo14[0]
-                                    
-                                    if product_id_odoo14:
-                                        _logger.info("🔍 Line %s has no tax, checking product's default purchase tax in Odoo 14 (product_id: %s)...", 
-                                                   line_id, product_id_odoo14)
-                                        # Fetch product's purchase tax from Odoo 14
-                                        product_data = client.search_read(
-                                            'product.product',
-                                            [('id', '=', product_id_odoo14)],
-                                            ['supplier_taxes_id', 'name'],
-                                            limit=1
-                                        )
-                                        
-                                        if product_data and product_data[0].get('supplier_taxes_id'):
-                                            supplier_tax_ids = product_data[0]['supplier_taxes_id']
-                                            if isinstance(supplier_tax_ids, (list, tuple)):
-                                                extracted_supplier_tax_ids = []
-                                                for tid in supplier_tax_ids:
-                                                    if isinstance(tid, int):
-                                                        extracted_supplier_tax_ids.append(tid)
-                                                    elif isinstance(tid, (list, tuple)) and len(tid) > 0:
-                                                        extracted_supplier_tax_ids.append(tid[0])
-                                                
-                                                if extracted_supplier_tax_ids:
-                                                    # Fetch tax details from Odoo 14
-                                                    tax_data_list = client.search_read(
-                                                        'account.tax',
-                                                        [('id', 'in', extracted_supplier_tax_ids)],
-                                                        ['name', 'amount', 'type_tax_use', 'amount_type'],
-                                                        limit=10
-                                                    )
-                                                    
-                                                    for tax_data in tax_data_list:
-                                                        tax_name = tax_data.get('name', '')
-                                                        tax_amount = tax_data.get('amount', 0.0)
-                                                        tax_type = tax_data.get('type_tax_use', 'none')
-                                                        
-                                                        # Search for matching tax in Odoo 19 by name and amount
-                                                        matching_tax = self.env['account.tax'].search([
-                                                            ('company_id', '=', bill.company_id.id),
-                                                            ('name', 'ilike', tax_name),
-                                                            ('amount', '=', tax_amount),
-                                                            ('type_tax_use', '=', tax_type)
-                                                        ], limit=1)
-                                                        
-                                                        if matching_tax and matching_tax not in taxes:
-                                                            taxes |= matching_tax
-                                                            _logger.info("✅ Found product's default purchase tax '%s' (ID: %s) from Odoo 14 for line %s", 
-                                                                       matching_tax.name, matching_tax.id, line_id)
-                                except Exception as product_tax_error:
-                                    _logger.debug("Could not fetch product's purchase tax from Odoo 14: %s", str(product_tax_error))
-                            
-                            # Priority 3: If still no tax, use default purchase VAT tax for the company
-                            if not taxes:
-                                _logger.info("🔍 Line %s has no tax from line or product, trying default purchase VAT tax for company '%s'...", 
-                                           line_id, bill.company_id.name)
-                                # Try to find default purchase VAT tax (type_tax_use='purchase', typically VAT 5%)
-                                default_purchase_tax = self.env['account.tax'].search([
-                                    ('company_id', '=', bill.company_id.id),
-                                    ('type_tax_use', '=', 'purchase'),
-                                    ('amount', '>', 0)  # Only taxes with amount > 0
-                                ], limit=1, order='amount desc')  # Prefer higher VAT rates first
-                                
-                                if default_purchase_tax:
-                                    taxes = default_purchase_tax
-                                    _logger.info("✅ Using default purchase VAT tax '%s' (ID: %s, Amount: %s%%) for line %s", 
-                                               default_purchase_tax.name, default_purchase_tax.id, default_purchase_tax.amount, line_id)
-                                else:
-                                    _logger.warning("⚠️ No default purchase VAT tax found for company '%s', line %s will have no tax", 
-                                                  bill.company_id.name, line_id)
-                            
-                            # Set tax_ids if we found any taxes
-                            if taxes:
-                                line_vals['tax_ids'] = [(6, 0, taxes.ids)]
-                                _logger.info("✅ Mapped %s tax(es) to line %s: %s", len(taxes), line_id, ', '.join(taxes.mapped('name')))
+                                    extracted_tax_ids = []
                             else:
-                                # CRITICAL: Always try to get default purchase VAT tax as absolute last resort
-                                _logger.warning("⚠️ No taxes found for line %s (tried line tax, product tax), trying default purchase VAT one more time...", line_id)
-                                default_purchase_tax = self.env['account.tax'].search([
-                                    ('company_id', '=', bill.company_id.id),
-                                    ('type_tax_use', '=', 'purchase'),
-                                    ('amount', '>', 0)
-                                ], limit=1, order='amount desc')
-                                if default_purchase_tax:
-                                    taxes = default_purchase_tax
-                                    line_vals['tax_ids'] = [(6, 0, [default_purchase_tax.id])]
-                                    _logger.info("✅ Using default purchase VAT tax '%s' (ID: %s, Amount: %s%%) for line %s", 
-                                               default_purchase_tax.name, default_purchase_tax.id, default_purchase_tax.amount, line_id)
+                                extracted_tax_ids = []
+                            
+                            if not extracted_tax_ids:
+                                # Odoo 14 explicitly had NO taxes on this line
+                                _logger.info("ℹ️ Line %s had NO taxes in Odoo 14. Enforcing no taxes.", line_id)
+                                line_vals['tax_ids'] = [(5, 0, 0)]  # Command 5: Clear all taxes
+                            else:
+                                # Odoo 14 HAD taxes. Fetch them!
+                                _logger.info("🔍 Line %s has taxes in Odoo 14: %s. Fetching details...", line_id, extracted_tax_ids)
+                                try:
+                                    tax_data_list = client.search_read(
+                                        'account.tax',
+                                        [('id', 'in', extracted_tax_ids)],
+                                        ['name', 'amount', 'type_tax_use'],
+                                        limit=10
+                                    )
+                                    for tax_data in tax_data_list:
+                                        tax_name = tax_data.get('name', '')
+                                        tax_amount = tax_data.get('amount', 0.0)
+                                        # Search in Odoo 19 by name and company
+                                        matching_tax = self.env['account.tax'].search([
+                                            ('company_id', '=', bill.company_id.id),
+                                            ('name', '=', tax_name),
+                                            ('type_tax_use', '=', 'purchase')
+                                        ], limit=1)
+                                        
+                                        if not matching_tax:
+                                            # Relax the type_tax_use if exact match fails
+                                            matching_tax = self.env['account.tax'].search([
+                                                ('company_id', '=', bill.company_id.id),
+                                                ('name', '=', tax_name)
+                                            ], limit=1)
+                                        
+                                        if not matching_tax:
+                                            # Fallback to amount matching
+                                            matching_tax = self.env['account.tax'].search([
+                                                ('company_id', '=', bill.company_id.id),
+                                                ('amount', '=', tax_amount),
+                                                ('type_tax_use', '=', 'purchase')
+                                            ], limit=1)
+                                        
+                                        if matching_tax:
+                                            taxes |= matching_tax
+                                            _logger.info("✅ Mapped Odoo 14 tax '%s' to Odoo 19 tax '%s' (ID: %s)", tax_name, matching_tax.name, matching_tax.id)
+                                        else:
+                                            _logger.warning("⚠️ Could not find equivalent for Odoo 14 tax '%s' in Odoo 19", tax_name)
+                                            
+                                except Exception as err:
+                                    _logger.error("❌ Failed to fetch/map taxes from Odoo 14: %s", str(err))
+                                
+                                # Set the exact matched taxes
+                                if taxes:
+                                    line_vals['tax_ids'] = [(6, 0, taxes.ids)]
                                 else:
-                                    _logger.warning("⚠️ No default purchase VAT tax found for company '%s', line %s will have no tax", 
-                                                  bill.company_id.name, line_id)
+                                    # Absolute fallback: if mapping failed completely, use company default purchase tax
+                                    _logger.warning("⚠️ Tax mapping failed. Falling back to Company Default Purchase Tax.")
+                                    if bill.company_id.account_purchase_tax_id:
+                                        line_vals['tax_ids'] = [(6, 0, [bill.company_id.account_purchase_tax_id.id])]
+                                    else:
+                                        fallback_tax = self.env['account.tax'].search([
+                                            ('company_id', '=', bill.company_id.id),
+                                            ('type_tax_use', '=', 'purchase'),
+                                            ('amount', '>', 0)
+                                        ], limit=1, order='amount desc')
+                                        if fallback_tax:
+                                            line_vals['tax_ids'] = [(6, 0, [fallback_tax.id])]
                             
                             # Map purchase_line_id for linking to purchase order lines
                             if line_info.get('purchase_line_id') and bill_vals.get('purchase_id'):
