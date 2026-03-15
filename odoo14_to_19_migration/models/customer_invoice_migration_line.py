@@ -308,7 +308,8 @@ class CustomerInvoiceMigrationLine(models.Model):
                  'amount_total', 'amount_untaxed', 'invoice_user_id', 'team_id',
                  'invoice_origin', 'fiscal_position_id', 'invoice_payment_term_id',
                  'create_date', 'write_date', 'create_uid', 'write_uid',
-                 'location', 'site_name', 'create_do', 'bank_details', 'file_to_upload', 'filename'],
+                 'location', 'site_name', 'create_do', 'bank_details', 'file_to_upload', 'filename',
+                 'type', 'discount_type', 'discount_rate', 'amount_discount'],
                 limit=1
             )
             
@@ -330,8 +331,8 @@ class CustomerInvoiceMigrationLine(models.Model):
             }
             
             # Map Custom Fields
-            for custom_field in ['location', 'site_name', 'create_do', 'bank_details', 'file_to_upload', 'filename']:
-                if invoice_data.get(custom_field):
+            for custom_field in ['location', 'site_name', 'create_do', 'bank_details', 'file_to_upload', 'filename', 'type', 'discount_type', 'discount_rate', 'amount_discount']:
+                if custom_field in invoice_data and invoice_data[custom_field]:
                     invoice_vals[custom_field] = invoice_data[custom_field]
 
             # 3. Map Company (Robust Logic)
