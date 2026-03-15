@@ -1791,19 +1791,18 @@ class VendorBillMigrationLine(models.Model):
                                         line_id, quantity, price_unit, (line.get('name', '') or 'N/A')[:50])
                             continue
                         
-                        # CRITICAL: Check for duplicate product_id (regardless of qty/price)
-                        # This prevents migrating the same product multiple times (e.g., product line + description line)
-                        if product_id in seen_combinations:
-                            # This is a duplicate product - skip it
-                            existing_line_id = seen_combinations[product_id]
-                            _logger.warning("⏭️ Skipping duplicate line %s (same product_id=%s as line %s) - keeping first occurrence only", 
-                                          line_id, product_id, existing_line_id)
-                            _logger.warning("   Current line: qty=%s, price=%s, name='%s'", 
-                                          quantity, price_unit, (line.get('name', '') or 'N/A')[:50])
+                        # CRITICAL: Check for duplicate lines using product_id + quantity + price
+                        # This prevents migrating the same line multiple times if fetched twice
+                        combo_key = (product_id, quantity, price_unit)
+                        if combo_key in seen_combinations:
+                            # This is an exact duplicate (same product, qty, and price) - skip it
+                            existing_line_id = seen_combinations[combo_key]
+                            _logger.warning("⏭️ Skipping duplicate line %s (same product_id=%s, qty=%s, price=%s as line %s) - keeping first occurrence only", 
+                                          line_id, product_id, quantity, price_unit, existing_line_id)
                             continue
                         
-                        # First occurrence of this product_id - keep it
-                        seen_combinations[product_id] = line_id
+                        # First occurrence of this combination - keep it
+                        seen_combinations[combo_key] = line_id
                         line_ids_to_migrate.append(line_id)
                         _logger.debug("   ✅ Including line %s (product_id=%s, qty=%s, price=%s)", 
                                     line_id, product_id, quantity, price_unit)
