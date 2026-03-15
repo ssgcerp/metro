@@ -58,3 +58,36 @@ Write-Host "===========================================================`n" -Fore
 Write-Host " - Bills have been queued in Odoo 19 but migration has NOT been triggered." -ForegroundColor Yellow
 Write-Host " - See '..\00_Logs_and_Reports' for the missing bills Excel report." -ForegroundColor Cyan
 Write-Host "===========================================================" -ForegroundColor Cyan
+
+
+# Step 2: Run Continuous Migration Script
+$ContinuousScript = Join-Path $MigrationScriptDir "migrate_vendor_bills_continuous.ps1"
+if (Test-Path $ContinuousScript) {
+    Write-Host "`nStep 2: Starting continuous migration processing..." -ForegroundColor Yellow
+    & $ContinuousScript
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Migration processing encountered an error."
+        # Not stopping completely here, as we still want to run tax verification on whatever migrated
+    }
+} else {
+    Write-Warning "Could not find migrate_vendor_bills_continuous.ps1 at $ContinuousScript"
+}
+
+# Step 3: Run Tax Verification Script
+$VerifyScript = "verify_fix_vendor_bill_taxes.py"
+if (Test-Path $VerifyScript) {
+    Write-Host "`nStep 3: Running tax verification and fix script..." -ForegroundColor Yellow
+    # Still using the same config file from earlier
+    python $VerifyScript --config "$ConfigFile"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Tax verification script encountered an error."
+    } else {
+        Write-Host "`nTax verification completed." -ForegroundColor Green
+    }
+} else {
+    Write-Warning "Could not find verify_fix_vendor_bill_taxes.py in current directory"
+}
+
+Write-Host "`n===========================================================" -ForegroundColor Cyan
+Write-Host "End-to-End Migration Process Finished" -ForegroundColor Green
+Write-Host "===========================================================" -ForegroundColor Cyan
