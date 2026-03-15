@@ -1085,9 +1085,23 @@ class VendorBillMigrationLine(models.Model):
             # Map partner_id (required field)
             if bill_data.get('partner_id'):
                 partner_id = bill_data['partner_id']
-                if isinstance(partner_id, (list, tuple)) and len(partner_id) > 0:
+                partner_name = False
+                
+                if isinstance(partner_id, (list, tuple)) and len(partner_id) > 1:
+                    partner_name = partner_id[1]
                     partner_id = partner_id[0]
-                partner = self.env['res.partner'].search([('id', '=', partner_id)], limit=1)
+                elif isinstance(partner_id, (list, tuple)) and len(partner_id) > 0:
+                    partner_id = partner_id[0]
+                
+                # Priority 1: Search by exact name if we have it
+                partner = False
+                if partner_name:
+                    partner = self.env['res.partner'].search([('name', '=', partner_name)], limit=1)
+                
+                # Priority 2: Fallback to ID search (risky, as IDs might not match between dbs)
+                if not partner:
+                    partner = self.env['res.partner'].search([('id', '=', partner_id)], limit=1)
+                
                 if not partner:
                     # Try to get partner from Odoo 14
                     try:
@@ -2093,16 +2107,26 @@ class VendorBillMigrationLine(models.Model):
                             product = False
                             if line_info.get('product_id'):
                                 product_id = line_info['product_id']
-                                if isinstance(product_id, (list, tuple)) and len(product_id) > 0:
+                                product_name = False
+                                
+                                if isinstance(product_id, (list, tuple)) and len(product_id) > 1:
+                                    product_name = product_id[1]
+                                    product_id = product_id[0]
+                                elif isinstance(product_id, (list, tuple)) and len(product_id) > 0:
                                     product_id = product_id[0]
                                 
-                                # Step 1: Try to find by ID
-                                product = self.env['product.product'].search([('id', '=', product_id)], limit=1)
+                                # Step 1: Priority search by exact name if we have it
+                                if product_name:
+                                    product = self.env['product.product'].search([('name', '=', product_name)], limit=1)
                                 
-                                # Step 2: If not found by ID, fetch from Odoo 14 and search by code/name/barcode
+                                # Step 2: Try to find by ID (fallback, as IDs might not match between databases)
+                                if not product:
+                                    product = self.env['product.product'].search([('id', '=', product_id)], limit=1)
+                                
+                                # Step 3: If not found by name or ID, fetch details from Odoo 14 and search by code/barcode
                                 if not product:
                                     try:
-                                        _logger.info("🔍 Product ID %s not found in Odoo 19, fetching from Odoo 14...", product_id)
+                                        _logger.info("🔍 Product '%s' (ID %s) not found in Odoo 19, fetching details from Odoo 14...", product_name or 'Unknown', product_id)
                                         product_data = client.search_read(
                                             'product.product',
                                             [('id', '=', product_id)],
@@ -2122,7 +2146,7 @@ class VendorBillMigrationLine(models.Model):
                                                     _logger.info("✅ Found product by default_code: %s (ID: %s)", 
                                                                product.default_code, product.id)
                                             
-                                            # Try to find by name if not found by code
+                                            # Try to find by name from Odoo 14 if original name wasn't provided directly
                                             if not product and prod_data.get('name'):
                                                 product = self.env['product.product'].search([
                                                     ('name', '=', prod_data['name'])
@@ -2140,15 +2164,12 @@ class VendorBillMigrationLine(models.Model):
                                                     _logger.info("✅ Found product by barcode: %s (ID: %s)", 
                                                                product.barcode, product.id)
                                         else:
-                                            # Fallback: Odoo 14 returned no data for this product ID (likely archived/deleted or access error)
-                                            # But the line has a product_id [id, name], so we can use that name.
-                                            _logger.warning("⚠️ Could not fetch details for Product ID %s from Odoo 14 (likely archived). Attempting fallback creation using name from line.", product_id)
+                                            # Fallback: Odoo 14 returned no data for this product ID
+                                            _logger.warning("⚠️ Could not fetch details for Product ID %s from Odoo 14. Using fallback creation.", product_id)
+                                            product_name_fallback = product_name or "Unknown Product"
                                             
-                                            product_name_fallback = "Unknown Product"
-                                            if isinstance(line_info.get('product_id'), (list, tuple)) and len(line_info['product_id']) > 1:
-                                                product_name_fallback = line_info['product_id'][1]
-                                            
-                                            # Try to find by name first
+                                            # Try to find by name one last time
+
                                             product = self.env['product.product'].search([
                                                 ('name', '=', product_name_fallback)
                                             ], limit=1)
