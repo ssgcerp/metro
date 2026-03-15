@@ -234,12 +234,6 @@ class VendorBillMigrationLine(models.Model):
         help='Optional: Odoo 14 connection configuration for status checking and migration'
     )
     
-    mapped_journal_id = fields.Many2one(
-        'account.journal',
-        string='Mapped Target Journal',
-        help='Explicitly set the target Odoo 19 Journal to bypass normal company matching mappings'
-    )
-    
     odoo14_bill_id = fields.Integer(
         string='Odoo 14 Bill ID',
         readonly=True,
@@ -535,19 +529,19 @@ class VendorBillMigrationLine(models.Model):
                     order='code asc'
                 )
             
-            # Try to find account with code 400001 (Cost of Goods Sold in Trading) for the company
+            # Try to find account with code 501100 (PURCHASE EXPENSES) for the company
             purchase_expense_account = _search_account_safe(
                 self.env,
-                [('code', '=', '400001')],
+                [('code', '=', '501100')],
                 company_id=company.id,
                 limit=1
             )
             
             if purchase_expense_account:
                 default_account = purchase_expense_account
-                _logger.info("✅ Found Cost of Goods Sold in Trading account (400001) for company '%s'", company.name)
+                _logger.info("✅ Found PURCHASE EXPENSES account (501100) for company '%s'", company.name)
             elif not default_account:
-                # If no 400001 account, try to find any expense account
+                # If no 501100 account, try to find any expense account
                 default_account = _search_account_safe(
                     self.env,
                     [('internal_group', '=', 'expense')],
@@ -1284,10 +1278,7 @@ class VendorBillMigrationLine(models.Model):
                 _logger.warning("⚠️ AED currency not found, using company currency: %s", company.currency_id.name)
             
             # Map journal_id - CRITICAL: Must belong to the same company
-            if self.mapped_journal_id:
-                bill_vals['journal_id'] = self.mapped_journal_id.id
-                _logger.info("✅ OVERRIDE: Using EXACT explicitly mapped journal '%s' (ID: %s)", self.mapped_journal_id.name, self.mapped_journal_id.id)
-            elif bill_data.get('journal_id'):
+            if bill_data.get('journal_id'):
                 journal_id = bill_data['journal_id']
                 if isinstance(journal_id, (list, tuple)) and len(journal_id) > 0:
                     journal_id = journal_id[0]
@@ -1722,7 +1713,7 @@ class VendorBillMigrationLine(models.Model):
                 all_lines = client.search_read(
                     'account.move.line',
                     [('move_id', '=', bill_data['id'])],
-                    ['id', 'product_id', 'name', 'quantity', 'price_unit', 'display_type', 'tax_line_id', 'tax_ids'],
+                    ['id', 'product_id', 'name', 'quantity', 'price_unit', 'display_type', 'tax_line_id'],
                     limit=200
                 )
                 
@@ -1763,21 +1754,41 @@ class VendorBillMigrationLine(models.Model):
                             elif isinstance(product_id, int) and product_id > 0:
                                 product_id_valid = True
                         
-                        # Check quantity and price
+                        # CRITICAL: Only proceed if we have a valid positive product_id
+                        if not product_id_valid or not product_id or product_id <= 0:
+                            _logger.debug("   Skipping line %s (no valid product_id: %s) - name: '%s'", 
+                                        line_id, product_id, (line.get('name', '') or 'N/A')[:50])
+                            continue
+                        
+                        # Check quantity and price - round to 2 decimal places to avoid floating point precision issues
                         quantity = line.get('quantity', 0.0) or 0.0
                         price_unit = line.get('price_unit', 0.0) or 0.0
                         
-                        # Round to 2 decimal places for comparison
+                        # Round to 2 decimal places for comparison (standard currency precision)
                         quantity = round(float(quantity), 2)
                         price_unit = round(float(price_unit), 2)
                         
-                        # Include line if it has a product OR if it has a description with qty/price
-                        if product_id_valid or (quantity != 0.0 and price_unit != 0.0):
-                            line_ids_to_migrate.append(line_id)
-                            _logger.debug("   ✅ Including line %s (product_id=%s, qty=%s, price=%s)", 
-                                        line_id, product_id if product_id_valid else 'None', quantity, price_unit)
-                        else:
-                            _logger.debug("   Skipping line %s (no product and zero qty/price)", line_id)
+                        if quantity <= 0.0 or price_unit <= 0.0:
+                            _logger.debug("   Skipping line %s (quantity=%s or price=%s is zero) - name: '%s'", 
+                                        line_id, quantity, price_unit, (line.get('name', '') or 'N/A')[:50])
+                            continue
+                        
+                        # CRITICAL: Check for duplicate product_id (regardless of qty/price)
+                        # This prevents migrating the same product multiple times (e.g., product line + description line)
+                        if product_id in seen_combinations:
+                            # This is a duplicate product - skip it
+                            existing_line_id = seen_combinations[product_id]
+                            _logger.warning("⏭️ Skipping duplicate line %s (same product_id=%s as line %s) - keeping first occurrence only", 
+                                          line_id, product_id, existing_line_id)
+                            _logger.warning("   Current line: qty=%s, price=%s, name='%s'", 
+                                          quantity, price_unit, (line.get('name', '') or 'N/A')[:50])
+                            continue
+                        
+                        # First occurrence of this product_id - keep it
+                        seen_combinations[product_id] = line_id
+                        line_ids_to_migrate.append(line_id)
+                        _logger.debug("   ✅ Including line %s (product_id=%s, qty=%s, price=%s)", 
+                                    line_id, product_id, quantity, price_unit)
                     
                     if len(all_lines) != len(line_ids_to_migrate):
                         skipped_count = len(all_lines) - len(line_ids_to_migrate)
@@ -1937,72 +1948,116 @@ class VendorBillMigrationLine(models.Model):
                             except:
                                 pass  # Non-critical, continue migration
                         try:
-                            # CRITICAL: Fetch line data from Odoo 14
                             line_data = client.search_read(
                                 'account.move.line',
-                                [('id', '=', line_id)],
-                                ['name', 'quantity', 'price_unit', 'discount', 'account_id', 
-                                 'product_id', 'tax_ids', 'purchase_line_id', 'brand_id',
-                                 'display_type', 'sequence', 'tax_line_id'],
+                                [('id', '=', line_id), ('move_id', '=', bill_data['id'])],
+                                ['product_id', 'name', 'quantity', 'price_unit', 'discount', 'tax_ids', 
+                                 'account_id', 'sequence', 'purchase_line_id', 'brand_id', 'company_id', 'display_type',
+                                 'tax_line_id', 'tax_base_amount'],  # Add tax_line_id to identify tax lines
                                 limit=1
                             )
-                            
                             if line_data and len(line_data) > 0:
                                 line_info = line_data[0]
-                                
-                                # Skip section/note lines
+                                # Skip section/note lines - only migrate product lines
+                                # Only skip if display_type is explicitly set to 'line_section' or 'line_note'
                                 display_type = line_info.get('display_type')
                                 if display_type and display_type in ('line_section', 'line_note'):
-                                    _logger.info("⏭️ Skipping line %s (display_type='%s')", line_id, display_type)
+                                    _logger.info("⏭️ Skipping line %s (display_type='%s' - section/note line)", 
+                                               line_id, display_type)
                                     failed_lines += 1
                                     continue
+                                
+                                # CRITICAL: Filter out tax lines and system-generated lines FIRST
+                                # Tax lines have tax_line_id set
+                                is_tax_line = bool(line_info.get('tax_line_id'))
                                 
                                 # Skip tax lines
-                                if line_info.get('tax_line_id'):
-                                    _logger.info("⏭️ Skipping line %s (tax line)", line_id)
+                                if is_tax_line:
+                                    _logger.info("⏭️ Skipping line %s (tax line - tax_line_id=%s)", 
+                                               line_id, line_info.get('tax_line_id'))
                                     failed_lines += 1
                                     continue
-
-                                # NEW FIX: Skip payable/receivable balancing lines that cause total collapse
-                                if line_info.get('account_id'):
-                                    acc_id = line_info['account_id']
-                                    if isinstance(acc_id, (list, tuple)) and len(acc_id) > 0:
-                                        acc_id = acc_id[0]
-                                    
-                                    try:
-                                        acc_data = client.search_read(
-                                            'account.account',
-                                            [('id', '=', acc_id)],
-                                            ['name', 'internal_type', 'user_type_id'],
-                                            limit=1
-                                        )
-                                        if acc_data:
-                                            # In Odoo 14, internal_type or user_type_id.type indicates if it's payable/receivable
-                                            internal_priority_type = acc_data[0].get('internal_type')
-                                            if internal_priority_type in ('payable', 'receivable'):
-                                                _logger.info("⏭️ Skipping line %s (Account type: %s - balancing entry)", line_id, internal_priority_type)
-                                                failed_lines += 1
-                                                continue
-                                    except Exception as acc_check_error:
-                                        _logger.debug("Could not verify account type for line %s: %s", line_id, str(acc_check_error))
-
                                 
-                                # Use validated product_id for mapping
+                                # CRITICAL: Extract and validate product_id - MUST be a valid positive integer
                                 product_id_raw = line_info.get('product_id')
-                                product_id_from_odoo14 = False
-                                if product_id_raw and isinstance(product_id_raw, (list, tuple)):
-                                    product_id_from_odoo14 = product_id_raw[0]
-                                elif isinstance(product_id_raw, int):
-                                    product_id_from_odoo14 = product_id_raw
-
-                                _logger.info("📋 Fetched line %s/%s data: name='%s', qty=%s, price=%s, product_id=%s", 
+                                product_id_valid = False
+                                product_id_value = None
+                                
+                                if product_id_raw:
+                                    if isinstance(product_id_raw, (list, tuple)) and len(product_id_raw) > 0:
+                                        # Many2one format: [id, name]
+                                        extracted_id = product_id_raw[0]
+                                        if isinstance(extracted_id, int) and extracted_id > 0:
+                                            product_id_value = extracted_id
+                                            product_id_valid = True
+                                    elif isinstance(product_id_raw, int) and product_id_raw > 0:
+                                        product_id_value = product_id_raw
+                                        product_id_valid = True
+                                
+                                # CRITICAL: ONLY migrate lines that have a VALID product_id (positive integer)
+                                # Skip ALL lines without valid product_id (descriptions, notes, system lines, etc.)
+                                if not product_id_valid or not product_id_value:
+                                    _logger.info("⏭️ Skipping line %s (no valid product_id: %s) - description/note/system line", 
+                                               line_id, product_id_raw)
+                                    _logger.info("   Line name: '%s'", (line_info.get('name', '') or 'N/A')[:100])
+                                    failed_lines += 1
+                                    continue
+                                
+                                # CRITICAL: Skip lines with zero quantity or zero price FIRST
+                                # Real product lines should have quantity > 0 and price_unit > 0
+                                # This ensures we prioritize actual product lines over description lines
+                                line_quantity = line_info.get('quantity', 0.0) or 0.0
+                                line_price = line_info.get('price_unit', 0.0) or 0.0
+                                
+                                if line_quantity <= 0.0 or line_price <= 0.0:
+                                    _logger.info("⏭️ Skipping line %s (quantity=%s or price=%s is zero - likely description/duplicate line)", 
+                                                line_id, line_quantity, line_price)
+                                    _logger.info("   Line name: '%s'", (line_info.get('name', '') or 'N/A')[:100])
+                                    failed_lines += 1
+                                    continue
+                                
+                                # CRITICAL: Check if we've already migrated a line with this product_id
+                                # This prevents duplicate product lines (e.g., product line + description line with same product)
+                                # BUT only check AFTER validating quantity/price > 0, so we prioritize real product lines
+                                if product_id_value in processed_product_ids:
+                                    _logger.warning("⏭️ Skipping line %s (product_id=%s already migrated) - duplicate product line", 
+                                                  line_id, product_id_value)
+                                    _logger.warning("   Line name: '%s', qty=%s, price=%s", 
+                                                  (line_info.get('name', '') or 'N/A')[:100], line_quantity, line_price)
+                                    failed_lines += 1
+                                    continue
+                                
+                                # Extract account_id
+                                has_account = False
+                                account_id_raw = line_info.get('account_id')
+                                if account_id_raw:
+                                    if isinstance(account_id_raw, (list, tuple)) and len(account_id_raw) > 0:
+                                        has_account = bool(account_id_raw[0])
+                                    elif isinstance(account_id_raw, int):
+                                        has_account = bool(account_id_raw)
+                                
+                                # Skip lines without account (invalid lines)
+                                if not has_account:
+                                    _logger.warning("⚠️ Line %s has product_id but no account_id, skipping", line_id)
+                                    failed_lines += 1
+                                    continue
+                                
+                                # Mark this product_id as processed BEFORE creating the line
+                                # This ensures we don't create duplicate lines for the same product
+                                processed_product_ids.add(product_id_value)
+                                
+                                # Use the validated product_id_value for logging and mapping
+                                product_id_from_odoo14 = product_id_value
+                                
+                                _logger.info("📋 Fetched line %s/%s data: name='%s', qty=%s, price=%s, product_id=%s, account_id=%s", 
                                             line_idx + 1, total_lines,
                                             (line_info.get('name', '') or 'Line')[:50], 
                                             line_info.get('quantity', 1.0),
                                             line_info.get('price_unit', 0.0),
-                                            product_id_from_odoo14 or 'None')
+                                            product_id_from_odoo14 or 'None',
+                                            line_info.get('account_id'))
                             else:
-                                _logger.warning("⚠️ Line %s not found in Odoo 14", line_id)
+                                _logger.warning("⚠️ Line %s not found in Odoo 14 for bill %s, skipping", line_id, bill_data.get('name', 'N/A'))
                                 failed_lines += 1
                                 continue
                             
@@ -2032,153 +2087,195 @@ class VendorBillMigrationLine(models.Model):
                             # Map product_id - ALWAYS find or create product
                             product = False
                             if line_info.get('product_id'):
-                                product_id_val = line_info['product_id']
-                                if isinstance(product_id_val, (list, tuple)) and len(product_id_val) > 0:
-                                    product_id_val = product_id_val[0]
+                                product_id = line_info['product_id']
+                                if isinstance(product_id, (list, tuple)) and len(product_id) > 0:
+                                    product_id = product_id[0]
                                 
-                                # Step 1: Fetch details from Odoo 14 FIRST to prioritize code/name/barcode mapping
-                                try:
-                                    _logger.info("🔍 Fetching product details for ID %s from Odoo 14 for robust mapping...", product_id_val)
-                                    product_data = client.search_read(
-                                        'product.product',
-                                        [('id', '=', product_id_val)],
-                                        ['name', 'default_code', 'barcode', 'categ_id', 'uom_id', 'type', 
-                                         'sale_ok', 'purchase_ok', 'standard_price', 'list_price'],
-                                        limit=1
-                                    )
-                                    
-                                    if product_data:
-                                        prod_data = product_data[0]
-                                        
-                                        # PRIORITY mapping: default_code > barcode > name
-                                        # Search by default_code
-                                        if not product and prod_data.get('default_code'):
-                                            product = self.env['product.product'].search([
-                                                ('default_code', '=', prod_data['default_code'])
-                                            ], limit=1)
-                                            if product:
-                                                _logger.info("✅ Found product by default_code: %s (ID: %s)", 
-                                                           product.default_code, product.id)
-                                        
-                                        # Search by barcode
-                                        if not product and prod_data.get('barcode'):
-                                            product = self.env['product.product'].search([
-                                                ('barcode', '=', prod_data['barcode'])
-                                            ], limit=1)
-                                            if product:
-                                                _logger.info("✅ Found product by barcode: %s (ID: %s)", 
-                                                           product.barcode, product.id)
-                                        
-                                        # Search by name
-                                        if not product and prod_data.get('name'):
-                                            product = self.env['product.product'].search([
-                                                ('name', '=', prod_data['name'])
-                                            ], limit=1)
-                                            if product:
-                                                _logger.info("✅ Found product by name: %s (ID: %s)", 
-                                                           product.name, product.id)
-                                        
-                                        # LAST RESORT: Try to find by ID (only if no matches by other fields)
-                                        if not product:
-                                            product = self.env['product.product'].search([('id', '=', product_id_val)], limit=1)
-                                            if product:
-                                                _logger.info("✅ Found product by database ID: %s (ID: %s)", 
-                                                           product.name, product.id)
-                                    else:
-                                        # Fallback if product not found in Odoo 14 (archived?)
-                                        # Use the name from the line and try ID search
-                                        _logger.warning("⚠️ Could not fetch details for Product ID %s from Odoo 14", product_id_val)
-                                        product = self.env['product.product'].search([('id', '=', product_id_val)], limit=1)
-                                        
-                                        if not product:
-                                            # Try name from line
-                                            prod_name_from_line = ''
-                                            if isinstance(line_info.get('product_id'), (list, tuple)) and len(line_info['product_id']) > 1:
-                                                prod_name_from_line = line_info['product_id'][1]
-                                            
-                                            if prod_name_from_line:
-                                                product = self.env['product.product'].search([('id', '=', prod_name_from_line)], limit=1)
-                                        
-                                except Exception as product_mapping_error:
-                                    _logger.error("❌ Error during robust product mapping: %s", str(product_mapping_error))
-                                    # Very last resort fallback: original basic search
-                                    product = self.env['product.product'].search([('id', '=', product_id_val)], limit=1)
-                            
-                            if product:
-                                line_vals['product_id'] = product.id
-                                _logger.info("✅ Product mapped for line %s: %s (ID: %s, Code: %s)", 
-                                           line_id, product.name, product.id, product.default_code or 'N/A')
-                            else:
-                                _logger.warning("⚠️ Could not find or create product for line %s", line_id)
-                            # Step 3: If still not found, CREATE the product
-                            if not product and 'prod_meta_data' in locals():
-                                prod_data = prod_meta_data
-                                _logger.info("📦 Creating new product in Odoo 19: %s", prod_data.get('name', 'N/A'))
-                                product_vals = {
-                                    'name': prod_data.get('name', 'Migrated Product'),
-                                    'type': prod_data.get('type', 'consu'),
-                                    'sale_ok': prod_data.get('sale_ok', False),
-                                    'purchase_ok': prod_data.get('purchase_ok', True),
-                                }
+                                # Step 1: Try to find by ID
+                                product = self.env['product.product'].search([('id', '=', product_id)], limit=1)
                                 
-                                if prod_data.get('default_code'):
-                                    product_vals['default_code'] = prod_data['default_code']
-                                
-                                if prod_data.get('barcode'):
-                                    product_vals['barcode'] = prod_data['barcode']
-                                
-                                # Map category
-                                if prod_data.get('categ_id'):
-                                    categ_id = prod_data['categ_id']
-                                    if isinstance(categ_id, (list, tuple)) and len(categ_id) > 0:
-                                        categ_id = categ_id[0]
-                                    category = self.env['product.category'].search([('id', '=', categ_id)], limit=1)
-                                    if category:
-                                        product_vals['categ_id'] = category.id
-                                
-                                # Map UoM
-                                if prod_data.get('uom_id'):
-                                    uom_id = prod_data['uom_id']
-                                    if isinstance(uom_id, (list, tuple)) and len(uom_id) > 0:
-                                        uom_id = uom_id[0]
-                                    uom = self.env['uom.uom'].search([('id', '=', uom_id)], limit=1)
-                                    if uom:
-                                        product_vals['uom_id'] = uom.id
-                                
-                                try:
-                                    product = self.env['product.product'].create(product_vals)
-                                    _logger.info("✅ Created product '%s' (ID: %s)", product.name, product.id)
-                                except Exception as create_error:
-                                    _logger.error("❌ Failed to create product: %s", str(create_error))
-                                    # Try minimal
+                                # Step 2: If not found by ID, fetch from Odoo 14 and search by code/name/barcode
+                                if not product:
                                     try:
-                                        product = self.env['product.product'].create({'name': prod_data.get('name', 'Migrated'), 'type': 'consu'})
-                                    except:
-                                        pass
+                                        _logger.info("🔍 Product ID %s not found in Odoo 19, fetching from Odoo 14...", product_id)
+                                        product_data = client.search_read(
+                                            'product.product',
+                                            [('id', '=', product_id)],
+                                            ['name', 'default_code', 'barcode', 'categ_id', 'uom_id', 'type', 
+                                             'sale_ok', 'purchase_ok', 'standard_price', 'list_price'],
+                                            limit=1
+                                        )
+                                        if product_data:
+                                            prod_data = product_data[0]
+                                            
+                                            # Try to find by default_code (most reliable)
+                                            if prod_data.get('default_code'):
+                                                product = self.env['product.product'].search([
+                                                    ('default_code', '=', prod_data['default_code'])
+                                                ], limit=1)
+                                                if product:
+                                                    _logger.info("✅ Found product by default_code: %s (ID: %s)", 
+                                                               product.default_code, product.id)
+                                            
+                                            # Try to find by name if not found by code
+                                            if not product and prod_data.get('name'):
+                                                product = self.env['product.product'].search([
+                                                    ('name', '=', prod_data['name'])
+                                                ], limit=1)
+                                                if product:
+                                                    _logger.info("✅ Found product by name: %s (ID: %s)", 
+                                                               product.name, product.id)
+                                            
+                                            # Try to find by barcode if not found
+                                            if not product and prod_data.get('barcode'):
+                                                product = self.env['product.product'].search([
+                                                    ('barcode', '=', prod_data['barcode'])
+                                                ], limit=1)
+                                                if product:
+                                                    _logger.info("✅ Found product by barcode: %s (ID: %s)", 
+                                                               product.barcode, product.id)
+                                        else:
+                                            # Fallback: Odoo 14 returned no data for this product ID (likely archived/deleted or access error)
+                                            # But the line has a product_id [id, name], so we can use that name.
+                                            _logger.warning("⚠️ Could not fetch details for Product ID %s from Odoo 14 (likely archived). Attempting fallback creation using name from line.", product_id)
+                                            
+                                            product_name_fallback = "Unknown Product"
+                                            if isinstance(line_info.get('product_id'), (list, tuple)) and len(line_info['product_id']) > 1:
+                                                product_name_fallback = line_info['product_id'][1]
+                                            
+                                            # Try to find by name first
+                                            product = self.env['product.product'].search([
+                                                ('name', '=', product_name_fallback)
+                                            ], limit=1)
+                                            
+                                            if not product:
+                                                try:
+                                                    _logger.info("📦 Creating fallback product: '%s'", product_name_fallback)
+                                                    product = self.env['product.product'].create({
+                                                        'name': product_name_fallback,
+                                                        'default_code': f"MIGRATED-MISSING-{product_id}",
+                                                        'type': 'consu',
+                                                        'purchase_ok': True,
+                                                    })
+                                                    _logger.info("✅ Created fallback product (ID: %s)", product.id)
+                                                except Exception as fallback_create_error:
+                                                    _logger.error("❌ Failed to create fallback product: %s", str(fallback_create_error))
 
-                            if product:
-                                line_vals['product_id'] = product.id
-                                _logger.info("✅ Product mapped for line %s: %s (ID: %s)", line_id, product.name, product.id)
-                            else:
-                                _logger.warning("⚠️ Could not find or create product for line %s", line_id)
-                            # Map account_id (required field) - PRIORITY: Always use 400001 Cost of Goods Sold in Trading for vendor bills
+                                        # Use standard creation flow if we found data but no product yet (and it wasn't the fallback case above)
+                                        if product_data and not product:
+                                            
+                                            # Step 3: If still not found, CREATE the product
+                                            if not product:
+                                                _logger.info("📦 Creating new product in Odoo 19: %s", prod_data.get('name', 'N/A'))
+                                                product_vals = {
+                                                    'name': prod_data.get('name', 'Migrated Product'),
+                                                    'type': prod_data.get('type', 'consu'),
+                                                    'sale_ok': prod_data.get('sale_ok', False),
+                                                    'purchase_ok': prod_data.get('purchase_ok', True),
+                                                }
+                                                
+                                                if prod_data.get('default_code'):
+                                                    product_vals['default_code'] = prod_data['default_code']
+                                                
+                                                if prod_data.get('barcode'):
+                                                    product_vals['barcode'] = prod_data['barcode']
+                                                
+                                                # Map category if available
+                                                if prod_data.get('categ_id'):
+                                                    categ_id = prod_data['categ_id']
+                                                    if isinstance(categ_id, (list, tuple)) and len(categ_id) > 0:
+                                                        categ_id = categ_id[0]
+                                                    category = self.env['product.category'].search([('id', '=', categ_id)], limit=1)
+                                                    if not category:
+                                                        # Try to find by name
+                                                        try:
+                                                            categ_data = client.search_read(
+                                                                'product.category',
+                                                                [('id', '=', categ_id)],
+                                                                ['name'],
+                                                                limit=1
+                                                            )
+                                                            if categ_data:
+                                                                category = self.env['product.category'].search([
+                                                                    ('name', '=', categ_data[0].get('name'))
+                                                                ], limit=1)
+                                                        except:
+                                                            pass
+                                                    if category:
+                                                        product_vals['categ_id'] = category.id
+                                                
+                                                # Map UoM if available
+                                                if prod_data.get('uom_id'):
+                                                    uom_id = prod_data['uom_id']
+                                                    if isinstance(uom_id, (list, tuple)) and len(uom_id) > 0:
+                                                        uom_id = uom_id[0]
+                                                    uom = self.env['uom.uom'].search([('id', '=', uom_id)], limit=1)
+                                                    if uom:
+                                                        product_vals['uom_id'] = uom.id
+                                                    else:
+                                                        # Default to Units
+                                                        product_vals['uom_id'] = self.env.ref('uom.product_uom_unit', raise_if_not_found=False).id or False
+                                                
+                                                # Set purchase UoM same as UoM
+                                                if product_vals.get('uom_id'):
+                                                    product_vals['uom_po_id'] = product_vals['uom_id']
+                                                
+                                                try:
+                                                    product = self.env['product.product'].create(product_vals)
+                                                    _logger.info("✅ Created product '%s' (ID: %s, Code: %s) in Odoo 19", 
+                                                               product.name, product.id, product.default_code or 'N/A')
+                                                except Exception as create_error:
+                                                    _logger.error("❌ Failed to create product: %s", str(create_error), exc_info=True)
+                                                    # Try with minimal fields
+                                                    try:
+                                                        minimal_product_vals = {
+                                                            'name': prod_data.get('name', 'Migrated Product'),
+                                                            'type': 'consu',
+                                                        }
+                                                        if prod_data.get('default_code'):
+                                                            minimal_product_vals['default_code'] = prod_data['default_code']
+                                                        product = self.env['product.product'].create(minimal_product_vals)
+                                                        _logger.info("✅ Created product with minimal fields: %s (ID: %s)", 
+                                                                   product.name, product.id)
+                                                    except Exception as minimal_error:
+                                                        _logger.error("❌ Failed to create product even with minimal fields: %s", str(minimal_error))
+                                    except Exception as product_error:
+                                        _logger.error("❌ Error fetching/creating product: %s", str(product_error), exc_info=True)
+                                
+                                # Verify product company if it has company_id field (products are usually global, but check anyway)
+                                if product and hasattr(product, 'company_id') and product.company_id:
+                                    if product.company_id.id != bill.company_id.id:
+                                        _logger.warning("⚠️ Product %s has different company (%s) than bill (%s), but continuing (products can be shared)", 
+                                                      product.name, product.company_id.name, bill.company_id.name)
+                                        # Products can be shared across companies, so we continue
+                                
+                                if product:
+                                    line_vals['product_id'] = product.id
+                                    _logger.info("✅ Product mapped for line %s: %s (ID: %s, Code: %s)", 
+                                               line_id, product.name, product.id, product.default_code or 'N/A')
+                                    _logger.info("   ✅ product_id=%s will be set in line_vals", product.id)
+                                else:
+                                    _logger.warning("⚠️ Could not find or create product for line %s (Odoo 14 product_id: %s), line will be created without product", 
+                                                  line_id, product_id if 'product_id' in locals() else 'N/A')
+                            
+                            # Map account_id (required field) - PRIORITY: Always use 501100 PURCHASE EXPENSES for vendor bills
                             account = False
                             
-                            # PRIORITY 1: Always use 400001 Cost of Goods Sold in Trading for vendor bill lines (if it exists)
+                            # PRIORITY 1: Always use 501100 PURCHASE EXPENSES for vendor bill lines (if it exists)
                             purchase_expense_account = _search_account_safe(
                                 self.env,
-                                [('code', '=', '400001')],
+                                [('code', '=', '501100')],
                                 company_id=bill.company_id.id,
                                 limit=1
                             )
                             
                             if purchase_expense_account:
                                 account = purchase_expense_account
-                                _logger.info("✅ Using 400001 Cost of Goods Sold in Trading account for vendor bill line: %s (ID: %s)", 
+                                _logger.info("✅ Using 501100 PURCHASE EXPENSES account for vendor bill line: %s (ID: %s)", 
                                            account.name, account.id)
                             else:
-                                # If 400001 doesn't exist, log warning and fall back to other methods
-                                _logger.warning("⚠️ 400001 Cost of Goods Sold in Trading account not found for company '%s', falling back to other account matching methods", 
+                                # If 501100 doesn't exist, log warning and fall back to other methods
+                                _logger.warning("⚠️ 501100 PURCHASE EXPENSES account not found for company '%s', falling back to other account matching methods", 
                                               bill.company_id.name)
                                 
                                 # Fallback: Try to match by Odoo 14 account code
@@ -2277,24 +2374,24 @@ class VendorBillMigrationLine(models.Model):
                             
                             # CRITICAL: If account_id is still not set, find a default account
                             if not line_vals.get('account_id'):
-                                # Account is REQUIRED - PRIORITY: Always use 400001 Cost of Goods Sold in Trading for vendor bills
-                                _logger.warning("⚠️ Account not set for vendor bill line %s, using 400001 Cost of Goods Sold in Trading", line_id)
+                                # Account is REQUIRED - PRIORITY: Always use 501100 PURCHASE EXPENSES for vendor bills
+                                _logger.warning("⚠️ Account not set for vendor bill line %s, using 501100 PURCHASE EXPENSES", line_id)
                                 
-                                # Priority 1: Try 400001 Cost of Goods Sold in Trading (REQUIRED for vendor bills)
+                                # Priority 1: Try 501100 PURCHASE EXPENSES (REQUIRED for vendor bills)
                                 default_account = _search_account_safe(
                                     self.env,
-                                    [('code', '=', '400001')],
+                                    [('code', '=', '501100')],
                                     company_id=bill.company_id.id,
                                     limit=1
                                 )
                                 
                                 if default_account:
                                     line_vals['account_id'] = default_account.id
-                                    _logger.info("✅ Using 400001 Cost of Goods Sold in Trading account for line %s: %s (ID: %s)", 
+                                    _logger.info("✅ Using 501100 PURCHASE EXPENSES account for line %s: %s (ID: %s)", 
                                                line_id, default_account.name, default_account.id)
                                 else:
-                                    # Priority 2: Any expense account (fallback if 400001 doesn't exist)
-                                    _logger.warning("⚠️ 400001 Cost of Goods Sold in Trading not found, using fallback expense account")
+                                    # Priority 2: Any expense account (fallback if 501100 doesn't exist)
+                                    _logger.warning("⚠️ 501100 PURCHASE EXPENSES not found, using fallback expense account")
                                     default_account = _search_account_safe(
                                         self.env,
                                         [('internal_group', '=', 'expense')],
@@ -2316,38 +2413,119 @@ class VendorBillMigrationLine(models.Model):
                                         _logger.error("❌ CRITICAL: No account found for line %s - line cannot be created without account_id", line_id)
                                         raise UserError(f'Cannot create vendor bill line without account_id. Bill: {bill.name}, Line: {line_id}')
                             
-                            # CRITICAL TAX FIX: Explicitly map exact taxes from Odoo 14
+                            # Map tax_ids - Use Company Default Purchase Tax
+                            # FIX 2024-01-06: User requested to ALWAYS use the Default Purchase Tax of the company
+                            # "product tax, should be default Purchase Tax of the company , don't change other"
                             taxes = self.env['account.tax']
-                            o14_tax_ids = line_info.get('tax_ids')
                             
-                            # Normalize o14_tax_ids
-                            if o14_tax_ids:
-                                if isinstance(o14_tax_ids, (list, tuple)):
-                                    extracted_tax_ids = [t for t in o14_tax_ids if isinstance(t, int)]
+                            # For product lines, apply the Company's Default Purchase Tax
+                            if line_vals.get('product_id'):
+                                if bill.company_id.account_purchase_tax_id:
+                                    taxes = bill.company_id.account_purchase_tax_id
+                                    _logger.info("✅ Applied Company Default Purchase Tax '%s' (ID: %s) to line %s", 
+                                               taxes.name, taxes.id, line_id)
                                 else:
-                                    extracted_tax_ids = []
-                            else:
-                                extracted_tax_ids = []
+                                    _logger.warning("⚠️ No Default Purchase Tax configured for company '%s'", bill.company_id.name)
                             
-                            if not extracted_tax_ids:
-                                _logger.info("ℹ️ Line %s had NO taxes in Odoo 14. Applying default company tax anyway.", line_id)
-                            else:
-                                _logger.info("🔍 Line %s has taxes in Odoo 14: %s. Selecting default Odoo 19 tax...", line_id, extracted_tax_ids)
+                            if taxes:
+                                line_vals['tax_ids'] = [(6, 0, taxes.ids)]
                             
-                            # Always apply company default purchase tax
-                            if bill.company_id.account_purchase_tax_id:
-                                line_vals['tax_ids'] = [(6, 0, [bill.company_id.account_purchase_tax_id.id])]
-                                _logger.info("✅ Applied default company purchase tax (ID: %s)", bill.company_id.account_purchase_tax_id.id)
+                            # Priority 2: If no tax from line, check product's default purchase tax in Odoo 14
+                            if not taxes and line_vals.get('product_id'):
+                                try:
+                                    product_id_odoo14 = line_info.get('product_id')
+                                    if isinstance(product_id_odoo14, (list, tuple)) and len(product_id_odoo14) > 0:
+                                        product_id_odoo14 = product_id_odoo14[0]
+                                    
+                                    if product_id_odoo14:
+                                        _logger.info("🔍 Line %s has no tax, checking product's default purchase tax in Odoo 14 (product_id: %s)...", 
+                                                   line_id, product_id_odoo14)
+                                        # Fetch product's purchase tax from Odoo 14
+                                        product_data = client.search_read(
+                                            'product.product',
+                                            [('id', '=', product_id_odoo14)],
+                                            ['supplier_taxes_id', 'name'],
+                                            limit=1
+                                        )
+                                        
+                                        if product_data and product_data[0].get('supplier_taxes_id'):
+                                            supplier_tax_ids = product_data[0]['supplier_taxes_id']
+                                            if isinstance(supplier_tax_ids, (list, tuple)):
+                                                extracted_supplier_tax_ids = []
+                                                for tid in supplier_tax_ids:
+                                                    if isinstance(tid, int):
+                                                        extracted_supplier_tax_ids.append(tid)
+                                                    elif isinstance(tid, (list, tuple)) and len(tid) > 0:
+                                                        extracted_supplier_tax_ids.append(tid[0])
+                                                
+                                                if extracted_supplier_tax_ids:
+                                                    # Fetch tax details from Odoo 14
+                                                    tax_data_list = client.search_read(
+                                                        'account.tax',
+                                                        [('id', 'in', extracted_supplier_tax_ids)],
+                                                        ['name', 'amount', 'type_tax_use', 'amount_type'],
+                                                        limit=10
+                                                    )
+                                                    
+                                                    for tax_data in tax_data_list:
+                                                        tax_name = tax_data.get('name', '')
+                                                        tax_amount = tax_data.get('amount', 0.0)
+                                                        tax_type = tax_data.get('type_tax_use', 'none')
+                                                        
+                                                        # Search for matching tax in Odoo 19 by name and amount
+                                                        matching_tax = self.env['account.tax'].search([
+                                                            ('company_id', '=', bill.company_id.id),
+                                                            ('name', 'ilike', tax_name),
+                                                            ('amount', '=', tax_amount),
+                                                            ('type_tax_use', '=', tax_type)
+                                                        ], limit=1)
+                                                        
+                                                        if matching_tax and matching_tax not in taxes:
+                                                            taxes |= matching_tax
+                                                            _logger.info("✅ Found product's default purchase tax '%s' (ID: %s) from Odoo 14 for line %s", 
+                                                                       matching_tax.name, matching_tax.id, line_id)
+                                except Exception as product_tax_error:
+                                    _logger.debug("Could not fetch product's purchase tax from Odoo 14: %s", str(product_tax_error))
+                            
+                            # Priority 3: If still no tax, use default purchase VAT tax for the company
+                            if not taxes:
+                                _logger.info("🔍 Line %s has no tax from line or product, trying default purchase VAT tax for company '%s'...", 
+                                           line_id, bill.company_id.name)
+                                # Try to find default purchase VAT tax (type_tax_use='purchase', typically VAT 5%)
+                                default_purchase_tax = self.env['account.tax'].search([
+                                    ('company_id', '=', bill.company_id.id),
+                                    ('type_tax_use', '=', 'purchase'),
+                                    ('amount', '>', 0)  # Only taxes with amount > 0
+                                ], limit=1, order='amount desc')  # Prefer higher VAT rates first
+                                
+                                if default_purchase_tax:
+                                    taxes = default_purchase_tax
+                                    _logger.info("✅ Using default purchase VAT tax '%s' (ID: %s, Amount: %s%%) for line %s", 
+                                               default_purchase_tax.name, default_purchase_tax.id, default_purchase_tax.amount, line_id)
+                                else:
+                                    _logger.warning("⚠️ No default purchase VAT tax found for company '%s', line %s will have no tax", 
+                                                  bill.company_id.name, line_id)
+                            
+                            # Set tax_ids if we found any taxes
+                            if taxes:
+                                line_vals['tax_ids'] = [(6, 0, taxes.ids)]
+                                _logger.info("✅ Mapped %s tax(es) to line %s: %s", len(taxes), line_id, ', '.join(taxes.mapped('name')))
                             else:
-                                # Fallback to any active purchase tax
-                                fallback_tax = self.env['account.tax'].search([
+                                # CRITICAL: Always try to get default purchase VAT tax as absolute last resort
+                                _logger.warning("⚠️ No taxes found for line %s (tried line tax, product tax), trying default purchase VAT one more time...", line_id)
+                                default_purchase_tax = self.env['account.tax'].search([
                                     ('company_id', '=', bill.company_id.id),
                                     ('type_tax_use', '=', 'purchase'),
                                     ('amount', '>', 0)
                                 ], limit=1, order='amount desc')
-                                if fallback_tax:
-                                    line_vals['tax_ids'] = [(6, 0, [fallback_tax.id])]
-                                    _logger.info("✅ Applied fallback purchase tax (ID: %s)", fallback_tax.id)
+                                if default_purchase_tax:
+                                    taxes = default_purchase_tax
+                                    line_vals['tax_ids'] = [(6, 0, [default_purchase_tax.id])]
+                                    _logger.info("✅ Using default purchase VAT tax '%s' (ID: %s, Amount: %s%%) for line %s", 
+                                               default_purchase_tax.name, default_purchase_tax.id, default_purchase_tax.amount, line_id)
+                                else:
+                                    _logger.warning("⚠️ No default purchase VAT tax found for company '%s', line %s will have no tax", 
+                                                  bill.company_id.name, line_id)
                             
                             # Map purchase_line_id for linking to purchase order lines
                             if line_info.get('purchase_line_id') and bill_vals.get('purchase_id'):
@@ -2381,16 +2559,16 @@ class VendorBillMigrationLine(models.Model):
                                 _logger.error("❌ CRITICAL: account_id is missing for line %s, attempting to set...", line_id)
                                 # Try to get account one more time
                                 if not account:
-                                    # PRIORITY: Force use of 400001 Cost of Goods Sold in Trading
+                                    # PRIORITY: Force use of 501100 PURCHASE EXPENSES
                                     account = _search_account_safe(
                                         self.env,
-                                        [('code', '=', '400001')],
+                                        [('code', '=', '501100')],
                                         company_id=bill.company_id.id,
                                         limit=1
                                     )
                                     
                                     if account:
-                                        _logger.info("✅ Set account_id for line %s to 400001 Cost of Goods Sold in Trading: %s (ID: %s)", 
+                                        _logger.info("✅ Set account_id for line %s to 501100 PURCHASE EXPENSES: %s (ID: %s)", 
                                                    line_id, account.name, account.id)
                                     else:
                                         # Fallback: Use default expense account

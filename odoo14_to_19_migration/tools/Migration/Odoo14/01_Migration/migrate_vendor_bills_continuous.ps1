@@ -17,50 +17,6 @@ function Write-Status {
 # Track processed bills to avoid duplicates
 $processedBills = @{}
 
-# Get current script directory
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-
-# Step 0: Activate Virtual Environment and Apply Journal Mapping
-Write-Status ""
-Write-Status "=== Step 0: Journal Mapping Pre-Processing ===" "Cyan"
-Write-Status ""
-
-$VenvPath = (Join-Path $ScriptDir "..\..\..\.venvScripts")
-if (Test-Path $VenvPath) {
-    Write-Status "Activating Python Virtual Environment from $VenvPath..." "Cyan"
-    & "$VenvPath\Activate.ps1"
-} else {
-    Write-Status "Warning: Virtual environment not found at $VenvPath. Continuing with system Python." "Yellow"
-}
-
-$MappingScript = (Join-Path $ScriptDir "apply_journal_mapping.py")
-$ConfigFile = (Join-Path $ScriptDir "..\06_odoo14_automigration\migration_config.json")
-$MappingFile = (Join-Path $ScriptDir "..\00_Logs_and_Reports\journal_mapping_o14.xlsx")
-
-if ((Test-Path $MappingScript) -and (Test-Path $ConfigFile) -and (Test-Path $MappingFile)) {
-    Write-Status "Applying journal mappings from Excel to queued bills..." "Yellow"
-    python $MappingScript --config "$ConfigFile" --mapping "$MappingFile"
-    
-    if ($LASTEXITCODE -ne 0) {
-        Write-Status "Warning: Journal mapping script returned non-zero exit code. Continuing anyway (backend has default Purchase journal fallback)." "Yellow"
-    } else {
-        Write-Status "Journal mapping step completed." "Green"
-    }
-} else {
-    if (-not (Test-Path $MappingScript)) {
-        Write-Status "Warning: apply_journal_mapping.py not found at $MappingScript" "Yellow"
-    }
-    if (-not (Test-Path $ConfigFile)) {
-        Write-Status "Warning: migration_config.json not found at $ConfigFile" "Yellow"
-    }
-    if (-not (Test-Path $MappingFile)) {
-        Write-Status "Warning: journal_mapping_o14.xlsx not found at $MappingFile" "Yellow"
-    }
-    Write-Status "Skipping journal mapping step. Backend will use default Purchase journal fallback." "Yellow"
-}
-
-Write-Status ""
-
 try {
     Write-Status ""
     Write-Status "=== Vendor Bill Migration Processor ===" "Cyan"
@@ -70,7 +26,6 @@ try {
     Write-Status "  URL: $ODOO_URL" "Gray"
     Write-Status "  Processing Delay: $PROCESSING_DELAY seconds" "Gray"
     Write-Status ""
-
     
     # Step 1: Establish database session
     Write-Status "Establishing database session..." "Yellow"
