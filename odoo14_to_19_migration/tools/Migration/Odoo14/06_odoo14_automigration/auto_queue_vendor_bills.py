@@ -164,23 +164,15 @@ def main():
     
     for bill in missing_bills:
         bill_number = bill['name']
-        o14_journal_id = bill['journal_id'][0] if isinstance(bill.get('journal_id'), list) and len(bill['journal_id']) > 0 else None
-        
-        # Determine Mapped Journal
-        mapped_o19_journal_id = False
-        if o14_journal_id and o14_journal_id in journal_mapping:
-            mapped_o19_journal_id = journal_mapping[o14_journal_id]
-            mapped_count += 1
             
         # Check if line already exists in queue
         existing_lines = o19.execute('vendor.bill.migration.line', 'search', [('uploaded_bill_number', '=', bill_number)])
         
         if existing_lines:
-            # Update existing to Queued and set mapped journal
+            # Update existing to Queued
             o19.execute('vendor.bill.migration.line', 'write', [existing_lines[0]], {
                 'status': 'queued',
                 'status_message': 'Auto-queued for migration',
-                'mapped_journal_id': mapped_o19_journal_id
             })
             queued_count += 1
         else:
@@ -195,7 +187,6 @@ def main():
                 'excel_status': bill.get('state', 'posted'),
                 'company': company_name,
                 'bill_partner_name': partner_name,
-                'mapped_journal_id': mapped_o19_journal_id
             }
             if migration_config_id:
                 line_vals['config_id'] = migration_config_id
@@ -206,7 +197,7 @@ def main():
             o19.execute('vendor.bill.migration.line', 'create', [line_vals])
             queued_count += 1
 
-    logger.info(f"Successfully queued {queued_count} bills for migration ({mapped_count} with explicit journal mappings).")
+    logger.info(f"Successfully queued {queued_count} bills for migration.")
 
 if __name__ == "__main__":
     main()

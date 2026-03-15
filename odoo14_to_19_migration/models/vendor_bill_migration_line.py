@@ -1303,14 +1303,23 @@ class VendorBillMigrationLine(models.Model):
                         bill_vals['journal_id'] = journal.id
                         _logger.info("✅ Using default purchase journal '%s' (ID: %s) for company '%s'", journal.name, journal.id, company.name)
                     else:
-                        # Last resort: Try to find ANY purchase journal (even from other companies) or create one
-                        _logger.warning("⚠️ No purchase journal found for company '%s', trying to find or create one...", company.name)
-                        journal = self._find_or_create_purchase_journal(company)
-                        if journal:
-                            bill_vals['journal_id'] = journal.id
-                            _logger.info("✅ Using journal '%s' (ID: %s) for company '%s'", journal.name, journal.id, company.name)
+                        # Last resort: Try to find ANY purchase journal in 'Metro Fire' branch
+                        _logger.warning("⚠️ No purchase journal found for company '%s', trying fallback to 'Metro Fire'...", company.name)
+                        metro_fire = self.env['res.company'].search([('name', '=', 'Metro Fire')], limit=1)
+                        if metro_fire:
+                            journal = self.env['account.journal'].search([
+                                ('type', '=', 'purchase'),
+                                ('company_id', '=', metro_fire.id)
+                            ], limit=1)
+                            if journal:
+                                bill_vals['journal_id'] = journal.id
+                                _logger.info("✅ Using fallback journal '%s' (ID: %s) from company 'Metro Fire' for bill company '%s'", journal.name, journal.id, company.name)
+                            else:
+                                error_msg = f"No purchase journal found for bill company '{company.name}' and no purchase journal found for fallback company 'Metro Fire'. Please create one."
+                                _logger.error("❌ %s", error_msg)
+                                raise UserError(error_msg)
                         else:
-                            error_msg = f"No purchase journal found for company '{company.name}' (ID: {company.id}). Please create a purchase journal for this company in Accounting > Configuration > Journals."
+                            error_msg = f"No purchase journal found for bill company '{company.name}' and fallback company 'Metro Fire' not found in Odoo 19."
                             _logger.error("❌ %s", error_msg)
                             raise UserError(error_msg)
             else:
@@ -1323,14 +1332,23 @@ class VendorBillMigrationLine(models.Model):
                     bill_vals['journal_id'] = journal.id
                     _logger.info("✅ Using default purchase journal '%s' (ID: %s) for company '%s'", journal.name, journal.id, company.name)
                 else:
-                    # Last resort: Try to find or create purchase journal
-                    _logger.warning("⚠️ No purchase journal found for company '%s', trying to find or create one...", company.name)
-                    journal = self._find_or_create_purchase_journal(company)
-                    if journal:
-                        bill_vals['journal_id'] = journal.id
-                        _logger.info("✅ Using journal '%s' (ID: %s) for company '%s'", journal.name, journal.id, company.name)
+                    # Last resort: Try to find ANY purchase journal in 'Metro Fire' branch
+                    _logger.warning("⚠️ No purchase journal found for company '%s', trying fallback to 'Metro Fire'...", company.name)
+                    metro_fire = self.env['res.company'].search([('name', '=', 'Metro Fire')], limit=1)
+                    if metro_fire:
+                        journal = self.env['account.journal'].search([
+                            ('type', '=', 'purchase'),
+                            ('company_id', '=', metro_fire.id)
+                        ], limit=1)
+                        if journal:
+                            bill_vals['journal_id'] = journal.id
+                            _logger.info("✅ Using fallback journal '%s' (ID: %s) from company 'Metro Fire' for bill company '%s'", journal.name, journal.id, company.name)
+                        else:
+                            error_msg = f"No purchase journal found for bill company '{company.name}' and no purchase journal found for fallback company 'Metro Fire'. Please create one."
+                            _logger.error("❌ %s", error_msg)
+                            raise UserError(error_msg)
                     else:
-                        error_msg = f"No purchase journal found for company '{company.name}' (ID: {company.id}). Please create a purchase journal for this company in Accounting > Configuration > Journals."
+                        error_msg = f"No purchase journal found for bill company '{company.name}' and fallback company 'Metro Fire' not found in Odoo 19."
                         _logger.error("❌ %s", error_msg)
                         raise UserError(error_msg)
             
