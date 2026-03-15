@@ -50,84 +50,12 @@ if ($LASTEXITCODE -ne 0) {
     exit
 }
 
-Write-Host "`nPython analysis completed successfully." -ForegroundColor Green
+Write-Host "`nPython analysis completed successfully. Bills have been queued." -ForegroundColor Green
 
-
-# 3. Reading Configuration for API calls
-$ConfigRaw = Get-Content $ConfigFile -Raw
-$Config = $ConfigRaw | ConvertFrom-Json
-$OdooDb = $Config.odoo19.db
-$Odoo19Url = $Config.odoo19.url + "/migration/status_vendor_bill?db=" + $OdooDb
-$Odoo19ProcessUrl = $Config.odoo19.url + "/migration/process_one_vendor_bill?db=" + $OdooDb
-
-Write-Host "`nEstablishing Odoo session for database $OdooDb..." -ForegroundColor Yellow
-$null = Invoke-WebRequest -Uri ($Config.odoo19.url + "/web?db=" + $OdooDb) -SessionVariable webSession -UseBasicParsing -ErrorAction Stop
-Write-Host "Session established successfully." -ForegroundColor Green
-
-# Optional: Add Basic Auth if URL endpoints are protected (usually not for these specific custom routes)
-# We will just do a standard Invoke-RestMethod. If it requires auth, it would throw 401.
-
-# 4. Continuous Processing
 Write-Host "`n===========================================================" -ForegroundColor Cyan
-Write-Host "STEP 2: Processing Migration Queue" -ForegroundColor Cyan
+Write-Host "Queuing Complete — Migration NOT Started" -ForegroundColor Cyan
 Write-Host "===========================================================`n" -ForegroundColor Cyan
-
-$ConsecutiveErrors = 0
-$EmptyQueueCount = 0
-
-while ($true) {
-    try {
-        # Check overall status
-        $StatusResponseRaw = Invoke-WebRequest -Uri $Odoo19Url -Method Get -WebSession $webSession -UseBasicParsing -ErrorAction Stop
-        $StatusResponse = $StatusResponseRaw.Content | ConvertFrom-Json
-        
-        $Queued = $StatusResponse.total_queued
-        $Migrating = $StatusResponse.migrating_now
-        $Migrated = $StatusResponse.total_migrated
-        $Errors = $StatusResponse.total_errors
-        
-        Write-Host "[Status] Queued: $Queued | Migrating: $Migrating | Migrated: $Migrated | Errors: $Errors"
-        
-        if ($Queued -gt 0) {
-            # Reset counters
-            $ConsecutiveErrors = 0
-            $EmptyQueueCount = 0
-            
-            Write-Host "Processing 1 bill from the queue..." -NoNewline
-            $ProcessResponseRaw = Invoke-WebRequest -Uri $Odoo19ProcessUrl -Method Get -WebSession $webSession -UseBasicParsing -TimeoutSec 120 -ErrorAction Stop
-            
-            # The Custom endpoint returns plain text lines. We just log the body length or first line for brevity
-            Write-Host " Success: Processed (HTTP $($ProcessResponseRaw.StatusCode))" -ForegroundColor Green
-        } else {
-            # No queued bills found
-            $EmptyQueueCount++
-            Write-Host "No bills in queue. Waiting 5s... (Attempt $EmptyQueueCount/3)" -ForegroundColor Yellow
-            Start-Sleep -Seconds 5
-            
-            if ($EmptyQueueCount -ge 3) {
-                Write-Host "`nQueue is completely empty. Migration process finished." -ForegroundColor Green
-                break
-            }
-        }
-    }
-    catch {
-        $ConsecutiveErrors++
-        $ErrorMessage = $_.Exception.Message
-        Write-Host "`nERROR connecting to Odoo 19: $ErrorMessage" -ForegroundColor Red
-        
-        if ($ConsecutiveErrors -ge 5) {
-            Write-Host "Too many consecutive errors ($ConsecutiveErrors). Stopping migration process." -ForegroundColor Red
-            break
-        }
-        
-        Write-Host "Retrying in 10 seconds..." -ForegroundColor Yellow
-        Start-Sleep -Seconds 10
-    }
-}
-
-Write-Host "`n===========================================================" -ForegroundColor Cyan
-Write-Host "Fully Automated Migration Process Completed!" -ForegroundColor Cyan
-Write-Host "Final Report:" -ForegroundColor Cyan
+Write-Host " - Bills have been queued in Odoo 19 but migration has NOT been triggered." -ForegroundColor Yellow
 Write-Host " - See '..\00_Logs_and_Reports' for the missing bills Excel report." -ForegroundColor Cyan
-Write-Host " - See Odoo 19 Vendor Bills menu -> Migration Lines for full logs." -ForegroundColor Cyan
+Write-Host " - To start migration, use the Odoo 19 UI or run the processing step separately." -ForegroundColor Cyan
 Write-Host "===========================================================`n" -ForegroundColor Cyan
