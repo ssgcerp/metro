@@ -1943,9 +1943,8 @@ class VendorBillMigrationLine(models.Model):
                     _logger.info("   Bill Company: %s (ID: %s)", bill.company_id.name, bill.company_id.id)
                     _logger.info("=" * 80)
                     
-                    # Track processed line IDs AND product_ids to prevent duplicates during processing
+                    # Track processed line IDs to prevent duplicates during processing
                     processed_line_ids = set()  # Track line IDs to prevent processing same line twice
-                    processed_product_ids = set()  # Track product_ids to prevent migrating same product twice
                     
                     for line_idx, line_id in enumerate(line_ids_to_migrate):
                         # CRITICAL: Skip if we've already processed this line ID
@@ -2033,16 +2032,7 @@ class VendorBillMigrationLine(models.Model):
                                     failed_lines += 1
                                     continue
                                 
-                                # CRITICAL: Check if we've already migrated a line with this product_id
-                                # This prevents duplicate product lines (e.g., product line + description line with same product)
-                                # BUT only check AFTER validating quantity/price > 0, so we prioritize real product lines
-                                if product_id_value in processed_product_ids:
-                                    _logger.warning("⏭️ Skipping line %s (product_id=%s already migrated) - duplicate product line", 
-                                                  line_id, product_id_value)
-                                    _logger.warning("   Line name: '%s', qty=%s, price=%s", 
-                                                  (line_info.get('name', '') or 'N/A')[:100], line_quantity, line_price)
-                                    failed_lines += 1
-                                    continue
+                                # No longer checking processed_product_ids here, as we already deduplicate by (product, qty, price) earlier.
                                 
                                 # Extract account_id
                                 has_account = False
@@ -2059,9 +2049,7 @@ class VendorBillMigrationLine(models.Model):
                                     failed_lines += 1
                                     continue
                                 
-                                # Mark this product_id as processed BEFORE creating the line
-                                # This ensures we don't create duplicate lines for the same product
-                                processed_product_ids.add(product_id_value)
+                                
                                 
                                 # Use the validated product_id_value for logging and mapping
                                 product_id_from_odoo14 = product_id_value

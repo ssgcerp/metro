@@ -113,58 +113,9 @@ try {
             $responseLines = $processResponse.Content -split "`n"
             
             $currentBill = "None"
-            $billDetails = @{
-                'bill_number'          = ''
-                'vendor'               = ''
-                'amount'               = 0.0
-                'payments'             = 0
-                'total_items_odoo14'   = 0
-                'total_items_migrated' = 0
-                'products_odoo14'      = 0
-                'products_odoo19'      = 0
-            }
-            $inDetailsSection = $false
-            
             foreach ($line in $responseLines) {
-                $line = $line.Trim()
-                
                 if ($line -match "Migrating Now:\s*(.+)") {
                     $currentBill = $matches[1].Trim()
-                }
-                
-                # Parse bill details section
-                if ($line -match "Migrating Vendor Bill details:") {
-                    $inDetailsSection = $true
-                }
-                elseif ($inDetailsSection) {
-                    if ($line -match "Bill Number:\s*(.+)") {
-                        $billDetails['bill_number'] = $matches[1].Trim()
-                    }
-                    elseif ($line -match "Vendor:\s*(.+)") {
-                        $billDetails['vendor'] = $matches[1].Trim()
-                    }
-                    elseif ($line -match "Total Bill Amount:\s*([0-9,]+\.?[0-9]*)") {
-                        $amountStr = $matches[1] -replace ',', ''
-                        $billDetails['amount'] = [double]$amountStr
-                    }
-                    elseif ($line -match "Payments Linked:\s*(\d+)") {
-                        $billDetails['payments'] = [int]$matches[1]
-                    }
-                    elseif ($line -match "Total Items \(Odoo 14\):\s*(\d+)") {
-                        $billDetails['total_items_odoo14'] = [int]$matches[1]
-                    }
-                    elseif ($line -match "Total Items Migrated:\s*(\d+)") {
-                        $billDetails['total_items_migrated'] = [int]$matches[1]
-                    }
-                    elseif ($line -match "Products \(Odoo 14\):\s*(\d+)") {
-                        $billDetails['products_odoo14'] = [int]$matches[1]
-                    }
-                    elseif ($line -match "Products Migrated:\s*(\d+)") {
-                        $billDetails['products_odoo19'] = [int]$matches[1]
-                    }
-                    elseif ($line -eq "" -or $line -match "Total Queued:") {
-                        $inDetailsSection = $false
-                    }
                 }
             }
             
@@ -172,11 +123,6 @@ try {
             if ($currentBill -and $currentBill -ne "None") {
                 $billNum = $currentBill -replace '\s*-\s*(DONE|ERROR|in progress|Already migrated).*', ''
                 $billNum = $billNum.Trim()
-                
-                # Use bill number from details if available
-                if ($billDetails['bill_number'] -and $billDetails['bill_number'] -ne 'N/A') {
-                    $billNum = $billDetails['bill_number']
-                }
                 
                 $status = "Migrating"
                 $statusColor = "Yellow"
@@ -201,33 +147,8 @@ try {
                     # Mark as processed
                     $processedBills[$displayKey] = $true
                     
-                    # Display bill details header if available
-                    if ($billDetails['bill_number'] -and $billDetails['bill_number'] -ne 'N/A' -and $billDetails['bill_number'] -ne '') {
-                        Write-Status ""
-                        Write-Status "Migrating Vendor Bill details" "Cyan"
-                        Write-Status "Bill Number: $($billDetails['bill_number'])" "Gray"
-                        if ($billDetails['vendor'] -and $billDetails['vendor'] -ne 'N/A') {
-                            Write-Status "Vendor: $($billDetails['vendor'])" "Gray"
-                        }
-                        if ($billDetails['amount'] -gt 0) {
-                            Write-Status "Total Bill Amount: $($billDetails['amount'].ToString('N2'))" "Gray"
-                        }
-                        if ($billDetails['total_items_odoo14'] -gt 0) {
-                            Write-Status "Total Items: $($billDetails['total_items_odoo14'])" "Cyan"
-                        }
-                        if ($billDetails['total_items_migrated'] -gt 0) {
-                            Write-Status "Total Items Migrated: $($billDetails['total_items_migrated'])" "Green"
-                        }
-                        if ($billDetails['payments'] -gt 0) {
-                            Write-Status "Payments Linked: $($billDetails['payments'])" "Green"
-                        }
-                        Write-Status ""
-                    }
-                    
                     # Display the line with all info
-                    $products14 = if ($billDetails['products_odoo14'] -gt 0) { $billDetails['products_odoo14'] } else { "N/A" }
-                    $products19 = if ($billDetails['products_odoo19'] -gt 0) { $billDetails['products_odoo19'] } else { "N/A" }
-                    $displayLine = "$billNum | Total Queued: $totalQueued | Migrated: $totalMigrated | Odoo 14 Products: $products14 | Odoo 19 Products: $products19 | Current: $currentBill | Status: $status"
+                    $displayLine = "$billNum | Total Queued: $totalQueued | Migrated: $totalMigrated | Current: $currentBill | Status: $status"
                     Write-Status $displayLine $statusColor
                 }
             }
