@@ -70,7 +70,13 @@ if echo "$INITIAL_STATUS" | grep -iq "<html"; then
 fi
 
 # Parse JSON safely with Python
-PARSED_JSON=$(echo "$INITIAL_STATUS" | python3 -c "import sys, json; d=json.load(sys.stdin) if sys.stdin.read().strip().startswith('{') else {}; print(f\"{d.get('total_queued', 0)}|{d.get('total_migrated', 0)}|{d.get('total_errors', 0)}\")" 2>/dev/null)
+PARSED_JSON=$(echo "$INITIAL_STATUS" | python3 -c "import sys, json;
+try:
+    d = json.load(sys.stdin)
+    print(f\"{d.get('total_queued', 0)}|{d.get('total_migrated', 0)}|{d.get('total_errors', 0)}\")
+except:
+    print('')
+")
 
 TOTAL_QUEUED=$(echo "$PARSED_JSON" | cut -d'|' -f1)
 TOTAL_MIGRATED=$(echo "$PARSED_JSON" | cut -d'|' -f2)
@@ -108,7 +114,13 @@ while true; do
         continue
     fi
     
-    PARSED_STATUS=$(echo "$STATUS_RESP" | python3 -c "import sys, json; d=json.load(sys.stdin) if sys.stdin.read().strip().startswith('{') else {}; print(f\"{d.get('total_queued', 0)}|{d.get('migrating_now', 'None')}|{d.get('total_migrated', 0)}|{d.get('total_errors', 0)}\")" 2>/dev/null)
+    PARSED_STATUS=$(echo "$STATUS_RESP" | python3 -c "import sys, json;
+try:
+    d = json.load(sys.stdin)
+    print(f\"{d.get('total_queued', 0)}|{d.get('migrating_now', 'None')}|{d.get('total_migrated', 0)}|{d.get('total_errors', 0)}\")
+except:
+    print('')
+")
     
     TOTAL_QUEUED=$(echo "$PARSED_STATUS" | cut -d'|' -f1)
     MIGRATING_NOW=$(echo "$PARSED_STATUS" | cut -d'|' -f2)
