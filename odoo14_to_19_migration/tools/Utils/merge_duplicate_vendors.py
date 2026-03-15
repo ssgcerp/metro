@@ -57,7 +57,7 @@ class OdooJsonRpcClient:
 def main():
     parser = argparse.ArgumentParser(description='Merge Duplicate Vendors in Odoo 19')
     parser.add_argument('--url', default='https://metro.equdaierp.com', help='Odoo 19 URL')
-    parser.add_argument('--db', default='metrodb', help='Odoo 19 DB')
+    parser.add_argument('--db', default='newdb', help='Odoo 19 DB')
     parser.add_argument('--user', default='admin', help='Odoo 19 User')
     parser.add_argument('--password', default='Amaze@321', help='Odoo 19 Password')
     

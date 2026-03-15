@@ -1,0 +1,44 @@
+{
+    "columns": [
+        "Source Journal ID",
+        "Source Journal Name",
+        "Source Company",
+        "Total No. of Payments",
+        "Dest Journal ID",
+        "Dest Journal Name",
+        "Dest Company",
+        "Parent Company"
+    ],
+    "sample": [
+        {
+            "Source Journal ID": 9,
+            "Source Journal Name": "12064421001",
+            "Source Company": "ABU DHABI",
+            "Total No. of Payments": 1.0,
+            "Dest Journal ID": 83,
+            "Dest Journal Name": "SIB 0012064421001 SHJ",
+            "Dest Company": NaN,
+            "Parent Company": "Metro Fire_x000d_"
+        },
+        {
+            "Source Journal ID": 10,
+            "Source Journal Name": "12099686001",
+            "Source Company": "ABU DHABI",
+            "Total No. of Payments": 30.0,
+            "Dest Journal ID": 75,
+            "Dest Journal Name": "SIB 0012099686001 DXB",
+            "Dest Company": NaN,
+            "Parent Company": "Metro Fire_x000d_"
+        },
+        {
+            "Source Journal ID": 12,
+            "Source Journal Name": "0012099801001",
+            "Source Company": "ABU DHABI",
+            "Total No. of Payments": 376.0,
+            "Dest Journal ID": 74,
+            "Dest Journal Name": "SIB 0012099801001 AUH",
+            "Dest Company": NaN,
+            "Parent Company": "Metro Fire_x000d_"
+        }
+    ]
+}

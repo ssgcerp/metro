@@ -1,0 +1,9 @@
+﻿Found 1 duplicate accounts to clean up:
+
+  ID 40 | VAT Input (ABU DHABI) [ARCHIVED] | Active: False | Lines: 0
+    -> Cannot delete, trying archive: <Fault 2: 'You cannot remove/deactivate the accounts "104041C1OLD - VAT Input (ABU DHABI) [ARCHIVED]" which are set on a tax repartition line.'>
+    -> Archived
+
+=== Done! ===
+
+Master 744: Companies=[5, 10, 3, 7, 9, 6, 8, 2, 4, 1], Lines=6397

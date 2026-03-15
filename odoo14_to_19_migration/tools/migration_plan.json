@@ -1,0 +1,103 @@
+{
+    "update_code": [
+        {
+            "id_19": 2960,
+            "name": "AL DHAFRA RESTAURANT OFFICE - MARINA ISLAND",
+            "old_code": "PRJ# 00986",
+            "new_code": "PRJ# 986"
+        },
+        {
+            "id_19": 3015,
+            "name": "AL NAHRAIN SECURITY AND SAFETY - RECTIFICATION BASED ON PPM 1 VISIT AT COSME SURGE CLINIC AT JULPHAR",
+            "old_code": "PRJ/AMC# 001116",
+            "new_code": "PRJ/AMC# 01116"
+        },
+        {
+            "id_19": 3254,
+            "name": "C-85 BUILDING - RETIFICATION INCLUDING FIRE SEALANT",
+            "old_code": "PRJ# 01395",
+            "new_code": "PRJ# 0395"
+        }
+    ],
+    "update_name": [
+        {
+            "id_19": 4682,
+            "old_name": "[[PRJ/AMC# 01183] MESC - FIRE SYSTEM INSTALLATION                        ] MESC - FIRE SYSTEM INSTALLATION",
+            "new_name": "# 01403Rectification Work@ Power Plus Cable, Al hayl,",
+            "code": "PRJ/AMC# 01403"
+        },
+        {
+            "id_19": 4683,
+            "old_name": "``````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````",
+            "new_name": "(G+1 AUDITORIUM) AL SAAD INDIAN SCHOOL- AL AIN",
+            "code": "PRJ# 00645"
+        },
+        {
+            "id_19": 4515,
+            "old_name": "(G+1 AUDITORIUM- GULF READY MIX (OFFICE + ACCOMMODATION) @AL HAYL, FUJAIRAH - RECTIFICATION WORK BASED ON Q3 SERVICE - APR 2025 (copy)",
+            "new_name": "(G+1 AUDITORIUM- GULF READY MIX (OFFICE + ACCOMMODATION) @AL HAYL, FUJAIRAH - RECTIFICATION WORK BASED ON Q3 SERVICE - APR 2025",
+            "code": "PRJ/AMC# 01038"
+        },
+        {
+            "id_19": 4333,
+            "old_name": "[PRJ/AMC# 00800] SHEIKHA MARIYAM SCHOOL SHJ- Interface Conventional to addressable",
+            "new_name": "BHAVAN",
+            "code": "Drafted"
+        },
+        {
+            "id_19": 3293,
+            "old_name": "BANIYAS COOP SAMHA -SUCTION LINE LEAKAGE RECTIFICATION",
+            "new_name": "CPP STORE @AL HAYL, FUJAIRAH - RECTIFICATION WORK BASED ON CALLOUT REPORT - JULY 2025",
+            "code": "PRJ/AMC# 01204"
+        },
+        {
+            "id_19": 4333,
+            "old_name": "[PRJ/AMC# 00800] SHEIKHA MARIYAM SCHOOL SHJ- Interface Conventional to addressable",
+            "new_name": "D2B BUILDING CONTRACTING LLC DXB",
+            "code": "Drafted"
+        },
+        {
+            "id_19": 4683,
+            "old_name": "``````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````",
+            "new_name": "HIGHER ORGANISATION)-RECTIFICATION-01",
+            "code": "PRJ# 00645"
+        },
+        {
+            "id_19": 4333,
+            "old_name": "[PRJ/AMC# 00800] SHEIKHA MARIYAM SCHOOL SHJ- Interface Conventional to addressable",
+            "new_name": "Internal",
+            "code": "Drafted"
+        },
+        {
+            "id_19": 4333,
+            "old_name": "[PRJ/AMC# 00800] SHEIKHA MARIYAM SCHOOL SHJ- Interface Conventional to addressable",
+            "new_name": "MPM",
+            "code": "Drafted"
+        },
+        {
+            "id_19": 4682,
+            "old_name": "[[PRJ/AMC# 01183] MESC - FIRE SYSTEM INSTALLATION                        ] MESC - FIRE SYSTEM INSTALLATION",
+            "new_name": "PRJ/AMC#01456 FIT OUT INTERIOR DECORATION LLC-RECTIFICATION WORK AT VIVA BRANCH 2 NEAR HCT BASED ON CD COMMENTS",
+            "code": "PRJ/AMC# 01403"
+        },
+        {
+            "id_19": 4333,
+            "old_name": "[PRJ/AMC# 00800] SHEIKHA MARIYAM SCHOOL SHJ- Interface Conventional to addressable",
+            "new_name": "Pursue Superiority & Innovations (PSI)  Architectural Engineering Consultants",
+            "code": "Drafted"
+        },
+        {
+            "id_19": 3993,
+            "old_name": "[PRJ/AMC# 01339] REPL ENGINEERING 106A @FREEZONE-1 - RECTIFICATION WORK BASED ON Q1 SERVICE - AUG 2025)",
+            "new_name": "REPL ENGINEERING 106A @FREEZONE-1 - RECTIFICATION WORK BASED ON Q1 SERVICE - AUG 2025",
+            "code": "PRJ/AMC# 01339"
+        },
+        {
+            "id_19": 4333,
+            "old_name": "[PRJ/AMC# 00800] SHEIKHA MARIYAM SCHOOL SHJ- Interface Conventional to addressable",
+            "new_name": "[PRJ/AMC# 00621] INDUSTRIAL QUARRY AND CEMENTS@ TAWEEN, FUJAIRAH- SUPPLY OF FIRE EXTINGUISHER AND STAND ON 08TH OCT 2024",
+            "code": "Drafted"
+        }
+    ],
+    "create": []
+}

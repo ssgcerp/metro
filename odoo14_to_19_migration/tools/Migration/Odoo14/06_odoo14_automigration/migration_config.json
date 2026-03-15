@@ -1,0 +1,14 @@
+{
+    "odoo14": {
+        "url": "https://erpmfs.com",
+        "db": "metro_production_8_8_22",
+        "username": "Sales.auh@metrofiresystems.com",
+        "password": "Sales@185734"
+    },
+    "odoo19": {
+        "url": "https://metro.equdaierp.com",
+        "db": "newdb",
+        "username": "admin",
+        "password": "Amaze@321"
+    }
+}

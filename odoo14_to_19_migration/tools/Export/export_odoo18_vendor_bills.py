@@ -74,6 +74,7 @@ def main():
     parser.add_argument('--user', default='sruthi@metrofiresystems.com', help='Odoo 18 User')
     parser.add_argument('--password', default='Sruthi@321', help='Odoo 18 Password')
     parser.add_argument('--limit', type=int, default=0, help='Limit records')
+    parser.add_argument('-y', '--year', type=int, default=2026, help='Filter by Year (Default: 2026)')
     
     # Odoo 19 Args
     parser.add_argument('--url19', default='https://metro.equdaierp.com', help='Odoo 19 URL')
@@ -102,11 +103,14 @@ def main():
             print("Connected to Odoo 19. Fetching existing Vendor Bills...")
             existing_bills = client19.execute_kw('account.move', 'search_read', 
                 [[('move_type', '=', 'in_invoice')]], 
-                {'fields': ['name', 'ref', 'payment_reference']})
+                {'fields': ['name', 'ref', 'payment_reference', 'amount_total']})
             
             for b in existing_bills:
-                if b.get('ref'): existing_refs.add(str(b['ref']).strip())
-                if b.get('name'): existing_refs.add(str(b['name']).strip()) 
+                amount = round(b.get('amount_total', 0.0) or 0.0, 2)
+                if b.get('ref'): 
+                    existing_refs.add((str(b['ref']).strip(), amount))
+                if b.get('name'): 
+                    existing_refs.add((str(b['name']).strip(), amount)) 
             
             print(f"Found {len(existing_bills)} existing bills in Odoo 19.")
         else:
@@ -114,6 +118,7 @@ def main():
     else:
         print(f"Using File List: {args.file_list}. Skipping Odoo 19 check.")
 
+    print("Connecting to Odoo 18...")
     # 2. Connect to Odoo 18 (Source)
     client = OdooJsonRpcClient(args.url, args.db, args.user, args.password)
     
@@ -134,6 +139,14 @@ def main():
         # Default behavior: Posted only
         domain.append(('state', '=', 'posted'))
     
+    # Year Filter
+    if args.year:
+        print(f"Filtering for Year: {args.year}")
+        start_date = f"{args.year}-01-01"
+        end_date = f"{args.year}-12-31"
+        domain.append(('invoice_date', '>=', start_date))
+        domain.append(('invoice_date', '<=', end_date))
+
     # Apply File List Filter
     if args.file_list:
         try:
@@ -141,8 +154,6 @@ def main():
                 target_refs = [l.strip() for l in f.readlines() if l.strip()]
             if target_refs:
                 print(f"Filtering for {len(target_refs)} specific bills from file.")
-                # Search either by Name OR Ref
-                # domain: AND [ ..., OR(name in list, ref in list) ]
                 domain.append('|')
                 domain.append(('name', 'in', target_refs))
                 domain.append(('ref', 'in', target_refs))
@@ -172,17 +183,15 @@ def main():
     kwargs = {'limit': args.limit} if args.limit > 0 else {}
     
     # Fetch
-    # If not using file list, we do manual filter. If using file list, domain handles it.
     if args.file_list:
         invoice_ids = client.execute_kw('account.move', 'search', search_args, kwargs)
         print(f"Found {len(invoice_ids)} matching bills.")
-        # DEBUG: Print found headers
         if invoice_ids:
              found_headers = client.execute_kw('account.move', 'read', [invoice_ids], {'fields': ['name', 'ref']})
              for fh in found_headers:
                  print(f"  -> Found: Name='{fh.get('name')}', Ref='{fh.get('ref')}'")
     else:
-        invoice_ids_all = client.execute_kw('account.move', 'search_read', search_args, {'fields': ['id', 'name', 'ref']})
+        invoice_ids_all = client.execute_kw('account.move', 'search_read', search_args, {'fields': ['id', 'name', 'ref', 'amount_total']})
         print(f"Found {len(invoice_ids_all)} total vendor bills in Odoo 18.")
         
         # FILTER
@@ -191,32 +200,23 @@ def main():
         for inv in invoice_ids_all:
             ref = str(inv.get('ref', '')).strip()
             name = str(inv.get('name', '')).strip()
+            amount = round(inv.get('amount_total', 0.0) or 0.0, 2)
             
-            # Check if Ref OR Name exists in 19
-            if (ref and ref in existing_refs) or (name and name in existing_refs):
+            # Check if (Ref, Amount) OR (Name, Amount) exists in 19
+            # Using tuple matching avoids "001" from Vendor A matching "001" from Vendor B if amounts differ
+            if (ref and (ref, amount) in existing_refs) or (name and (name, amount) in existing_refs):
                 skipped_count += 1
                 continue
             invoice_ids.append(inv['id'])
 
         print(f"Filtered out {skipped_count} existing bills. Proceeding with {len(invoice_ids)} missing bills.")
 
-
-
     if not invoice_ids:
+        print("No missing bills found to export.")
         return
 
-    # Interactive Limit Request
-    try:
-        user_input = input(f"Enter number of bills to export (Press Enter for all {len(invoice_ids)}): ").strip()
-        if user_input:
-            limit_val = int(user_input)
-            if limit_val > 0 and limit_val < len(invoice_ids):
-                invoice_ids = invoice_ids[:limit_val]
-                print(f"Limiting export to first {len(invoice_ids)} bills.")
-    except ValueError:
-        print("Invalid number. Exporting all.")
-    except Exception:
-        pass
+    # Skip interactive input, export all found
+    print(f"Auto-exporting all {len(invoice_ids)} bills...")
 
     # Prepare Data List
     branch_rows = {}

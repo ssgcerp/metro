@@ -1,0 +1,2 @@
+2026-03-03 11:26:44,683 - Connected to Odoo 19.
+2026-03-03 11:26:45,079 - No customer payments found in Odoo 19.

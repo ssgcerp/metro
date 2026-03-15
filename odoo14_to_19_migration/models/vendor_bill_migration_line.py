@@ -234,6 +234,12 @@ class VendorBillMigrationLine(models.Model):
         help='Optional: Odoo 14 connection configuration for status checking and migration'
     )
     
+    mapped_journal_id = fields.Many2one(
+        'account.journal',
+        string='Mapped Target Journal',
+        help='Explicitly set the target Odoo 19 Journal to bypass normal company matching mappings'
+    )
+    
     odoo14_bill_id = fields.Integer(
         string='Odoo 14 Bill ID',
         readonly=True,
@@ -529,19 +535,19 @@ class VendorBillMigrationLine(models.Model):
                     order='code asc'
                 )
             
-            # Try to find account with code 501100 (PURCHASE EXPENSES) for the company
+            # Try to find account with code 400001 (Cost of Goods Sold in Trading) for the company
             purchase_expense_account = _search_account_safe(
                 self.env,
-                [('code', '=', '501100')],
+                [('code', '=', '400001')],
                 company_id=company.id,
                 limit=1
             )
             
             if purchase_expense_account:
                 default_account = purchase_expense_account
-                _logger.info("✅ Found PURCHASE EXPENSES account (501100) for company '%s'", company.name)
+                _logger.info("✅ Found Cost of Goods Sold in Trading account (400001) for company '%s'", company.name)
             elif not default_account:
-                # If no 501100 account, try to find any expense account
+                # If no 400001 account, try to find any expense account
                 default_account = _search_account_safe(
                     self.env,
                     [('internal_group', '=', 'expense')],
@@ -1278,7 +1284,10 @@ class VendorBillMigrationLine(models.Model):
                 _logger.warning("⚠️ AED currency not found, using company currency: %s", company.currency_id.name)
             
             # Map journal_id - CRITICAL: Must belong to the same company
-            if bill_data.get('journal_id'):
+            if self.mapped_journal_id:
+                bill_vals['journal_id'] = self.mapped_journal_id.id
+                _logger.info("✅ OVERRIDE: Using EXACT explicitly mapped journal '%s' (ID: %s)", self.mapped_journal_id.name, self.mapped_journal_id.id)
+            elif bill_data.get('journal_id'):
                 journal_id = bill_data['journal_id']
                 if isinstance(journal_id, (list, tuple)) and len(journal_id) > 0:
                     journal_id = journal_id[0]
@@ -2258,24 +2267,24 @@ class VendorBillMigrationLine(models.Model):
                                     _logger.warning("⚠️ Could not find or create product for line %s (Odoo 14 product_id: %s), line will be created without product", 
                                                   line_id, product_id if 'product_id' in locals() else 'N/A')
                             
-                            # Map account_id (required field) - PRIORITY: Always use 501100 PURCHASE EXPENSES for vendor bills
+                            # Map account_id (required field) - PRIORITY: Always use 400001 Cost of Goods Sold in Trading for vendor bills
                             account = False
                             
-                            # PRIORITY 1: Always use 501100 PURCHASE EXPENSES for vendor bill lines (if it exists)
+                            # PRIORITY 1: Always use 400001 Cost of Goods Sold in Trading for vendor bill lines (if it exists)
                             purchase_expense_account = _search_account_safe(
                                 self.env,
-                                [('code', '=', '501100')],
+                                [('code', '=', '400001')],
                                 company_id=bill.company_id.id,
                                 limit=1
                             )
                             
                             if purchase_expense_account:
                                 account = purchase_expense_account
-                                _logger.info("✅ Using 501100 PURCHASE EXPENSES account for vendor bill line: %s (ID: %s)", 
+                                _logger.info("✅ Using 400001 Cost of Goods Sold in Trading account for vendor bill line: %s (ID: %s)", 
                                            account.name, account.id)
                             else:
-                                # If 501100 doesn't exist, log warning and fall back to other methods
-                                _logger.warning("⚠️ 501100 PURCHASE EXPENSES account not found for company '%s', falling back to other account matching methods", 
+                                # If 400001 doesn't exist, log warning and fall back to other methods
+                                _logger.warning("⚠️ 400001 Cost of Goods Sold in Trading account not found for company '%s', falling back to other account matching methods", 
                                               bill.company_id.name)
                                 
                                 # Fallback: Try to match by Odoo 14 account code
@@ -2374,24 +2383,24 @@ class VendorBillMigrationLine(models.Model):
                             
                             # CRITICAL: If account_id is still not set, find a default account
                             if not line_vals.get('account_id'):
-                                # Account is REQUIRED - PRIORITY: Always use 501100 PURCHASE EXPENSES for vendor bills
-                                _logger.warning("⚠️ Account not set for vendor bill line %s, using 501100 PURCHASE EXPENSES", line_id)
+                                # Account is REQUIRED - PRIORITY: Always use 400001 Cost of Goods Sold in Trading for vendor bills
+                                _logger.warning("⚠️ Account not set for vendor bill line %s, using 400001 Cost of Goods Sold in Trading", line_id)
                                 
-                                # Priority 1: Try 501100 PURCHASE EXPENSES (REQUIRED for vendor bills)
+                                # Priority 1: Try 400001 Cost of Goods Sold in Trading (REQUIRED for vendor bills)
                                 default_account = _search_account_safe(
                                     self.env,
-                                    [('code', '=', '501100')],
+                                    [('code', '=', '400001')],
                                     company_id=bill.company_id.id,
                                     limit=1
                                 )
                                 
                                 if default_account:
                                     line_vals['account_id'] = default_account.id
-                                    _logger.info("✅ Using 501100 PURCHASE EXPENSES account for line %s: %s (ID: %s)", 
+                                    _logger.info("✅ Using 400001 Cost of Goods Sold in Trading account for line %s: %s (ID: %s)", 
                                                line_id, default_account.name, default_account.id)
                                 else:
-                                    # Priority 2: Any expense account (fallback if 501100 doesn't exist)
-                                    _logger.warning("⚠️ 501100 PURCHASE EXPENSES not found, using fallback expense account")
+                                    # Priority 2: Any expense account (fallback if 400001 doesn't exist)
+                                    _logger.warning("⚠️ 400001 Cost of Goods Sold in Trading not found, using fallback expense account")
                                     default_account = _search_account_safe(
                                         self.env,
                                         [('internal_group', '=', 'expense')],
@@ -2559,16 +2568,16 @@ class VendorBillMigrationLine(models.Model):
                                 _logger.error("❌ CRITICAL: account_id is missing for line %s, attempting to set...", line_id)
                                 # Try to get account one more time
                                 if not account:
-                                    # PRIORITY: Force use of 501100 PURCHASE EXPENSES
+                                    # PRIORITY: Force use of 400001 Cost of Goods Sold in Trading
                                     account = _search_account_safe(
                                         self.env,
-                                        [('code', '=', '501100')],
+                                        [('code', '=', '400001')],
                                         company_id=bill.company_id.id,
                                         limit=1
                                     )
                                     
                                     if account:
-                                        _logger.info("✅ Set account_id for line %s to 501100 PURCHASE EXPENSES: %s (ID: %s)", 
+                                        _logger.info("✅ Set account_id for line %s to 400001 Cost of Goods Sold in Trading: %s (ID: %s)", 
                                                    line_id, account.name, account.id)
                                     else:
                                         # Fallback: Use default expense account

@@ -91,7 +91,7 @@ This report verifies all field mappings for vendor bill migration from Odoo 14 t
 ### Account Mapping Priority (Verified):
 1. ✅ Fetch account code from Odoo 14 (Line 1816-1828)
 2. ✅ Match by code in bill's company (Line 1830-1840)
-3. ✅ Fallback: Try 501100 PURCHASE EXPENSES (Line 1890-1896)
+3. ✅ Fallback: Try 400001 Cost of Goods Sold in Trading (Line 1890-1896)
 4. ✅ Fallback: Any expense account (Line 1898-1904)
 5. ✅ Fallback: Journal default account (Line 1906-1911)
 6. ✅ Final validation ensures account_id is always set (Line 2048-2072)

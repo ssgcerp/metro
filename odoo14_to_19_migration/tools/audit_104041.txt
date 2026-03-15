@@ -1,0 +1,5 @@
+Found 2 accounts with code like '104041':
+  ID 744 | Code: 104041 | Active: True | Companies: [5, 10, 3, 7, 9, 6, 8, 2, 4, 1] | Lines: 6397
+    Name: VAT Input
+  ID 40 | Code: 104041C1OLD | Active: False | Companies: [1] | Lines: 0
+    Name: VAT Input (ABU DHABI) [ARCHIVED]

@@ -1,0 +1,20 @@
+Payment details (ALL FIELDS):
+id: 359
+name: PBNK1/2023/00185
+move_id: False
+journal_id: [6, 'Bank']
+state: in_process
+is_reconciled: False
+amount: 2835.0
+memo: 10360
+partner_id: [16196, 'FOUR POINT FZC']
+
+Interesting Fields in account.payment:
+activity_date_deadline: {'string': 'Next Activity Deadline', 'type': 'date'}
+my_activity_date_deadline: {'string': 'My Activity Deadline', 'type': 'date'}
+move_id: {'relation': 'account.move', 'string': 'Journal Entry', 'type': 'many2one'}
+state: {'string': 'State', 'type': 'selection'}
+payment_method_line_id: {'relation': 'account.payment.method.line', 'string': 'Payment Method', 'type': 'many2one'}
+available_payment_method_line_ids: {'relation': 'account.payment.method.line', 'string': 'Available Payment Method Line', 'type': 'many2many'}
+reconciled_statement_line_ids: {'relation': 'account.bank.statement.line', 'string': 'Reconciled Statement Lines', 'type': 'many2many'}
+reconciled_statement_lines_count: {'string': '# Reconciled Statement Lines', 'type': 'integer'}

@@ -1,0 +1,5 @@
+SourceJournalId,SourceJournalName,SourceJournalCode,SourceType,SourceActive,SourceDefaultAccount,TargetJournalId,TargetJournalName,TargetJournalCode,TargetType,TargetActive,MatchRuleUsed,MatchScore,MappingStatus,Notes_Suggestions
+108,Cash,CSH1,cash,True,Cash,85,,,,,NONE,0,MISSING_IN_TARGET,
+139,Petty Cash - AJM,PCSH,cash,True,PETTY CASH AJMAN,100,,,,,NONE,0,MISSING_IN_TARGET,
+87,Purchases AJM,BILL1,purchase,True,501100 PURCHASE EXPENSES,2,,,,,NONE,0,MISSING_IN_TARGET,
+93,Sales Ajman,INV,sale,True,401100 Sales Account,1,,,,,NONE,0,MISSING_IN_TARGET,

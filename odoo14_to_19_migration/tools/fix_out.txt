@@ -1,0 +1,26 @@
+2026-02-19 16:05:50,634 INFO === DRY RUN mode - no changes will be written ===
+2026-02-19 16:05:50,634 INFO Connecting to Odoo 18 (source)...
+2026-02-19 16:05:51,285 INFO Connected to Odoo 18 (uid=12)
+2026-02-19 16:05:51,285 INFO Connecting to Odoo 19 (destination)...
+2026-02-19 16:05:52,567 INFO Connected to Odoo 19 (uid=2)
+2026-02-19 16:05:52,567 INFO Caching Odoo 19 accounts...
+2026-02-19 16:05:53,192 INFO Cached 1093 Odoo 19 accounts
+2026-02-19 16:05:53,192 INFO Caching Odoo 18 accounts...
+2026-02-19 16:05:53,950 INFO Cached 262 Odoo 18 accounts
+2026-02-19 16:05:53,950 INFO Caching Odoo 18 analytic accounts...
+2026-02-19 16:05:54,055 INFO Cached 1354 Odoo 18 analytic accounts
+2026-02-19 16:05:54,055 INFO Caching Odoo 19 analytic accounts...
+2026-02-19 16:05:54,578 INFO Cached 1630 Odoo 19 analytic accounts
+2026-02-19 16:05:54,697 INFO Fetching Odoo 19 vendor bills...
+2026-02-19 16:05:54,861 INFO Found 20 Odoo 19 vendor bills to process
+2026-02-19 16:05:58,480 INFO ============================================================
+2026-02-19 16:05:58,480 INFO SUMMARY (DRY RUN)
+2026-02-19 16:05:58,480 INFO   Total Odoo 19 bills:  20
+2026-02-19 16:05:58,480 INFO   No Odoo 18 match:     20
+2026-02-19 16:05:58,480 INFO   No lines:             0
+2026-02-19 16:05:58,480 INFO   Line count mismatch:  0
+2026-02-19 16:05:58,480 INFO   Account fixes:        0 lines
+2026-02-19 16:05:58,480 INFO   Analytic fixes:       0 lines
+2026-02-19 16:05:58,480 INFO   Bills updated:        0
+2026-02-19 16:05:58,481 INFO   Errors:               0
+2026-02-19 16:05:58,481 INFO ============================================================

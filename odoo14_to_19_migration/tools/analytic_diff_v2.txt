@@ -1,0 +1,21 @@
+--- UPDATE CODE (Name Match) ---
+ID 2960 | AL DHAFRA RESTAURANT OFFICE - MARINA ISLAND | PRJ# 00986 -> PRJ# 986
+ID 3015 | AL NAHRAIN SECURITY AND SAFETY - RECTIFICATION BASED ON PPM 1 VISIT AT COSME SURGE CLINIC AT JULPHAR | PRJ/AMC# 001116 -> PRJ/AMC# 01116
+ID 3254 | C-85 BUILDING - RETIFICATION INCLUDING FIRE SEALANT | PRJ# 01395 -> PRJ# 0395
+
+--- UPDATE NAME (Code Match) ---
+ID 4682 | PRJ/AMC# 01403 | [[PRJ/AMC# 01183] MESC - FIRE SYSTEM INSTALLATION                        ] MESC - FIRE SYSTEM INSTALLATION -> # 01403Rectification Work@ Power Plus Cable, Al hayl,
+ID 4683 | PRJ# 00645 | `````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````` -> (G+1 AUDITORIUM) AL SAAD INDIAN SCHOOL- AL AIN
+ID 4515 | PRJ/AMC# 01038 | (G+1 AUDITORIUM- GULF READY MIX (OFFICE + ACCOMMODATION) @AL HAYL, FUJAIRAH - RECTIFICATION WORK BASED ON Q3 SERVICE - APR 2025 (copy) -> (G+1 AUDITORIUM- GULF READY MIX (OFFICE + ACCOMMODATION) @AL HAYL, FUJAIRAH - RECTIFICATION WORK BASED ON Q3 SERVICE - APR 2025
+ID 4333 | Drafted | [PRJ/AMC# 00800] SHEIKHA MARIYAM SCHOOL SHJ- Interface Conventional to addressable -> BHAVAN
+ID 3293 | PRJ/AMC# 01204 | BANIYAS COOP SAMHA -SUCTION LINE LEAKAGE RECTIFICATION -> CPP STORE @AL HAYL, FUJAIRAH - RECTIFICATION WORK BASED ON CALLOUT REPORT - JULY 2025
+ID 4333 | Drafted | [PRJ/AMC# 00800] SHEIKHA MARIYAM SCHOOL SHJ- Interface Conventional to addressable -> D2B BUILDING CONTRACTING LLC DXB
+ID 4683 | PRJ# 00645 | `````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````` -> HIGHER ORGANISATION)-RECTIFICATION-01
+ID 4333 | Drafted | [PRJ/AMC# 00800] SHEIKHA MARIYAM SCHOOL SHJ- Interface Conventional to addressable -> Internal
+ID 4333 | Drafted | [PRJ/AMC# 00800] SHEIKHA MARIYAM SCHOOL SHJ- Interface Conventional to addressable -> MPM
+ID 4682 | PRJ/AMC# 01403 | [[PRJ/AMC# 01183] MESC - FIRE SYSTEM INSTALLATION                        ] MESC - FIRE SYSTEM INSTALLATION -> PRJ/AMC#01456 FIT OUT INTERIOR DECORATION LLC-RECTIFICATION WORK AT VIVA BRANCH 2 NEAR HCT BASED ON CD COMMENTS
+ID 4333 | Drafted | [PRJ/AMC# 00800] SHEIKHA MARIYAM SCHOOL SHJ- Interface Conventional to addressable -> Pursue Superiority & Innovations (PSI)  Architectural Engineering Consultants
+ID 3993 | PRJ/AMC# 01339 | [PRJ/AMC# 01339] REPL ENGINEERING 106A @FREEZONE-1 - RECTIFICATION WORK BASED ON Q1 SERVICE - AUG 2025) -> REPL ENGINEERING 106A @FREEZONE-1 - RECTIFICATION WORK BASED ON Q1 SERVICE - AUG 2025
+ID 4333 | Drafted | [PRJ/AMC# 00800] SHEIKHA MARIYAM SCHOOL SHJ- Interface Conventional to addressable -> [PRJ/AMC# 00621] INDUSTRIAL QUARRY AND CEMENTS@ TAWEEN, FUJAIRAH- SUPPLY OF FIRE EXTINGUISHER AND STAND ON 08TH OCT 2024
+
+--- CREATE NEW ---
