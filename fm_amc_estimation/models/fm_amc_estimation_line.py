@@ -23,6 +23,7 @@ class FMAMCEstimationLine(models.Model):
         ('project', 'Project Estimation'),
         ('consumable', 'Consumable Estimation'),
         ('expense', 'Expense'),
+        ('travel', 'Travel & Accommodation'),
     ], string='Line Type', required=True)
     
     # Product Information

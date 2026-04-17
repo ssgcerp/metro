@@ -71,6 +71,7 @@
                                 <field name="project_amount_total" string="Project" readonly="1"/>
                                 <field name="consumable_amount_total" string="Consumable" readonly="1"/>
                                 <field name="expense_amount_total" string="Expense" readonly="1"/>
+                                <field name="travel_amount_total" string="Travel &amp; Accommodation" readonly="1"/>
                                 <field name="amount_untaxed" string="Subtotal" readonly="1"/>
                                 <field name="amount_tax" string="Tax" readonly="1"/>
                                 <field name="amount_total" string="Total" readonly="1"/>
@@ -157,6 +158,34 @@
                                         <field name="tax_id" widget="many2many_tags" options="{'no_create': True}"/>
                                         <field name="price_tax" readonly="1"/>
                                         <field name="price_total" readonly="1"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Travel &amp; Accommodation Estimations" name="travel_estimations">
+                                <field name="travel_line_ids" nolabel="1"
+                                       widget="section_and_note_one2many"
+                                       context="{'default_line_type': 'travel'}"
+                                       options="{'no_create_edit': False}"
+                                       domain="[('line_type', '=', 'travel')]">
+                                    <list string="Travel &amp; Accommodation Estimations" editable="bottom" default_order="sequence">
+                                        <control>
+                                            <create string="Add a line"/>
+                                            <create string="Add a section" context="{'default_display_type': 'line_section'}"/>
+                                            <create string="Add a note" context="{'default_display_type': 'line_note'}"/>
+                                        </control>
+                                        <field name="line_type" invisible="1" column_invisible="1" default="travel"/>
+                                        <field name="display_type" invisible="1" column_invisible="1"/>
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="product_id" options="{'no_create': True}"/>
+                                        <field name="name" widget="section_and_note_text"/>
+                                        <field name="product_uom_qty" string="Quantity"/>
+                                        <field name="price_unit" string="Unit Price"/>
+                                        <field name="price_total" string="Total" readonly="1"/>
+                                        <!-- Hidden fields needed for compute -->
+                                        <field name="product_uom" column_invisible="1"/>
+                                        <field name="price_subtotal" column_invisible="1" readonly="1"/>
+                                        <field name="tax_id" widget="many2many_tags" options="{'no_create': True}"/>
+                                        <field name="price_tax" column_invisible="1" readonly="1"/>
                                     </list>
                                 </field>
                             </page>

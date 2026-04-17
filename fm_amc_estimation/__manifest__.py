@@ -2,7 +2,7 @@
 {
     'name': 'FM AMC Estimation',
     'version': '19.0.1.0.56',
-    'category': 'Sales/CRM',
+    'category': 'Estimation',
     'summary': 'Estimation Management for AMC Contracts and Projects',
     'description': '''
         FM AMC Estimation Module
@@ -72,6 +72,10 @@
         'views/fm_amc_contract_period_views.xml',
         'views/amc_quotation_views.xml',
         'views/crm_menu_views.xml',
+        'views/estimation_menu_views.xml',
+        'views/amc_contract_inherit_views.xml',
+        'views/sale_order_amc_inherit_views.xml',
+        'views/account_move_inherit_views.xml',
     ],
     'assets': {
         'web.assets_backend': [
@@ -80,7 +84,7 @@
         ],
     },
     'installable': True,
-    'application': False,
+    'application': True,
     'auto_install': False,
     'post_init_hook': 'post_init_hook',
 }

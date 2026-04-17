@@ -19,10 +19,11 @@ class ProjectFC(models.Model):
                                  default=lambda self: self.env.company)
     
     # Stage
-    stage_id = fields.Many2one(
+    fc_stage_id = fields.Many2one(
         'fc.project.stage',
         string='Stage',
         tracking=True,
+        ondelete='set null',
         help='Project stage',
         group_expand='_read_group_stage_ids',
     )
@@ -131,11 +132,11 @@ class ProjectFC(models.Model):
             else:
                 record.invoice_paid_percent = 0.0
 
-    @api.depends('stage_id', 'company_id')
+    @api.depends('fc_stage_id', 'company_id')
     def _compute_stage_action_flags(self):
         Stage = self.env['fc.project.stage'].sudo()
         for project in self:
-            stage = project.stage_id
+            stage = project.fc_stage_id
             company_id = project.company_id.id or self.env.company.id
             next_stage = project._find_next_stage(stage) if stage else Stage.browse()
             completed_stage = project._find_completed_stage(company_id) if stage else Stage.browse()
@@ -171,7 +172,7 @@ class ProjectFC(models.Model):
     def _find_next_stage(self, current_stage=None):
         self.ensure_one()
         Stage = self.env['fc.project.stage'].sudo()
-        stage = current_stage or self.stage_id
+        stage = current_stage or self.fc_stage_id
         if not stage:
             return Stage.browse()
 
@@ -221,8 +222,8 @@ class ProjectFC(models.Model):
         prepared_vals = []
         for vals in vals_list:
             vals = dict(vals)
-            if not vals.get('stage_id') and default_stage:
-                vals['stage_id'] = default_stage.id
+            if not vals.get('fc_stage_id') and default_stage:
+                vals['fc_stage_id'] = default_stage.id
             if not vals.get('company_id'):
                 vals['company_id'] = self.env.company.id
             prepared_vals.append(vals)
@@ -232,8 +233,8 @@ class ProjectFC(models.Model):
 
     def write(self, vals):
         """Generate project code when stage changes to awarded/confirmed"""
-        if 'stage_id' in vals and not self.env.context.get('allow_stage_transition'):
-            requested_stage = vals.get('stage_id')
+        if 'fc_stage_id' in vals and not self.env.context.get('allow_stage_transition'):
+            requested_stage = vals.get('fc_stage_id')
             target_stage = False
             if isinstance(requested_stage, int):
                 target_stage = self.env['fc.project.stage'].browse(requested_stage)
@@ -246,7 +247,7 @@ class ProjectFC(models.Model):
                 raise UserError(_('Use the Confirm button to move the project into the Awarded stage.'))
 
             for project in self:
-                current_stage = project.stage_id
+                current_stage = project.fc_stage_id
                 if current_stage and current_stage.is_confirmed_stage:
                     if not target_stage:
                         raise UserError(_('Projects in the Awarded stage cannot be moved back to Draft.'))
@@ -256,9 +257,9 @@ class ProjectFC(models.Model):
         result = super(ProjectFC, self).write(vals)
         
         # Check if stage changed to awarded/confirmed stage
-        if 'stage_id' in vals and 'project_code' not in vals:
+        if 'fc_stage_id' in vals and 'project_code' not in vals:
             for project in self:
-                stage = project.stage_id
+                stage = project.fc_stage_id
                 updates = {}
                 if stage and stage.is_confirmed_stage:
                     config = self.env['fc.project.config'].get_config()
@@ -283,7 +284,7 @@ class ProjectFC(models.Model):
     def action_next_stage(self):
         """Move project to the next configured stage (excluding confirmed stage)."""
         for project in self:
-            stage = project.stage_id
+            stage = project.fc_stage_id
             if not stage:
                 raise UserError(_('Assign a stage before progressing.'))
 
@@ -293,7 +294,7 @@ class ProjectFC(models.Model):
             if next_stage.is_confirmed_stage:
                 raise UserError(_('Use Confirm to move the project into the awarded stage.'))
 
-            project.with_context(allow_stage_transition=True).sudo().write({'stage_id': next_stage.id})
+            project.with_context(allow_stage_transition=True).sudo().write({'fc_stage_id': next_stage.id})
 
         return True
 
@@ -310,7 +311,7 @@ class ProjectFC(models.Model):
             if not confirmed_stage:
                 raise UserError(_('Please configure a confirmed/awarded stage in Project Stages.'))
 
-            stage = project.stage_id
+            stage = project.fc_stage_id
             if not stage:
                 raise UserError(_('Set a project stage before confirming.'))
             if stage.id == confirmed_stage.id:
@@ -325,7 +326,7 @@ class ProjectFC(models.Model):
             )
 
             write_vals = {
-                'stage_id': confirmed_stage.id,
+                'fc_stage_id': confirmed_stage.id,
                 'is_confirmed': True,
             }
             if project_code:
@@ -351,7 +352,7 @@ class ProjectFC(models.Model):
 
         for project in self:
             project.with_context(allow_stage_transition=True).sudo().write({
-                'stage_id': cancel_stage.id,
+                'fc_stage_id': cancel_stage.id,
                 'is_confirmed': False,
             })
 
@@ -360,7 +361,7 @@ class ProjectFC(models.Model):
     def action_start_project(self):
         """Advance an awarded project into the next stage (typically In Progress)."""
         for project in self:
-            current_stage = project.stage_id
+            current_stage = project.fc_stage_id
             if not current_stage or not current_stage.is_confirmed_stage:
                 raise UserError(_('Only awarded projects can be started.'))
 
@@ -370,7 +371,7 @@ class ProjectFC(models.Model):
                 raise UserError(_('Please configure a stage that comes after Awarded (e.g., In Progress).'))
 
             project.with_context(allow_stage_transition=True).sudo().write({
-                'stage_id': next_stage.id,
+                'fc_stage_id': next_stage.id,
             })
 
         return True
@@ -382,14 +383,14 @@ class ProjectFC(models.Model):
             if not completed_stage:
                 raise UserError(_('Please configure a completed stage in Project Stages.'))
 
-            current_stage = project.stage_id
+            current_stage = project.fc_stage_id
             if current_stage and current_stage.id == completed_stage.id:
                 raise UserError(_('This project is already marked as completed.'))
             if current_stage and (current_stage.sequence or 0) > (completed_stage.sequence or 0):
                 raise UserError(_('This project is beyond the configured completed stage.'))
 
             project.with_context(allow_stage_transition=True).sudo().write({
-                'stage_id': completed_stage.id,
+                'fc_stage_id': completed_stage.id,
             })
 
         return True
@@ -427,11 +428,11 @@ class ProjectFC(models.Model):
     @api.model
     def _set_default_stage_for_existing_projects(self):
         """Set default stage for existing projects that don't have a stage"""
-        projects_without_stage = self.search([('stage_id', '=', False)])
+        projects_without_stage = self.search([('fc_stage_id', '=', False)])
         if projects_without_stage:
             default_stage = self.env['fc.project.stage'].search([('sequence', '=', 10), ('active', '=', True)], limit=1)
             if default_stage:
-                projects_without_stage.write({'stage_id': default_stage.id})
+                projects_without_stage.write({'fc_stage_id': default_stage.id})
                 return True
         return False
 

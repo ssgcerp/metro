@@ -11,8 +11,8 @@ def post_init_hook(env):
     if not draft_stage:
         return
 
-    projects_without_stage = Project.search([('stage_id', '=', False)])
+    projects_without_stage = Project.search([('fc_stage_id', '=', False)])
     if projects_without_stage:
-        projects_without_stage.write({'stage_id': draft_stage.id})
+        projects_without_stage.write({'fc_stage_id': draft_stage.id})
     env.cr.commit()
 

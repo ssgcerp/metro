@@ -18,6 +18,9 @@ from . import amc_quotation_line
 from . import amc_quotation_service_type
 from . import amc_quotation_building
 from . import amc_quotation_product
+from . import amc_contract_extend
+from . import sale_order_extend
+from . import account_move_extend
 
 
 

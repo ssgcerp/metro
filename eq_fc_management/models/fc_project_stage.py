@@ -47,10 +47,10 @@ class FCProjectStage(models.Model):
             if stage.is_default:
                 raise UserError('Default stages cannot be deleted!')
             
-            # Check if any project is using this stage
-            projects = self.env['project.project'].search([('stage_id', '=', stage.id)])
+            # Check if any project (active or archived) is using this stage
+            projects = self.env['project.project'].sudo().with_context(active_test=False).search([('stage_id', '=', stage.id)])
             if projects:
-                raise UserError(f'Cannot delete stage "{stage.name}" because it is being used by {len(projects)} project(s). Please change the stage of these projects first.')
+                raise UserError(f'Cannot delete stage "{stage.name}" because it is being used by {len(projects)} project(s). Please change the stage of these projects first or archive this stage instead.')
         
         return super(FCProjectStage, self).unlink()
 

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ================================================ -->
+        <!-- ROOT MENU: Estimations App (appears on Home screen) -->
+        <!-- ================================================ -->
+        <menuitem id="menu_fm_estimation_app_root"
+                  name="Estimations"
+                  sequence="80"
+                  web_icon="fm_amc_estimation,static/description/icon.png"/>
+
+        <!-- ================================================ -->
+        <!-- MAIN MENU: Estimations                           -->
+        <!-- ================================================ -->
+        <menuitem id="menu_fm_estimation_app_estimations"
+                  name="Estimations"
+                  parent="menu_fm_estimation_app_root"
+                  action="action_fm_amc_estimation"
+                  sequence="10"/>
+
+        <!-- ================================================ -->
+        <!-- MAIN MENU: AMC Quotations                        -->
+        <!-- ================================================ -->
+        <menuitem id="menu_fm_estimation_app_quotations"
+                  name="AMC Quotations"
+                  parent="menu_fm_estimation_app_root"
+                  action="action_amc_quotation"
+                  sequence="20"/>
+
+        <!-- ================================================ -->
+        <!-- MAIN MENU: Configuration                         -->
+        <!-- ================================================ -->
+        <menuitem id="menu_fm_estimation_app_config"
+                  name="Configuration"
+                  parent="menu_fm_estimation_app_root"
+                  sequence="90"/>
+
+        <!-- Estimation Configuration -->
+        <menuitem id="menu_fm_estimation_app_config_section_estimations"
+                  name="--- Estimations ---"
+                  parent="menu_fm_estimation_app_config"
+                  sequence="10"/>
+
+        <menuitem id="menu_fm_estimation_app_estimation_format"
+                  name="Estimations Format"
+                  parent="menu_fm_estimation_app_config"
+                  action="action_fm_amc_estimation_config"
+                  sequence="11"/>
+
+        <menuitem id="menu_fm_estimation_app_estimation_stages"
+                  name="Estimations Stages"
+                  parent="menu_fm_estimation_app_config"
+                  action="action_fm_amc_estimation_stage"
+                  sequence="12"/>
+
+        <menuitem id="menu_fm_estimation_app_terms_condition"
+                  name="Terms and Conditions"
+                  parent="menu_fm_estimation_app_config"
+                  action="action_fm_amc_terms_condition"
+                  sequence="13"/>
+
+        <menuitem id="menu_fm_estimation_app_system_type"
+                  name="System Types"
+                  parent="menu_fm_estimation_app_config"
+                  action="action_fm_amc_system_type"
+                  sequence="14"/>
+
+        <menuitem id="menu_fm_estimation_app_contract_period"
+                  name="Contract Periods"
+                  parent="menu_fm_estimation_app_config"
+                  action="action_fm_amc_contract_period"
+                  sequence="15"/>
+
+        <!-- Quotation Configuration -->
+        <menuitem id="menu_fm_estimation_app_config_section_quotations"
+                  name="--- Quotations ---"
+                  parent="menu_fm_estimation_app_config"
+                  sequence="20"/>
+
+        <menuitem id="menu_fm_estimation_app_quotation_format"
+                  name="Quotations Format"
+                  parent="menu_fm_estimation_app_config"
+                  action="action_fm_amc_quotation_config"
+                  sequence="21"/>
+
+        <menuitem id="menu_fm_estimation_app_quotation_stages"
+                  name="Quotations Stages"
+                  parent="menu_fm_estimation_app_config"
+                  action="action_fm_amc_quotation_stage"
+                  sequence="22"/>
+
+    </data>
+</odoo>

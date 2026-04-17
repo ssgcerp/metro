@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Inject AMC Contract field into Sale Order form -->
+        <record id="view_sale_order_form_inherit_amc_contract" model="ir.ui.view">
+            <field name="name">sale.order.form.inherit.amc.contract</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
+                <!-- Inject AMC Contract into the standard order_details group -->
+                <xpath expr="//group[@name='order_details']" position="inside">
+                    <field name="amc_contract_id"
+                           string="AMC Contract?"
+                           domain="[('customer_id', '=', partner_id), ('active', '=', True)]"
+                           options="{'no_create': True, 'no_open': False}"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
+

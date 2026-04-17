@@ -10,7 +10,7 @@
             <field name="inherit_id" ref="project.view_project_project_filter"/>
             <field name="arch" type="xml">
                 <xpath expr="//search" position="inside">
-                    <filter string="Project Stage" name="groupby_project_stage" context="{'group_by': 'stage_id'}"
+                    <filter string="Project Stage" name="groupby_project_stage" context="{'group_by': 'fc_stage_id'}"
                             groups="project.group_project_stages"/>
                 </xpath>
             </field>
@@ -23,9 +23,9 @@
             <field name="arch" type="xml">
                 <xpath expr="//field[@name='name']" position="after">
                     <field name="project_code" string="Project code"/>
-                    <field name="stage_id" string="Project Stage"/>
+                    <field name="fc_stage_id" string="Project Stage"/>
                 </xpath>
-                <xpath expr="//field[@name='stage_id']" position="after">
+                <xpath expr="//field[@name='fc_stage_id']" position="after">
                     <button name="action_view_dashboard" type="object" string="View Dashboard" class="oe_link"/>
                 </xpath>
             </field>

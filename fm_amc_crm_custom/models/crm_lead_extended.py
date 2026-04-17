@@ -54,7 +54,7 @@ class CrmLead(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if 'company_id' in vals:
+        if 'company_id' in vals and not self.env.context.get('is_migrating'):
             import re
             config = self.env['crm.lead.config'].get_config()
             for lead in self:

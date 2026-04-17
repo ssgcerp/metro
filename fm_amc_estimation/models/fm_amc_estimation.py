@@ -71,6 +71,9 @@ class FMAMCEstimation(models.Model):
     expense_amount_total = fields.Monetary(
         string='Expense', compute='_compute_amounts', store=True, currency_field='currency_id'
     )
+    travel_amount_total = fields.Monetary(
+        string='Travel & Accommodation', compute='_compute_amounts', store=True, currency_field='currency_id'
+    )
     amount_untaxed = fields.Monetary(string='Untaxed Amount', compute='_compute_amounts', 
                                     store=True, currency_field='currency_id')
     amount_tax = fields.Monetary(string='Tax Amount', compute='_compute_amounts', 
@@ -94,6 +97,9 @@ class FMAMCEstimation(models.Model):
     expense_line_ids = fields.One2many('fm.amc.estimation.line', 'estimation_id', 
                                        string='Expense Lines',
                                        domain=[('line_type', '=', 'expense')])
+    travel_line_ids = fields.One2many('fm.amc.estimation.line', 'estimation_id',
+                                      string='Travel & Accommodation Lines',
+                                      domain=[('line_type', '=', 'travel')])
     
     # Related Quotation
     sale_order_id = fields.Many2one('sale.order', string='Created Quotation', 
@@ -148,6 +154,9 @@ class FMAMCEstimation(models.Model):
             )
             estimation.expense_amount_total = sum(
                 estimation.line_ids.filtered(lambda l: l.line_type == 'expense' and not l.display_type).mapped('price_subtotal')
+            )
+            estimation.travel_amount_total = sum(
+                estimation.line_ids.filtered(lambda l: l.line_type == 'travel' and not l.display_type).mapped('price_subtotal')
             )
 
     @api.depends('stage_id', 'stage_id.name')
@@ -396,8 +405,8 @@ class FMAMCEstimation(models.Model):
         
         sale_order = self.env['sale.order'].create(sale_order_vals)
         
-        # Create sale order lines from estimation lines (skip section and note lines)
-        for line in self.line_ids.filtered(lambda l: not l.display_type):
+        # Create sale order lines from estimation lines (skip section, note, and travel lines)
+        for line in self.line_ids.filtered(lambda l: not l.display_type and l.line_type != 'travel'):
             self.env['sale.order.line'].create({
                 'order_id': sale_order.id,
                 'product_id': line.product_id.id if line.product_id else False,

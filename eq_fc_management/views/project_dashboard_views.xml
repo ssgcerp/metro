@@ -11,7 +11,7 @@
 					
 						<!-- Stage Statusbar -->
 						
-						<field name="stage_id" widget="statusbar" options="{'clickable': False}" modifiers="{'readonly': [('id', '!=', False)]}"/>
+						<field name="fc_stage_id" widget="statusbar" options="{'clickable': False}" modifiers="{'readonly': [('id', '!=', False)]}"/>
 						<!-- Action Buttons (visibility computed on project_dashboard.py) -->
 
 
@@ -90,7 +90,7 @@
 						<group>
 							<group>
 
-							<field name="stage_id" string="Current Stage"/>
+							<field name="fc_stage_id" string="Current Stage"/>
 								<field name="name" string="Project Name" placeholder="Project Name"/>
 								<field name="partner_id" string="Customer" options="{'no_open': True}" required="1"/>
 								<field name="company_id" options="{'no_open': True}"/>
@@ -126,7 +126,7 @@
 									<group>
 										<field name="cost_overrun" readonly="1"/>
 										<field name="cost_overrun_percent" readonly="1"/>
-										<field name="stage_id" readonly="1"/>
+										<field name="fc_stage_id" readonly="1"/>
 									</group>
 								</group>
 								<group>
